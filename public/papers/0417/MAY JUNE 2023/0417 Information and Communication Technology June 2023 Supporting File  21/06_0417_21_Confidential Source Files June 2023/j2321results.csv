@@ -1,0 +1,441 @@
+Start_Code,Last_Name,First_Name,Race_No,Club_Name,Cat_Code,YOB,Race_Time,Status,Event_Rank,Cat_Rank
+HC00,Fernsby,Justin,1011,Power Cycles,C7,1965,01:30:56,FIN,230,61
+HC04,Battersby,Josh,1012,Tawara Bike Buddies,C5,1996,01:23:37,FIN,78,46
+HC08,Bickham,Niels,1013,Team Superpowered Rollers,C7,1957,01:27:40,FIN,178,56
+HC00,Hales,Andy,1016,Independent,C5,1974,01:37:02,FIN,326,204
+HC01,Ellis,Jamie,1017,Cyclemeisters,C5,1990,01:24:04,FIN,89,53
+HC04,Williams,Magnus,1019,Velocity Cycling,C5,2000,01:21:41,FIN,33,17
+HC00,Bagley,Ken,1021,Mandras Flyers,C7,1959,01:19:47,FIN,6,4
+HC02,Hebb,Brent,1022,Synergy Racing,C5,1993,00:30:05,DNF,0,0
+HC01,Downie,Eugene,1023,Independent,C5,1989,01:48:56,FIN,381,247
+HC06,Blackett,David,1024,Trail Blazers,C5,1978,01:24:30,FIN,104,60
+HC02,Gilbertson,Cody,1025,Hardcore Cycling ,C5,1993,00:38:24,DNF,0,0
+HC10,Hutchinson,Sinead,1026,Velocity Cycling,C6,1997,01:20:54,FIN,17,9
+HC05,Glanzing,Hamza,1027,Dirt Busters,C5,1992,01:24:41,FIN,111,64
+HC08,Fergusson,Jennifer,1028,Independent,C6,1979,01:29:42,FIN,212,114
+HC02,Weir,Luke,1029,Independent,C5,2000,01:23:30,FIN,74,42
+HC07,Sadler,Duncan,1031,Mud and Gears,C5,1995,01:39:13,FIN,344,218
+HC03,Falkenberg,William,1032,Independent,C1,2007,01:29:46,FIN,213,8
+HC04,Langille,Zander,1033,Tawara Bike Buddies,C5,2000,01:23:38,FIN,79,47
+HC03,Ferris,Hudson,1034,Tawara Bike Buddies,C5,1992,01:42:30,FIN,364,233
+HC10,Soars,Maddox,1035,Tawara Bike Buddies,C5,1990,01:23:01,FIN,62,33
+HC01,Popovic,Danielle,1036,Redbike Rollers,C10,1952,01:25:16,FIN,124,6
+HC00,Makela,Xavier,1037,Trail Blazers,C5,1998,01:39:48,FIN,346,220
+HC04,Becker,Derek,1038,Trail Blazers,C5,1989,01:34:29,FIN,292,178
+HC10,Diehl,Darcy,1039,Kernow Pedallers,C5,1996,01:36:55,FIN,323,202
+HC04,Villeneuve,Preston,1040,Independent,C5,1984,01:34:26,FIN,291,177
+HC07,Springall,Brennon,1041,Flying Cyclops,C7,1960,01:24:49,FIN,115,35
+HC00,Fogg,Montgomery,1042,Mountain Kings,C5,1996,00:00:00,DNS,0,0
+HC10,Ince,Darrell,1043,Kernow Pedallers,C5,1979,01:26:19,FIN,149,84
+HC07,Linley,Athena,1047,Empowerment Racing,C6,1997,01:32:29,FIN,256,151
+HC01,Warburton,Finnegan,1050,Trail Blazers,C5,1998,01:29:58,FIN,220,120
+HC06,Sharpe,Larry,1053,Independent,C5,1992,02:03:25,FIN,389,255
+HC00,Wilson,Kristin,1054,Flying Cyclops,C6,1974,01:38:55,FIN,340,215
+HC04,Lockerbie,Devin,1058,Velocity Cycling,C7,1959,01:25:35,FIN,130,40
+HC07,Trussler,Ferdinand,1060,Hardcore Cycling ,C5,1998,01:42:28,FIN,363,232
+HC03,Fox,Edward,1061,Mud and Gears,C5,1995,01:26:23,FIN,151,85
+HC02,Gaucher,Cory,1063,Flying Cyclops,C5,2000,01:35:12,FIN,300,185
+HC09,Enevoldsen,Jessica,1065,Mountain Kings,C8,1954,01:22:31,FIN,51,19
+HC06,Hatch,Bailey,1067,Independent,C5,1981,01:33:18,FIN,272,162
+HC06,Jacobson,Finlay,1069,Mountain Kings,C5,1993,01:27:36,FIN,177,100
+HC10,Rockwell,Connor,1070,Mandras Flyers,C5,2000,01:30:00,FIN,222,122
+HC01,Paton,Diane,1071,Redbike Rollers,C6,1994,01:23:05,FIN,64,35
+HC04,Peters,Cameron,1072,Mandras Flyers,C11,1942,01:33:20,FIN,273,3
+HC04,Woodhead,Diggory,1073,Mud and Gears,C7,1969,01:26:26,FIN,153,48
+HC03,Somers,Mustafa,1074,Cyclemeisters,C7,1960,01:21:43,FIN,34,13
+HC02,Perry,Jane,1075,Tawara Bike Buddies,C6,1998,01:23:26,FIN,71,40
+HC02,Watts,Brad,1077,Independent,C5,1996,01:23:53,FIN,86,52
+HC06,Liu,Hayley,1078,Kernow Pedallers,C6,1994,01:50:21,FIN,382,248
+HC06,Macdonald,Felix,1079,Trail Blazers,C5,1992,01:32:08,FIN,248,144
+HC04,Hopping,Dudley,1080,Redbike Rollers,C3,2004,01:31:15,FIN,239,23
+HC08,Fednya,Erin,1081,Kernow Pedallers,C4,2004,01:32:41,FIN,261,24
+HC06,Arnold,Bradley,1082,Independent,C3,2004,01:41:21,FIN,359,32
+HC08,Pearce,Heather,1087,Mandras Flyers,C4,2002,01:26:30,FIN,156,9
+HC05,Critchley,Phoebe,1089,Trail Blazers,C4,2002,01:22:22,FIN,48,3
+HC02,Thomas,Scott,1092,Synergy Racing,C3,2004,01:29:54,FIN,216,21
+HC10,Coxall,Geoff,1094,Tawara Bike Buddies,C1,2005,01:42:52,FIN,366,17
+HC08,Magsamen,Wilhelm,1100,Power Cycles,C3,2002,01:25:29,FIN,128,8
+HC06,Bostick,Reggie,1101,Hardcore Cycling ,C3,2004,01:44:14,FIN,372,35
+HC08,Reeves,Janet,1102,Mud and Gears,C2,2006,01:29:26,FIN,205,7
+HC06,Wild,Clifford,1106,Team Pedal Power,C3,2001,01:19:37,DNF,0,0
+HC10,Sprague,Candace,1107,Dirt Busters,C4,2002,01:21:29,FIN,26,2
+HC05,Lockerbie,Nadine,1108,Kernow Pedallers,C2,2005,01:25:58,FIN,143,4
+HC06,Storer,Jolene,1111,Team Velopower,C6,1998,01:05:36,DNF,0,0
+HC00,Turgeon,Anna-Gabrielle,1115,Mandras Flyers,C4,2004,01:32:58,FIN,266,25
+HC04,Love,Gordon,1117,Flying Cyclops,C3,2004,01:33:34,FIN,276,26
+HC09,Poirier,Salim,1123,Empowerment Racing,C3,2001,00:51:18,DNF,0,0
+HC07,Cassidy,Anthony,1125,Mandras Flyers,C1,2006,01:32:31,FIN,257,10
+HC01,Chadwick,Joshua,1128,Mountain Kings,C1,2005,01:28:00,FIN,180,5
+HC00,Linder,Trinity,1133,Independent,C2,2005,01:35:35,FIN,305,12
+HC01,Recsky,Jakob,1137,Trail Blazers,C5,1996,01:28:34,FIN,188,103
+HC10,Marshall,Lampros,1138,Tawara Bike Buddies,C7,1962,01:24:43,FIN,113,33
+HC08,Finnegan,Kimberly,1140,Synergy Racing,C10,1953,01:01:12,DNF,0,0
+HC02,Herbert,Jameson,1141,Trail Blazers,C7,1970,01:24:42,FIN,112,32
+HC04,Sampson,Kaden,1143,Cyclemeisters,C7,1965,01:32:36,FIN,258,63
+HC06,Belanger,Mark,1144,Mountain Kings,C5,1995,01:38:59,FIN,342,216
+HC03,Lawrence,Ricardo,1145,Tawara Bike Buddies,C5,1996,01:24:06,FIN,90,54
+HC06,Lawson,Damon,1146,Independent,C5,1996,01:31:00,FIN,233,131
+HC02,Flannery,Joyce,1147,Mandras Flyers,C8,1958,01:26:53,FIN,166,54
+HC08,Edworthy,Tim,1150,Independent,C7,1968,01:26:32,FIN,157,50
+HC05,Bourgue,Alexandria,1151,Power Cycles,C6,1996,01:34:59,FIN,296,182
+HC03,Bristow,Timothy,1152,Cyclemeisters,C5,1993,01:34:02,FIN,285,172
+HC02,Kim,Lukas,1154,Independent,C5,1996,01:42:26,FIN,362,231
+HC00,Kingwell,Monica,1159,Empowerment Racing,C6,1974,01:27:55,FIN,179,101
+HC00,Sproule,Louis,1160,Power Bike Rangers,C5,1991,00:53:49,DNF,0,0
+HC01,Kent,Mackenzie,1161,Independent,C6,2000,01:31:07,FIN,236,134
+HC00,Verveda,Eric,1163,Synergy Racing,C5,1975,01:23:09,FIN,66,37
+HC10,Barnes,Nathan,1164,Mandras Flyers,C7,1966,01:26:27,FIN,154,49
+HC07,Scattergood,Marc,1165,Redbike Rollers,C7,1954,01:26:48,FIN,162,51
+HC02,Erdinc,Brian,1167,Synergy Racing,C5,1997,01:25:56,FIN,141,81
+HC04,Fraser,Jethro,1168,Dirt Busters,C7,1963,01:21:35,FIN,30,12
+HC09,Nicholson,Evan,1170,Cyclemeisters,C5,1995,01:43:48,FIN,370,237
+HC04,Bygrave,Gabby,1171,Flying Cyclops,C8,1963,01:21:25,FIN,23,10
+HC02,Webber,Thierry,1172,Kernow Pedallers,C5,1993,00:58:24,DNF,0,0
+HC10,Wragg,Frank,1173,Independent,C5,1994,01:25:25,FIN,127,72
+HC08,Buchanan,Craig,1174,Mud and Gears,C5,1993,01:32:46,FIN,263,154
+HC06,Cychowski,Lucas,1177,Team Pedal Power,C5,1975,01:36:38,FIN,319,199
+HC05,Sutherland,Marcus,1178,Independent,C5,1997,01:32:28,FIN,255,150
+HC04,Quinney,Felix,1179,Redbike Rollers,C5,1979,01:31:30,FIN,240,137
+HC09,Bone,Spencer,1181,Powerhouse Pedallers,C5,1987,01:33:09,FIN,269,159
+HC08,Brophy,Darren,1182,Tawara Bike Buddies,C7,1957,01:35:37,FIN,306,66
+HC09,Clements,Pascal,1184,Kernow Pedallers,C5,2000,01:40:08,FIN,348,221
+HC07,Doyle,Kier,1187,Mandras Flyers,C7,1964,01:21:09,FIN,19,8
+HC06,Smith,Titus,1191,Power Bike Rangers,C5,1990,01:02:36,DNF,0,0
+HC08,Doehring,Guri,1192,Power Cycles,C5,1974,01:23:45,FIN,83,51
+HC07,Brenner,Sanjay,1194,Kernow Pedallers,C5,1997,01:33:14,FIN,271,161
+HC09,Bugeaud,Wilson,1195,Mud and Gears,C9,1953,01:24:26,FIN,102,5
+HC05,Hartley,Adyn,1196,Independent,C9,1950,01:26:29,FIN,155,7
+HC01,Forrest,Erik,1199,Redbike Rollers,C7,1964,01:22:02,FIN,41,16
+HC05,Hanks,Samuel,1200,Team Velopower,C5,2000,01:24:36,FIN,108,62
+HC09,Vandyk,Percival,1202,Synergy Racing,C5,1993,01:36:09,FIN,311,193
+HC06,Brereton,Martin,1204,Flying Cyclops,C7,1956,00:24:50,DNF,0,0
+HC09,Cooper-Holmes,Harrison,1206,Team Velopower,C5,1995,01:25:45,FIN,135,77
+HC09,Cahill,Keith,1207,Tawara Bike Buddies,C5,1978,01:26:26,FIN,152,86
+HC05,Urquhart,Myles,1208,Mandras Flyers,C5,1999,01:23:04,FIN,63,34
+HC07,Howard,Daniel,1209,Hardcore Cycling ,C5,1999,01:37:20,FIN,330,206
+HC05,Dickinson,Christopher,1210,Tawara Bike Buddies,C5,1992,00:20:57,DNF,0,0
+HC04,Utting,Katy,1211,Mandras Flyers,C8,1969,01:21:32,FIN,28,11
+HC01,Woodward,Greta,1215,Redbike Rollers,C12,1937,01:26:54,FIN,167,2
+HC00,Rowlands,Hakeem,1216,Cyclemeisters,C5,1998,01:31:05,FIN,235,133
+HC07,Curran,Sonny,1218,Hardcore Cycling ,C5,1992,01:28:29,FIN,186,102
+HC01,Harris,Scarlett,1220,Independent,C6,1994,01:35:27,FIN,303,188
+HC00,Caouette-Rochon,Olive,1221,Trail Blazers,C6,1984,01:30:33,DNF,0,0
+HC01,Holt,Marianna,1222,Powerhouse Pedallers,C6,1978,00:27:11,DNF,0,0
+HC09,De Nino,Denis,1225,Mud and Gears,C5,1993,01:38:06,FIN,334,210
+HC03,Hutchings,Ibrahim,1227,Dirt Busters,C5,1989,01:33:59,FIN,284,171
+HC05,Penner,Ben,1229,Flying Cyclops,C5,1997,01:23:35,FIN,76,44
+HC09,Hawkins,Christian,1230,Mountain Kings,C5,1995,01:30:59,FIN,232,130
+HC07,Turnbull,Linus,1232,Tawara Bike Buddies,C7,1957,00:56:35,DNF,0,0
+HC08,Gordon,Dmitry,1233,Velocity Cycling,C7,1961,01:32:43,FIN,262,64
+HC07,Bain,Loy,1235,Power Bike Rangers,C7,1961,01:37:03,FIN,327,70
+HC00,Ward,Cecil,1237,Hardcore Cycling ,C5,1991,01:52:36,FIN,384,250
+HC08,Corbett,Jean-Luc,1238,Mountain Kings,C5,1997,01:33:11,FIN,270,160
+HC03,Davies,Shaughn,1240,Team Pedal Power,C5,1991,01:23:00,FIN,61,32
+HC08,Adamson,Rich,1242,Mud and Gears,C5,1979,01:42:49,FIN,365,234
+HC02,Cannell,Keaton,1245,Tawara Bike Buddies,C5,1995,01:20:13,FIN,8,4
+HC08,Creighton,Ciaran,1246,Dirt Busters,C5,1976,01:21:36,FIN,31,16
+HC05,Oakes,Elliott,1247,Independent,C5,1994,01:22:20,FIN,47,26
+HC07,Blakeston,Neil,1248,Trail Blazers,C7,1968,01:20:53,FIN,16,7
+HC04,Carroll,Kyle,1249,Mandras Flyers,C5,1991,01:27:30,FIN,176,99
+HC10,Moore,Rasmus,1251,Velocity Cycling,C5,1981,01:32:39,FIN,259,152
+HC01,Ledger,Jay,1252,Independent,C5,1999,01:40:38,FIN,354,226
+HC03,McPhee,Wyatt,1253,Independent,C5,1997,01:33:40,FIN,278,166
+HC00,Jackman,Amanda,1254,Empowerment Racing,C6,1987,00:00:00,DNS,0,0
+HC05,Hardy,Robin,1255,Dirt Busters,C5,1978,01:27:02,FIN,170,93
+HC01,Hallingsworth,Mikhail,1258,Velocity Cycling,C5,1997,01:20:56,FIN,18,10
+HC02,Dornian,Tom,1260,Synergy Racing,C7,1962,01:26:12,FIN,148,46
+HC06,Danielson,Michael,1261,Independent,C5,2000,01:25:20,FIN,125,70
+HC05,Mcdonough,Laurence,1267,Redbike Rollers,C5,1995,01:33:45,FIN,281,168
+HC01,Forsyth,Kevin,1272,Kernow Pedallers,C7,1954,01:25:01,FIN,117,37
+HC01,Jaeger,Eamon,1277,Velocity Cycling,C7,1968,01:26:11,FIN,147,45
+HC02,Van Den Ham,Rafael,1279,Mountain Kings,C5,1982,01:00:28,DNF,0,0
+HC02,Reynolds,Douglas,1282,Flying Cyclops,C5,1978,01:32:19,FIN,254,149
+HC07,Brookes,Jason,1286,Hardcore Cycling ,C5,1981,00:21:53,DNF,0,0
+HC04,Koenig,Chelsea,1287,Dirt Busters,C8,1970,01:23:28,FIN,72,23
+HC04,Walker,Leonardo,1288,Flying Cyclops,C5,1994,01:33:56,FIN,283,170
+HC08,Tatlow,Hayden,1294,Team Velopower,C5,1994,01:21:12,FIN,20,11
+HC03,Quinnett,Brenda,1296,Independent,C8,1965,01:22:00,FIN,40,15
+HC02,English,Bartek,1297,Independent,C5,1976,01:36:32,FIN,317,198
+HC01,Pullen,Lucia,1299,Independent,C5,1994,01:21:26,FIN,24,12
+HC09,Hemingway,Elijah,1300,Tawara Bike Buddies,C7,1966,01:25:10,FIN,120,38
+HC09,Attenborough,Denzil,1302,Trail Blazers,C5,1995,01:21:47,FIN,36,19
+HC01,Loewen,Barack,1303,Synergy Racing,C7,1963,01:19:37,FIN,5,3
+HC02,Grant,Hassan,1304,Independent,C5,1977,01:25:39,FIN,132,74
+HC07,Morris,Kunio,1306,Hardcore Cycling ,C5,1981,01:31:51,FIN,245,142
+HC06,Klein,Humphrey,1308,Velocity Cycling,C7,1969,01:23:15,FIN,69,22
+HC03,Walls,Matt,1309,Trail Blazers,C5,1993,01:25:22,FIN,126,71
+HC00,Sherstan,Walter,1310,Mandras Flyers,C5,1994,01:25:12,FIN,121,67
+HC01,Corfield,Mason,1311,Independent,C5,1994,01:32:40,FIN,260,153
+HC08,Leonardson,Tallulah,1312,Cyclemeisters,C6,1998,01:46:10,FIN,376,242
+HC07,Orme,Everett,1314,Trail Blazers,C7,1958,01:26:20,FIN,150,47
+HC03,Maclauchlan,Kieran,1315,Hardcore Cycling ,C5,1993,01:26:36,FIN,159,88
+HC00,Annerman,Stuart,1319,Power Bike Rangers,C5,2000,01:22:57,FIN,60,31
+HC01,Yoshimura,Dario,1320,Redbike Rollers,C5,1996,01:21:30,FIN,27,14
+HC10,Hubick,Clayton,1321,Mountain Kings,C5,1993,01:24:38,FIN,110,63
+HC02,Snell,Sally,1322,Flying Cyclops,C8,1962,01:20:32,FIN,11,5
+HC08,Bolivar,Tobias,1325,Tawara Bike Buddies,C5,1979,01:21:42,DNF,0,0
+HC05,Tomkinson,Maverick,1327,Redbike Rollers,C5,1997,01:36:53,FIN,322,201
+HC07,Gomes,Valentino,1328,Mountain Kings,C5,1974,01:27:27,FIN,175,98
+HC00,Caskey,Shauna,1329,Independent,C6,1995,01:23:36,FIN,77,45
+HC06,Stansfield,Vincent,1330,Mountain Kings,C5,1992,01:56:18,FIN,387,253
+HC04,Gurba,Maxim,1333,Independent,C5,1989,01:31:49,FIN,244,141
+HC09,Bailey,Ghyslain,1334,Velocity Cycling,C5,1991,01:56:06,FIN,386,252
+HC10,Kindzierski,Jake,1344,Independent,C5,1995,01:46:26,FIN,378,244
+HC06,Pennington,Archie,1346,Empowerment Racing,C5,1996,01:26:39,FIN,160,89
+HC10,Pyatt,Annette,1347,Kernow Pedallers,C8,1971,01:23:50,FIN,84,24
+HC01,Hopkinson,Orlando,1350,Mandras Flyers,C5,1974,01:32:13,FIN,251,147
+HC00,Briggs,Keegan,1352,Power Bike Rangers,C7,1965,01:19:11,DNF,0,0
+HC07,Thwaites,Reuben,1353,Empowerment Racing,C5,1993,01:24:35,FIN,107,61
+HC07,Callaghan,Kirsten,1354,Mountain Kings,C6,1991,01:20:23,FIN,10,6
+HC05,Damerell,Patrick,1355,Independent,C5,1994,01:38:52,FIN,339,214
+HC09,Fletcher,Jurgen,1359,Independent,C5,1987,01:31:34,FIN,241,138
+HC07,Bowles,Tait,1361,Mandras Flyers,C5,1982,01:31:01,FIN,234,132
+HC04,Costello,Stephen,1364,Power Bike Rangers,C5,1993,01:53:44,FIN,385,251
+HC03,Ryan,Roger,1365,Team Velopower,C5,1980,00:00:00,DNS,0,0
+HC05,Pedrosa,Dustin,1366,Dirt Busters,C5,1989,01:23:12,FIN,68,39
+HC03,Selanders,Barrie,1367,Synergy Racing,C7,1962,01:26:07,FIN,146,44
+HC02,Stringer,Charles,1368,Independent,C5,2000,01:29:35,FIN,208,111
+HC03,Myers,Cedric,1370,Redbike Rollers,C5,1998,01:44:17,FIN,373,239
+HC06,Littlewood,Kenneth,1372,Dirt Busters,C5,1991,01:34:47,FIN,295,181
+HC07,Havers,Adam,1373,Mud and Gears,C5,1976,01:32:01,FIN,247,143
+HC02,Shearer,Tristan,1375,Velocity Cycling,C9,1952,01:22:53,FIN,58,3
+HC10,Sissons,Nigel,1376,Team Superpowered Rollers,C5,1993,01:34:21,FIN,289,176
+HC06,Chambers,Leanne,1377,Independent,C6,1999,01:35:40,FIN,307,190
+HC04,Myslicki,Kellen,1379,Redbike Rollers,C7,1960,01:24:15,FIN,96,29
+HC01,Collier,Zorina,1380,Kernow Pedallers,C6,1991,01:34:11,FIN,287,174
+HC02,Parker,Philippe,1381,Power Bike Rangers,C5,1988,01:30:34,FIN,227,127
+HC02,Ritter,Enrico,1383,Mud and Gears,C5,2000,01:43:55,FIN,371,238
+HC10,Roberts,Tyla,1385,Flying Cyclops,C6,1992,01:48:26,FIN,380,246
+HC07,Brenton,Aaron,1386,Tawara Bike Buddies,C5,1983,01:29:55,FIN,217,117
+HC06,Hoyle,Ernest,1388,Power Bike Rangers,C5,1993,01:23:07,FIN,65,36
+HC05,Mulligan,Silvanus,1391,Independent,C5,1989,01:29:49,FIN,215,116
+HC01,Stewardson,Jayden,1392,Flying Cyclops,C5,1988,01:45:39,FIN,374,240
+HC01,Vanderlee,Ivan,1393,Power Cycles,C5,1997,01:29:01,FIN,198,108
+HC02,Edwards,Lars,1394,Independent,C1,2007,01:24:09,FIN,92,2
+HC09,Glendinning,Evelyn,1395,Tawara Bike Buddies,C6,1994,01:30:08,FIN,224,124
+HC09,Grigg,Carlton,1397,Mandras Flyers,C7,1963,01:37:05,DNF,0,0
+HC04,Cunningham,Elizabeth,1401,Redbike Rollers,C6,1999,01:20:16,FIN,9,5
+HC10,Ballard,Ryan,1409,Mandras Flyers,C5,1998,01:43:12,FIN,368,236
+HC08,Eccles,Giles,1411,Kernow Pedallers,C5,1997,01:27:12,FIN,173,96
+HC08,Tsuyuhara,Ralph,1412,Trail Blazers,C5,1996,01:39:00,FIN,343,217
+HC06,Gervais,Donald,1413,Independent,C7,1973,01:23:52,FIN,85,25
+HC09,Kenny,Phillip,1414,Flying Cyclops,C5,1995,01:42:58,FIN,367,235
+HC02,Stafford,Wendell,1416,Team Superpowered Rollers,C5,2000,01:34:36,FIN,294,180
+HC09,Van Omerman,Jasper,1419,Flying Cyclops,C5,1993,01:24:22,FIN,100,58
+HC00,Wilson,Olaf,1420,Empowerment Racing,C5,1996,01:20:11,FIN,7,3
+HC07,Hickey,Kurt,1421,Tawara Bike Buddies,C5,1984,01:29:39,FIN,209,112
+HC01,Watkinson,Carson,1423,Kernow Pedallers,C5,1984,01:21:28,FIN,25,13
+HC05,Jarabek,Dietrich,1424,Mandras Flyers,C5,1996,01:23:29,FIN,73,41
+HC03,Heinemann,Rodney,1425,Trail Blazers,C5,1993,01:31:38,FIN,242,139
+HC03,Hewett,Jeremy,1426,Redbike Rollers,C5,1979,01:21:53,DNF,0,0
+HC00,Bayne,Marvin,1427,Trail Blazers,C5,1993,01:35:58,FIN,309,191
+HC02,Petersen,Eldred,1429,Dirt Busters,C7,1966,01:19:28,FIN,2,1
+HC07,Hitchcock,Isabelle,1430,Independent,C8,1965,01:25:52,FIN,139,42
+HC00,Walkingshaw,Max,1431,Cyclemeisters,C5,1982,01:26:34,FIN,158,87
+HC01,Dobinson,Logan,1433,Mud and Gears,C5,1997,01:27:04,FIN,171,94
+HC07,Brassington,Sidney,1434,Velocity Cycling,C7,1971,01:36:13,FIN,314,68
+HC09,Khoury,Phil,1435,Velocity Cycling,C5,1993,01:24:15,FIN,97,57
+HC10,Padgham,Jack ,1436,Independent,C5,1991,01:29:58,FIN,219,119
+HC04,Redding,Jaylen,1438,Dirt Busters,C7,1959,00:00:00,DNS,0,0
+HC08,Thornton,Zachary,1439,Mandras Flyers,C5,1977,01:22:55,FIN,59,30
+HC02,Lewis,Rodrigo,1440,Flying Cyclops,C5,1993,01:45:53,FIN,375,241
+HC06,Orchard,Nicola,1442,Tawara Bike Buddies,C10,1949,01:28:15,FIN,184,8
+HC07,Bourdeau,Todd,1444,Independent,C7,1964,01:22:43,FIN,54,20
+HC04,Meeres,Cornelius,1445,Cyclemeisters,C5,1992,01:40:25,FIN,350,223
+HC05,Walkom,Ashley,1446,Kernow Pedallers,C8,1955,01:21:56,FIN,38,14
+HC07,Davidson,Colin,1447,Power Cycles,C5,1978,00:00:00,DNS,0,0
+HC02,Swift,Sven ,1450,Team Pedal Power,C5,1989,01:29:32,FIN,207,110
+HC04,Vesty,Asher,1454,Independent,C5,1985,01:28:54,FIN,195,106
+HC08,Richardson,Andre,1455,Powerhouse Pedallers,C5,1975,00:42:37,DNF,0,0
+HC03,Ashcroft,Howard,1456,Redbike Rollers,C5,1993,01:46:19,FIN,377,243
+HC06,Leadbetter,Isaac,1457,Redbike Rollers,C5,1992,01:26:04,FIN,145,83
+HC00,Mercer,Zenaida,1459,Power Bike Rangers,C6,1994,00:00:00,DNS,0,0
+HC09,Cowling,Laim,1462,Independent,C1,2006,01:24:37,FIN,109,3
+HC00,Weston,Christina,1464,Mandras Flyers,C4,2001,01:29:41,FIN,211,20
+HC04,Chan,Brett,1465,Tawara Bike Buddies,C3,2001,01:28:05,FIN,182,10
+HC04,McKinney,Tarquin,1478,Cyclemeisters,C3,2004,00:00:00,DNS,0,0
+HC05,Hornblower,Godfrey,1481,Trail Blazers,C1,2006,01:29:22,FIN,204,6
+HC06,Holmwood,Sam,1485,Empowerment Racing,C3,2004,01:28:42,FIN,191,15
+HC06,Vaughan,Hector,1487,Cyclemeisters,C3,2002,01:22:50,FIN,56,4
+HC08,Harrison,Harvey,1491,Tawara Bike Buddies,C3,2002,01:36:34,FIN,318,28
+HC00,Wolestenholme,Luther,1492,Cyclemeisters,C3,2003,01:39:52,FIN,347,29
+HC07,Huxley,Colby,1494,Cyclemeisters,C1,2005,01:33:41,FIN,279,11
+HC03,Felton,Jill,1497,Dirt Busters,C2,2006,01:38:50,FIN,337,15
+HC07,Platt,Mackenzie,1498,Team Pedal Power,C3,2002,01:28:38,FIN,190,14
+HC01,Harlton,Lamar,1500,Redbike Rollers,C5,1996,00:23:43,DNF,0,0
+HC01,Clark,Stanley,1512,Synergy Racing,C3,2004,01:30:53,FIN,229,22
+HC06,Fetherston,Abbey,1516,Empowerment Racing,C4,2002,00:45:24,DNF,0,0
+HC09,Loughty ,Warren,1517,Tawara Bike Buddies,C3,2004,01:28:48,FIN,193,16
+HC01,Craddock,Jenn,1519,Mandras Flyers,C4,2001,01:28:08,FIN,183,11
+HC00,Lagace,Dougal,1521,Kernow Pedallers,C3,2001,00:37:00,DNF,0,0
+HC09,Dankworth ,Jacob,1522,Independent,C3,2004,01:40:39,FIN,355,31
+HC10,Telford,Lucinda,1527,Power Bike Rangers,C4,2004,01:28:31,FIN,187,13
+HC03,Poon,Hugo,1528,Independent,C1,2006,01:32:18,FIN,253,9
+HC05,Redden,Julian,1529,Synergy Racing,C1,2006,01:36:52,FIN,321,13
+HC08,Wellstead,Terence,1532,Independent,C3,2003,01:42:13,FIN,361,33
+HC02,King,Nicole,1534,Empowerment Racing,C6,1997,01:00:38,DNF,0,0
+HC07,Anderson,Tyson,1536,Velocity Cycling,C3,2002,01:24:34,FIN,106,7
+HC05,Davison,Chris,1538,Hardcore Cycling ,C3,2002,01:24:18,FIN,98,6
+HC02,Pickersgill,Manfred,1541,Tawara Bike Buddies,C3,2002,01:20:46,FIN,14,1
+HC10,Collop,Jenaya,1546,Power Bike Rangers,C6,2000,00:36:45,DNF,0,0
+HC10,Parry,Bryce,1549,Mud and Gears,C3,2002,01:24:14,FIN,95,5
+HC09,Robinson,Brogan,1554,Cyclemeisters,C3,2001,01:29:15,FIN,202,18
+HC07,Standen,Christabel,1555,Independent,C4,2002,02:10:44,FIN,391,36
+HC09,Spratt,Genevieve,1557,Redbike Rollers,C6,1998,00:00:00,DNS,0,0
+HC06,Mullen,Jeffrey,1559,Trail Blazers,C3,2004,01:43:34,FIN,369,34
+HC08,Lee,Nancy,1560,Power Bike Rangers,C4,2004,01:28:22,FIN,185,12
+HC00,Coleman,Brandon,1561,Redbike Rollers,C5,1998,00:44:32,DNF,0,0
+HC09,Flater,Julia,1563,Redbike Rollers,C6,1990,00:53:16,DNF,0,0
+HC08,Yurkovich,Angelina,1564,Independent,C4,2001,01:29:20,FIN,203,19
+HC04,Holton,Patrick,1565,Kernow Pedallers,C5,1996,01:26:50,DNF,0,0
+HC09,Cummings,Dylan,1568,Redbike Rollers,C3,2001,01:29:00,FIN,197,17
+HC10,Brandrick,Adrian,1569,Cyclemeisters,C3,2003,01:40:35,FIN,352,30
+HC07,Simmonds,Annalise,1570,Powerhouse Pedallers,C6,1992,00:54:12,DNF,0,0
+HC05,Klarenbach,Sylvester,1575,Independent,C1,2005,01:38:57,FIN,341,16
+HC02,Gathard,Matthew,1576,Empowerment Racing,C5,1998,00:45:57,DNF,0,0
+HC08,Cosette,Rob ,1577,Cyclemeisters,C3,2002,01:34:24,FIN,290,27
+HC10,Medinski,Raymond,1578,Redbike Rollers,C1,2006,01:21:37,FIN,32,1
+HC04,Oliphant,Bruno,1580,Team Velopower,C5,1998,01:19:19,DNF,0,0
+HC10,Partington,Garfield,1584,Trail Blazers,C5,1995,01:38:18,FIN,335,211
+HC09,Walpole,Ricardo,1585,Trail Blazers,C5,1981,01:25:44,FIN,134,76
+HC01,Allan,Chuck,1588,Mud and Gears,C5,1984,01:28:37,FIN,189,104
+HC03,Hunter,Ruby,1589,Redbike Rollers,C2,2007,01:23:34,DNF,0,0
+HC03,Bedard,Sarah,1595,Powerhouse Pedallers,C8,1966,01:32:00,FIN,246,62
+HC03,Wai Wai Hnin,Emmanuelle,1600,Mud and Gears,C6,2000,01:20:51,FIN,15,8
+HC07,Erickson,Robin,1601,Independent,C8,1959,01:21:18,FIN,21,9
+HC01,Glennon,Ishmael,1602,Cyclemeisters,C7,1973,01:24:32,FIN,105,31
+HC10,Sidney,Owen,1604,Powerhouse Pedallers,C7,1959,00:00:00,DNS,0,0
+HC09,Wiles,Denise,1605,Cyclemeisters,C6,1996,01:26:59,FIN,169,92
+HC09,Young,Carthy,1606,Team Velopower,C8,1962,01:26:00,FIN,144,43
+HC10,Maddox,Stefan,1607,Dirt Busters,C5,1999,01:22:12,FIN,45,24
+HC03,Hastings,Stacy,1609,Synergy Racing,C6,1998,01:33:53,FIN,282,169
+HC08,Mcgill,Kyla,1611,Flying Cyclops,C8,1973,01:25:30,FIN,129,39
+HC02,Phillips,Joseph,1612,Dirt Busters,C5,1997,01:35:17,FIN,301,186
+HC01,Kipling,James,1614,Kernow Pedallers,C5,1998,01:30:24,FIN,226,126
+HC04,Pollard,Priscilla,1616,Independent,C6,1990,01:30:57,FIN,231,129
+HC00,Piller,Idris,1617,Mountain Kings,C5,1992,01:36:10,FIN,312,194
+HC01,Spencer,Harley,1618,Mandras Flyers,C11,1943,01:24:20,FIN,99,1
+HC03,Hagedorn,Arabella,1620,Mountain Kings,C6,1992,01:32:56,FIN,265,156
+HC05,Bonham,Shawna,1622,Powerhouse Pedallers,C6,1982,01:40:33,FIN,351,224
+HC03,Yarrow,Maxwell,1624,Independent,C5,1974,01:32:26,DNF,0,0
+HC04,Schiefler,Liam,1625,Velocity Cycling,C5,1999,01:41:27,FIN,360,230
+HC03,Graham,Jackson,1628,Power Bike Rangers,C7,1961,01:29:05,FIN,199,59
+HC09,Gilmour,Thomas,1629,Synergy Racing,C5,1992,01:27:17,FIN,174,97
+HC09,Platten,Micah,1630,Velocity Cycling,C7,1973,01:22:51,FIN,57,21
+HC10,Gatlin,Gregory,1632,Mandras Flyers,C7,1955,01:24:40,DNF,0,0
+HC07,Crutchlow,Holly,1634,Redbike Rollers,C10,1950,00:59:45,DNF,0,0
+HC07,Lofthouse,Aryeh,1635,Independent,C5,1977,01:19:32,FIN,4,2
+HC09,Hathaway,Yosef,1636,Tawara Bike Buddies,C5,1992,01:51:13,FIN,383,249
+HC04,Cairns,Jared,1637,Redbike Rollers,C7,1972,01:35:13,DNF,0,0
+HC01,Gibbons,Madeleine,1638,Velocity Cycling,C10,1951,00:00:00,DNS,0,0
+HC05,Summers,Desmond,1640,Trail Blazers,C5,1999,01:22:46,FIN,55,29
+HC03,Kaiser,Steven,1644,Hardcore Cycling ,C7,1968,01:35:07,FIN,297,65
+HC10,Coulthard,Lori,1646,Mud and Gears,C6,1989,01:24:08,FIN,91,55
+HC08,Manner,Archibald,1647,Velocity Cycling,C5,1997,01:35:09,FIN,298,183
+HC02,Frankland,Peter,1653,Cyclemeisters,C5,1983,01:23:32,FIN,75,43
+HC01,Watson,Hunter,1655,Team Superpowered Rollers,C7,1973,01:25:50,FIN,138,41
+HC03,Knowles,Emile,1656,Dirt Busters,C5,1995,01:25:46,FIN,136,78
+HC10,Seymour,Muhammad,1657,Tawara Bike Buddies,C7,1969,01:26:51,FIN,164,52
+HC10,Symonds,Sylvain,1659,Independent,C5,1993,01:34:35,FIN,293,179
+HC04,Gibson,Andrea,1660,Cyclemeisters,C6,1992,02:04:48,FIN,390,256
+HC05,Haywood,Drew,1662,Trail Blazers,C5,1996,01:35:10,FIN,299,184
+HC10,Jackson,Shannon,1663,Independent,C6,1993,01:32:10,FIN,250,146
+HC04,Robson,Haden,1664,Flying Cyclops,C5,1991,01:33:22,FIN,275,164
+HC02,Sutton,Albert,1665,Team Superpowered Rollers,C7,1972,01:29:30,FIN,206,60
+HC04,Dixon,Dale,1667,Power Cycles,C7,1972,01:34:23,DNF,0,0
+HC05,Walsh,Ramone,1668,Velocity Cycling,C5,1979,01:36:04,FIN,310,192
+HC08,Cody,Liza,1670,Redbike Rollers,C6,1999,01:34:10,FIN,286,173
+HC01,Webb,Solomon,1672,Independent,C7,1970,01:24:25,FIN,101,30
+HC08,Malacko,Travis,1673,Synergy Racing,C5,1995,01:29:11,FIN,201,109
+HC09,Kendell,Jeremiah,1675,Mud and Gears,C5,1995,01:38:51,FIN,338,213
+HC03,Sedgwick,Suzi,1676,Tawara Bike Buddies,C6,1978,01:32:09,FIN,249,145
+HC00,Brown,Marina,1678,Flying Cyclops,C6,1978,01:33:42,FIN,280,167
+HC04,Freemantle,Jonathon Scott,1679,Team Superpowered Rollers,C9,1951,01:23:23,FIN,70,4
+HC05,Kohlenberg,Dan,1682,Kernow Pedallers,C7,1970,01:18:37,DNF,0,0
+HC08,Romano,Dominic,1683,Independent,C5,1994,01:29:48,FIN,214,115
+HC03,Armstrong,Sheldon,1688,Dirt Busters,C5,1998,01:31:40,FIN,243,140
+HC06,Chamberlain,Michelle,1689,Kernow Pedallers,C6,1993,01:29:40,FIN,210,113
+HC05,Blixhavn,Judy,1693,Velocity Cycling,C6,1981,01:25:57,FIN,142,82
+HC00,Watson,Oscar,1694,Velocity Cycling,C5,1977,01:19:26,FIN,1,1
+HC06,Welch,Kareem,1695,Trail Blazers,C5,1975,01:36:57,FIN,324,203
+HC05,Antoniou,Rory,1697,Trail Blazers,C7,1956,01:22:28,FIN,49,18
+HC04,Lamb,Geoffrey,1698,Independent,C5,1984,01:33:21,FIN,274,163
+HC00,Loveday,Barry,1700,Cyclemeisters,C5,1994,01:40:14,FIN,349,222
+HC04,Stevens,Gareth,1701,Redbike Rollers,C5,1974,01:22:30,FIN,50,27
+HC06,Janssen,Ajax,1702,Team Pedal Power,C5,1995,01:32:51,FIN,264,155
+HC06,Brackston,Laura,1703,Mandras Flyers,C6,1983,01:25:15,FIN,123,69
+HC07,Wigelsworth,Kendrick,1704,Mud and Gears,C5,1994,01:37:27,FIN,332,208
+HC06,Geisel,Tanya,1705,Mountain Kings,C6,1998,01:33:07,FIN,268,158
+HC00,Wrigglesford,Leonard,1708,Mandras Flyers,C5,1997,01:25:40,FIN,133,75
+HC06,Muir,Bertrand,1710,Tawara Bike Buddies,C9,1947,01:22:40,FIN,53,2
+HC08,Osborne,Nadia,1711,Redbike Rollers,C6,1998,01:30:23,FIN,225,125
+HC06,Whittemore,Edwin,1712,Trail Blazers,C5,2000,01:26:45,FIN,161,90
+HC10,Cranston,Theodore,1713,Team Velopower,C5,1993,01:46:54,FIN,379,245
+HC07,Gamal,Odette,1714,Flying Cyclops,C6,1992,01:25:38,FIN,131,73
+HC00,Skorobohach,Lennox,1722,Independent,C7,1970,01:28:53,FIN,194,58
+HC01,Lynes,Kendra,1724,Cyclemeisters,C6,1999,01:20:41,FIN,13,7
+HC08,Wichuk,Pierce,1725,Powerhouse Pedallers,C9,1951,02:19:24,FIN,392,10
+HC04,Martin,Tabitha,1728,Independent,C6,1997,01:30:41,FIN,228,128
+HC02,Cislo,Emily,1731,Mud and Gears,C8,1960,01:23:58,FIN,87,26
+HC10,Bennett,Robert,1734,Mountain Kings,C9,1953,01:21:21,FIN,22,1
+HC10,Pilkington,Wade,1737,Hardcore Cycling ,C5,1999,01:37:23,FIN,331,207
+HC05,McWilliam,Frederick,1739,Redbike Rollers,C5,1996,01:36:14,FIN,315,196
+HC00,Collins,Nathaniel,1740,Mountain Kings,C5,2000,01:41:20,FIN,358,229
+HC07,Bergman,John,1741,Hardcore Cycling ,C5,1986,01:21:58,FIN,39,21
+HC04,Mackenzie,Steve ,1744,Mud and Gears,C5,1997,01:23:41,FIN,80,48
+HC01,Chapman,Nicholas,1745,Independent,C5,1976,01:37:31,FIN,333,209
+HC03,Mundy,Jesse,1747,Hardcore Cycling ,C5,1981,01:21:33,FIN,29,15
+HC05,Letterman,Hogan,1748,Dirt Busters,C7,1972,01:35:43,FIN,308,67
+HC10,Pootz,Mitchell,1749,Hardcore Cycling ,C5,1995,01:39:24,FIN,345,219
+HC08,Cheney,Kelvin,1751,Independent,C7,1959,01:24:02,FIN,88,27
+HC04,Kay,Leander,1753,Mandras Flyers,C5,1996,01:40:49,FIN,357,228
+HC01,Keller,Gary,1754,Hardcore Cycling ,C5,1978,01:22:03,FIN,42,22
+HC05,Heacock,Daene,1757,Independent,C6,1976,01:31:09,FIN,238,136
+HC06,Wilkinson,Elton,1758,Independent,C7,1961,01:28:04,FIN,181,57
+HC08,Mills,Carmelo,1760,Powerhouse Pedallers,C5,1992,01:23:44,FIN,82,50
+HC05,Campbell,Charlotte,1761,Flying Cyclops,C6,1996,01:26:49,FIN,163,91
+HC03,Baldwin,Katya,1763,Tawara Bike Buddies,C8,1971,01:19:31,FIN,3,2
+HC08,Schroderus,Nina,1764,Cyclemeisters,C6,2000,01:21:54,FIN,37,20
+HC03,Gardner,Pepper,1766,Team Superpowered Rollers,C8,1970,01:20:40,FIN,12,6
+HC02,Rossi,Nasir,1767,Independent,C5,1999,01:38:36,FIN,336,212
+HC01,Sebulsky,Jenny,1770,Synergy Racing,C2,2007,01:37:07,FIN,328,14
+HC05,Neilson,Alan,1780,Mandras Flyers,C5,1996,01:22:06,FIN,44,23
+HC10,Green,Sandra,1781,Independent,C6,1977,01:28:59,FIN,196,107
+HC10,Hogarth,Jeff,1782,Mandras Flyers,C5,1996,01:59:53,FIN,388,254
+HC04,Olsen,Ronnie ,1783,Mountain Kings,C5,1996,01:33:39,FIN,277,165
+HC00,Pattison,Gloria,1784,Trail Blazers,C6,1988,01:22:37,FIN,52,28
+HC02,Alderson,Graeme,1786,Redbike Rollers,C5,1992,01:35:26,FIN,302,187
+HC01,Wensel,Miguel,1788,Tawara Bike Buddies,C5,1990,01:23:42,FIN,81,49
+HC06,Martinez,Ahmet,1790,Hardcore Cycling ,C5,1993,01:28:47,FIN,192,105
+HC00,Gunawardena,Kiera,1795,Independent,C6,1975,01:24:11,FIN,93,56
+HC00,Turner,Stevie-Jane,1799,Independent,C6,1994,01:23:11,FIN,67,38
+HC03,Mulholland,Simon,1801,Trail Blazers,C5,1995,01:30:07,FIN,223,123
+HC10,Hearle,Cyril,1802,Team Pedal Power,C5,2000,01:25:06,FIN,119,66
+HC05,Reid,Russell,1803,Independent,C9,1944,01:29:10,FIN,200,9
+HC00,Kinniburgh,Gunther,1804,Dirt Busters,C5,1995,01:29:59,FIN,221,121
+HC02,Hughes,Aidan,1805,Flying Cyclops,C5,2000,01:37:10,FIN,329,205
+HC05,Gooding,Grant,1806,Trail Blazers,C7,1970,01:24:12,FIN,94,28
+HC02,Godber,Andrew,1808,Flying Cyclops,C5,1976,01:40:37,FIN,353,225
+HC02,Tomassini,Yannick,1811,Team Velopower,C5,2000,01:36:12,FIN,313,195
+HC08,Spooner,Sidney,1812,Velocity Cycling,C6,1994,01:25:49,FIN,137,79
+HC10,Pearson,Pierre,1813,Independent,C5,1975,01:32:14,FIN,252,148
+HC03,Naylor,Ethan,1814,Velocity Cycling,C7,1973,01:26:52,FIN,165,53
+HC03,Hundert,Oleksa,1816,Team Velopower,C5,1986,01:36:42,FIN,320,200
+HC00,Lunn,Oleg,1818,Dirt Busters,C5,1995,01:25:55,FIN,140,80
+HC03,Jones,Kristofer,1819,Trail Blazers,C5,1979,01:27:09,FIN,172,95
+HC07,Stachura,Quentin,1820,Independent,C5,1979,01:29:57,FIN,218,118
+HC06,Egan,Richard,1821,Dirt Busters,C5,1999,01:21:45,FIN,35,18
+HC06,Honeyford,Sebastian,1822,Tawara Bike Buddies,C7,1960,01:24:55,FIN,116,36
+HC05,Taylor-Smith,Dean,1824,Redbike Rollers,C5,1988,01:22:17,FIN,46,25
+HC04,Bratt,Wolfgang,1825,Redbike Rollers,C7,1964,01:24:47,FIN,114,34
+HC10,Gillett,Willow,1827,Mandras Flyers,C6,2000,01:33:03,FIN,267,157
+HC08,Knowlton,Darryl,1828,Hardcore Cycling ,C5,1994,01:40:43,FIN,356,227
+HC03,Chishlom,Alexander,1830,Mud and Gears,C5,1991,01:31:08,FIN,237,135
+HC03,Rushton,Sarah Rae,1831,Synergy Racing,C8,1961,01:22:04,FIN,43,17
+HC09,Banister,Caitlin,1833,Tawara Bike Buddies,C6,1995,01:24:27,FIN,103,59
+HC01,Schooler,Kamden,1834,Independent,C7,1958,01:37:00,FIN,325,69
+HC05,Kennedy,Alfred,1835,Mandras Flyers,C5,1989,01:36:26,FIN,316,197
+HC00,Dovizioso,Noah,1836,Independent,C5,1974,01:25:02,FIN,118,65
+HC09,Constance,Darwin,1838,Independent,C7,1969,01:26:57,FIN,168,55
+HC05,Castro,Kim,1840,Kernow Pedallers,C6,1996,01:34:15,FIN,288,175
+HC09,Peterson,Shaun,1843,Independent,C5,1974,01:35:30,FIN,304,189

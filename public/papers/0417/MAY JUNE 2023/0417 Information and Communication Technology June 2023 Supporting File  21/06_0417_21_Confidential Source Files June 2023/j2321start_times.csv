@@ -1,0 +1,12 @@
+Group_Code,Bib_Colour,Grade,Group_Name,Start_Time
+HC10,Orange,Entry,Limit,00:00:00
+HC09,Black,Novice 1,Group 2,00:04:00
+HC08,Teal,Novice 2,Group 3,00:08:00
+HC07,Red,Elementary,Group 4,00:12:00
+HC06,Blue,Intermediate,Group 5,00:16:00
+HC05,Green,Advanced,Group 6,00:20:00
+HC04,White,Proficient,Group 7,00:24:00
+HC03,Brown,Superior,Group 8,00:28:00
+HC02,Pink,Expert,Group 9,00:32:00
+HC01,Purple,Elite,Break,00:36:00
+HC00,Yellow,Master,Scratch,00:40:00

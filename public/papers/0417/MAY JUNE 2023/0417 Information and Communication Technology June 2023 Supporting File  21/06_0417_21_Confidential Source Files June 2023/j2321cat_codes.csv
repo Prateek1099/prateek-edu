@@ -1,0 +1,15 @@
+Category,Cat_Code,Year_Band,Gender
+Junior,C1,16 to 18,Male
+Junior,C2,16 to 18,Female
+Espoir,C3,19 to 22,Male
+Espoir,C4,19 to 22,Female
+Senior,C5,23 to 49,Male
+Senior,C6,23 to 49,Female
+Master,C7,50 to 69,Male
+Master,C8,50 to 69,Female
+Veteran,C9,70 to 79,Male
+Veteran,C10,70 to 79,Female
+Grand Veteran,C11,80 to 89,Male
+Grand Veteran,C12,80 to 89,Female
+Super Veteran,C13,90 to 100,Male
+Super Veteran,C14,90 to 100,Female
