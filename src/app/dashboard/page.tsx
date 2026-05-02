@@ -5,30 +5,60 @@ import { Badge } from "@/components/ui/badge";
 import { BookOpen, Bookmark, Clock, Trophy, Target } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { redirect } from "next/navigation";
 
-export default function DashboardPage() {
-  const recentPapers = [
-    { title: "0417 / 11", subject: "IGCSE ICT", year: 2023, season: "May/June", viewedAt: "2 hours ago" },
-    { title: "9618 / 22", subject: "AS Level Comp Sci", year: 2022, season: "Oct/Nov", viewedAt: "1 day ago" },
-  ];
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  
+  if (!session || !session.user) {
+    redirect("/login");
+  }
 
-  const savedPapers = [
-    { title: "0478 / 21", subject: "IGCSE Computer Science", year: 2023, desc: "Hard logic gates questions." },
-    { title: "9626 / 04", subject: "A Level IT", year: 2021, desc: "Animation practical tasks to review." }
-  ];
+  const userId = session.user.id;
 
-  const progressData = [
-    { subject: "IGCSE ICT (0417)", completion: 65, color: "bg-blue-500" },
-    { subject: "A Level IT (9626)", completion: 32, color: "bg-indigo-500" },
-    { subject: "CBSE IP", completion: 80, color: "bg-emerald-500" }
-  ];
+  // Fetch real data from Prisma
+  const [enrollments, progressRecords, savedCount] = await Promise.all([
+    prisma.enrollment.findMany({
+      where: { userId, paymentStatus: "completed" },
+      include: { course: true },
+    }),
+    prisma.userProgress.findMany({
+      where: { userId },
+      include: { paper: true },
+      orderBy: { lastViewed: "desc" },
+      take: 5,
+    }),
+    prisma.userProgress.count({
+      where: { userId },
+    })
+  ]);
+
+  const recentPapers = progressRecords.map(record => ({
+    id: record.paper.id,
+    title: `Paper ${record.paper.paperNumber} ${record.paper.variant ? `v${record.paper.variant}` : ''}`,
+    subject: record.paper.subject,
+    year: record.paper.year,
+    completed: record.completed,
+    viewedAt: new Date(record.lastViewed).toLocaleDateString(),
+  }));
+
+  const progressData = enrollments.map(e => ({
+    subject: e.course.subject,
+    title: e.course.title,
+    level: e.course.level,
+    completion: 0, // Calculate this dynamically later based on actual course content
+    color: "bg-blue-500"
+  }));
 
   return (
     <div className="container px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-lg">Welcome back. Track your learning progress and pick up where you left off.</p>
+          <p className="text-muted-foreground mt-1 text-lg">Welcome back, {session.user.name || "Student"}. Track your learning progress and pick up where you left off.</p>
         </div>
       </div>
 
@@ -40,19 +70,17 @@ export default function DashboardPage() {
              <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold text-primary">24</div>
-             <p className="text-xs text-muted-foreground mt-1">+4 from last week</p>
+             <div className="text-2xl font-bold text-primary">{savedCount}</div>
           </CardContent>
         </Card>
         
         <Card className="bg-card">
           <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Topics Mastered</CardTitle>
+             <CardTitle className="text-sm font-medium">Courses Enrolled</CardTitle>
              <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold text-primary">12</div>
-             <p className="text-xs text-muted-foreground mt-1">Across 3 subjects</p>
+             <div className="text-2xl font-bold text-primary">{enrollments.length}</div>
           </CardContent>
         </Card>
 
@@ -63,7 +91,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
              <div className="text-2xl font-bold">A* Target</div>
-             <p className="text-xs text-muted-foreground mt-1">IGCSE Exams 2024</p>
           </CardContent>
         </Card>
       </div>
@@ -73,32 +100,35 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-8">
           <Card>
             <CardHeader>
-              <CardTitle>Syllabus Progress</CardTitle>
-              <CardDescription>Your overall completion rate based on checklists.</CardDescription>
+              <CardTitle>Course Enrollments</CardTitle>
+              <CardDescription>Courses you are currently enrolled in.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {progressData.map((p, i) => (
+              {progressData.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 text-center">
+                  You are not enrolled in any courses yet. <Link href="/courses" className="text-primary hover:underline">Browse Courses</Link>
+                </div>
+              ) : progressData.map((p, i) => (
                 <div key={i} className="space-y-2">
                   <div className="flex justify-between text-sm font-medium">
-                    <span>{p.subject}</span>
-                    <span>{p.completion}%</span>
+                    <span>{p.title} ({p.subject})</span>
+                    <Badge variant="outline">{p.level}</Badge>
                   </div>
-                  <Progress value={p.completion} className="h-2" />
                 </div>
               ))}
-              <Link href="/syllabus" className="w-full mt-4 flex">
-                <Button variant="outline" className="w-full">Update Checklists</Button>
-              </Link>
             </CardContent>
           </Card>
 
           <Tabs defaultValue="recent" className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="recent">Recently Viewed</TabsTrigger>
-              <TabsTrigger value="weak">Recommended Practice</TabsTrigger>
+              <TabsTrigger value="recent">Recently Practiced Papers</TabsTrigger>
             </TabsList>
             <TabsContent value="recent" className="space-y-4">
-              {recentPapers.map((rp, i) => (
+              {recentPapers.length === 0 ? (
+                <div className="text-sm text-muted-foreground py-4 text-center border rounded-md">
+                  No recent papers found. <Link href="/papers" className="text-primary hover:underline">Start practicing</Link>
+                </div>
+              ) : recentPapers.map((rp, i) => (
                 <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-4 mb-3 sm:mb-0">
                     <div className="bg-primary/10 p-2 rounded-full hidden sm:block">
@@ -106,21 +136,18 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-foreground">{rp.title}</h4>
-                      <p className="text-sm text-muted-foreground">{rp.subject} • {rp.year} {rp.season}</p>
+                      <p className="text-sm text-muted-foreground">{rp.subject} • {rp.year}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                      <span className="text-xs text-muted-foreground mr-2">{rp.viewedAt}</span>
-                     <Button size="sm" variant="secondary" className="w-full sm:w-auto">Resume</Button>
+                     {rp.completed && <Badge variant="default" className="bg-emerald-500">Completed</Badge>}
+                     <Link href={`/papers/viewer?id=${rp.id}`}>
+                       <Button size="sm" variant="secondary" className="w-full sm:w-auto">Resume</Button>
+                     </Link>
                   </div>
                 </div>
               ))}
-            </TabsContent>
-            <TabsContent value="weak">
-              <div className="text-center py-10 bg-muted/20 border border-dashed rounded-lg">
-                <Target className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Complete more topical papers to receive AI-based recommendations.</p>
-              </div>
             </TabsContent>
           </Tabs>
         </div>
@@ -130,21 +157,18 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Bookmark className="h-5 w-5 text-primary" /> Saved Papers
+                <Bookmark className="h-5 w-5 text-primary" /> Quick Links
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {savedPapers.map((sp, i) => (
-                <div key={i} className="p-3 border rounded-md hover:bg-muted/10 transition-colors">
-                  <div className="flex items-center justify-between mb-1">
-                    <Badge variant="outline">{sp.year}</Badge>
-                    <span className="text-xs font-medium bg-secondary text-secondary-foreground px-2 py-0.5 rounded">{sp.subject}</span>
-                  </div>
-                  <h4 className="font-bold my-1">{sp.title}</h4>
-                  <p className="text-xs text-muted-foreground text-balance">{sp.desc}</p>
-                </div>
-              ))}
-              <Button variant="ghost" className="w-full text-sm">View All Saved</Button>
+              <Link href="/papers" className="block p-3 border rounded-md hover:bg-muted/10 transition-colors">
+                <h4 className="font-bold my-1">Past Papers Library</h4>
+                <p className="text-xs text-muted-foreground">Browse all available past papers</p>
+              </Link>
+              <Link href="/courses" className="block p-3 border rounded-md hover:bg-muted/10 transition-colors">
+                <h4 className="font-bold my-1">Premium Courses</h4>
+                <p className="text-xs text-muted-foreground">Get expert guidance and materials</p>
+              </Link>
             </CardContent>
           </Card>
         </div>

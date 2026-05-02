@@ -13,8 +13,30 @@ function PaperViewerInner() {
   const qp = searchParams.get('qp');
   const ms = searchParams.get('ms');
   const sf = searchParams.get('sf');
+  const id = searchParams.get('id'); // Paper ID from database
   
   const [viewMode, setViewMode] = useState<"dual" | "qp" | "ms">("dual");
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const markCompleted = async () => {
+    if (!id) return;
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paperId: id, completed: true }),
+      });
+      if (res.ok) {
+        setIsCompleted(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!qp && !ms) {
     return (
@@ -68,6 +90,18 @@ function PaperViewerInner() {
           <Button variant="outline" size="sm" className="hidden md:flex">
              <Download className="h-4 w-4 mr-2" /> Download PDF
           </Button>
+          {id && (
+            <Button 
+              variant={isCompleted ? "default" : "secondary"} 
+              size="sm" 
+              onClick={markCompleted}
+              disabled={isSaving || isCompleted}
+              className={isCompleted ? "bg-emerald-500 hover:bg-emerald-600" : ""}
+            >
+               <CheckSquare className="h-4 w-4 mr-2" /> 
+               {isSaving ? "Saving..." : isCompleted ? "Completed" : "Mark as Completed"}
+            </Button>
+          )}
           <Button variant="outline" size="sm">
              <Maximize2 className="h-4 w-4" />
           </Button>
