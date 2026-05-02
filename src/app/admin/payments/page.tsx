@@ -42,7 +42,7 @@ export default async function AdminPaymentsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment) => (
+              payments.map((payment: any) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-medium">{payment.user.name || payment.user.email}</TableCell>
                   <TableCell>₹{payment.amount}</TableCell>

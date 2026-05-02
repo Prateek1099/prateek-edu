@@ -41,7 +41,7 @@ export default async function AdminQueriesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              queries.map((query) => (
+              queries.map((query: any) => (
                 <TableRow key={query.id}>
                   <TableCell className="font-medium">{query.name}</TableCell>
                   <TableCell>{query.email}</TableCell>

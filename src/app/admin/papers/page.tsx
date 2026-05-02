@@ -44,7 +44,7 @@ export default async function AdminPapersPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              papers.map((paper) => (
+              papers.map((paper: any) => (
                 <TableRow key={paper.id}>
                   <TableCell className="font-medium">{paper.subject}</TableCell>
                   <TableCell>{paper.level}</TableCell>

@@ -44,7 +44,7 @@ export default async function AdminCoursesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              courses.map((course) => (
+              courses.map((course: any) => (
                 <TableRow key={course.id}>
                   <TableCell className="font-medium">{course.title}</TableCell>
                   <TableCell>{course.level}</TableCell>
