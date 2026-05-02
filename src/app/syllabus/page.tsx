@@ -29,7 +29,7 @@ function SyllabusInner() {
       </div>
 
       <div className="flex gap-4 mb-10 w-full max-w-sm">
-        {boards.map(b => (
+        {boards.map((b: any) => (
           <Button 
             key={b.id} 
             variant={selectedBoard === b.id ? "default" : "outline"}
@@ -42,7 +42,7 @@ function SyllabusInner() {
       </div>
 
       <div className="w-full space-y-8">
-        {filteredLevels.map(level => {
+        {filteredLevels.map((level: any) => {
           const levelSubjects = subjects.filter(s => s.levelIds.includes(level.id));
           if (levelSubjects.length === 0) return null;
 
@@ -53,7 +53,7 @@ function SyllabusInner() {
                 <h2 className="text-2xl font-semibold">{level.name}</h2>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {levelSubjects.map(subject => {
+                {levelSubjects.map((subject: any) => {
                   // Clean naming convention for the backend: /syllabus/0417_syllabus.pdf
                   const subjectCodeMatch = subject.id.match(/-([0-9]+)$/);
                   const code = subjectCodeMatch ? subjectCodeMatch[1] : subject.id;

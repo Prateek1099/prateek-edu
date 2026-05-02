@@ -36,7 +36,7 @@ export default async function DashboardPage() {
     })
   ]);
 
-  const recentPapers = progressRecords.map(record => ({
+  const recentPapers = progressRecords.map((record: any) => ({
     id: record.paper.id,
     title: `Paper ${record.paper.paperNumber} ${record.paper.variant ? `v${record.paper.variant}` : ''}`,
     subject: record.paper.subject,
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
     viewedAt: new Date(record.lastViewed).toLocaleDateString(),
   }));
 
-  const progressData = enrollments.map(e => ({
+  const progressData = enrollments.map((e: any) => ({
     subject: e.course.subject,
     title: e.course.title,
     level: e.course.level,
@@ -108,7 +108,7 @@ export default async function DashboardPage() {
                 <div className="text-sm text-muted-foreground py-4 text-center">
                   You are not enrolled in any courses yet. <Link href="/courses" className="text-primary hover:underline">Browse Courses</Link>
                 </div>
-              ) : progressData.map((p, i) => (
+              ) : progressData.map((p: any, i: number) => (
                 <div key={i} className="space-y-2">
                   <div className="flex justify-between text-sm font-medium">
                     <span>{p.title} ({p.subject})</span>
@@ -128,7 +128,7 @@ export default async function DashboardPage() {
                 <div className="text-sm text-muted-foreground py-4 text-center border rounded-md">
                   No recent papers found. <Link href="/papers" className="text-primary hover:underline">Start practicing</Link>
                 </div>
-              ) : recentPapers.map((rp, i) => (
+              ) : recentPapers.map((rp: any, i: number) => (
                 <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/30 transition-colors">
                   <div className="flex items-center gap-4 mb-3 sm:mb-0">
                     <div className="bg-primary/10 p-2 rounded-full hidden sm:block">

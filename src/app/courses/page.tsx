@@ -17,7 +17,7 @@ export default async function CoursesPage() {
       where: { userId: (session.user as any).id, paymentStatus: "completed" },
       select: { courseId: true }
     });
-    enrolledCourseIds = enrollments.map(e => e.courseId);
+    enrolledCourseIds = enrollments.map((e: any) => e.courseId);
   }
 
   return (
@@ -37,7 +37,7 @@ export default async function CoursesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8">
-          {courses.map((course) => {
+          {courses.map((course: any) => {
             const isEnrolled = enrolledCourseIds.includes(course.id);
             
             return (

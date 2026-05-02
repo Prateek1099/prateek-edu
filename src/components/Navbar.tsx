@@ -40,7 +40,7 @@ export default function Navbar() {
                   <GraduationCap className="h-6 w-6 text-primary" />
                   ExamNest
                 </Link>
-                {routes.map((route) => (
+                {routes.map((route: any) => (
                   <Link
                     key={route.href}
                     href={route.href}
@@ -59,7 +59,7 @@ export default function Navbar() {
           </Sheet>
         </div>
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {routes.map((route) => (
+          {routes.map((route: any) => (
             <Link
               key={route.href}
               href={route.href}
