@@ -11,6 +11,7 @@ export default function Navbar() {
   const routes = [
     { label: 'Home', href: '/' },
     { label: 'Past Papers', href: '/papers' },
+    { label: 'Courses', href: '/courses' },
     { label: 'Topical Papers', href: '/topical' },
     { label: 'Syllabus', href: '/syllabus' },
     { label: 'Notes', href: '/notes' },
