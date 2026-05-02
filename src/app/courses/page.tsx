@@ -14,7 +14,7 @@ export default async function CoursesPage() {
   let enrolledCourseIds: string[] = [];
   if (session?.user) {
     const enrollments = await prisma.enrollment.findMany({
-      where: { userId: session.user.id, paymentStatus: "completed" },
+      where: { userId: (session.user as any).id, paymentStatus: "completed" },
       select: { courseId: true }
     });
     enrolledCourseIds = enrollments.map(e => e.courseId);

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     // Payment is valid, update database
     await prisma.$transaction([
       prisma.payment.updateMany({
-        where: { razorpayOrderId: razorpay_order_id, userId: session.user.id },
+        where: { razorpayOrderId: razorpay_order_id, userId: (session.user as any).id },
         data: {
           razorpayPaymentId: razorpay_payment_id,
           razorpaySignature: razorpay_signature,
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
         },
       }),
       prisma.enrollment.updateMany({
-        where: { courseId, userId: session.user.id },
+        where: { courseId, userId: (session.user as any).id },
         data: {
           paymentStatus: "completed",
         },

@@ -17,7 +17,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const userId = session.user.id;
+  const userId = (session.user as any).id;
 
   // Fetch real data from Prisma
   const [enrollments, progressRecords, savedCount] = await Promise.all([

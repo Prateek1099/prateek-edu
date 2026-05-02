@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const options = {
       amount: amountInPaise,
       currency: "INR",
-      receipt: `rcpt_${session.user.id.substring(0, 5)}_${courseId.substring(0, 5)}`,
+      receipt: `rcpt_${(session.user as any).id.substring(0, 5)}_${courseId.substring(0, 5)}`,
     };
 
     const order = await razorpay.orders.create(options);
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // Create a pending payment record
     await prisma.payment.create({
       data: {
-        userId: session.user.id,
+        userId: (session.user as any).id,
         razorpayOrderId: order.id,
         amount: course.price,
         status: "pending",
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     // Create a pending enrollment record
     await prisma.enrollment.create({
       data: {
-        userId: session.user.id,
+        userId: (session.user as any).id,
         courseId: course.id,
         paymentStatus: "pending",
       },
