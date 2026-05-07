@@ -9,8 +9,7 @@ export async function createCourse(data: {
   title: string;
   description: string | null;
   price: number;
-  level: string;
-  subject: string;
+  subjectId: string;
 }) {
   try {
     await prisma.course.create({ data });
@@ -26,8 +25,7 @@ export async function updateCourse(id: string, data: {
   title: string;
   description: string | null;
   price: number;
-  level: string;
-  subject: string;
+  subjectId: string;
 }) {
   try {
     await prisma.course.update({ where: { id }, data });
@@ -53,11 +51,11 @@ export async function deleteCourse(id: string) {
 // --- PAPERS ---
 
 export async function createPaper(data: {
-  subject: string;
-  level: string;
+  subjectId: string;
   year: number;
   paperNumber: number;
   variant: number | null;
+  season?: string | null;
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
 }) {
@@ -72,11 +70,11 @@ export async function createPaper(data: {
 }
 
 export async function updatePaper(id: string, data: {
-  subject: string;
-  level: string;
+  subjectId: string;
   year: number;
   paperNumber: number;
   variant: number | null;
+  season?: string | null;
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
 }) {

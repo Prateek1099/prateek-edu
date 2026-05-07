@@ -114,16 +114,16 @@ function PaperViewerInner() {
           /* @ts-ignore - Prop compatibility with latest react-resizable-panels */
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
             <ResizablePanel defaultSize={50} minSize={30}>
-              <div className="h-full flex flex-col relative group">
+              <div className="h-full flex flex-col relative group bg-muted/10">
                 <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur border rounded text-xs font-semibold z-10 opacity-60 group-hover:opacity-100 transition-opacity">Question Paper</div>
-                <iframe src={`${qp}#toolbar=0&navpanes=0`} className="w-full h-full border-0" />
+                <iframe src={`${qp}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" />
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full flex flex-col relative group bg-muted/10">
                 <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur border rounded text-xs font-semibold z-10 opacity-60 group-hover:opacity-100 transition-opacity">Mark Scheme</div>
-                <iframe src={`${ms}#toolbar=0&navpanes=0`} className="w-full h-full border-0" />
+                <iframe src={`${ms}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" />
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -134,7 +134,7 @@ function PaperViewerInner() {
             </div>
             <iframe 
                src={`${viewMode === "ms" || !qp ? ms : qp}#toolbar=0&navpanes=0`} 
-               className="w-full h-full border-0" 
+               className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" 
             />
           </div>
         )}

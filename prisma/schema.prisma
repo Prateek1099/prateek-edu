@@ -55,6 +55,7 @@ model User {
   progress            UserProgress[]
   topicProgress       UserTopicProgress[]
   payments            Payment[]
+  savedPapers         SavedPaper[]
 
   @@map("users")
 }
@@ -68,15 +69,55 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
+model Board {
+  id    String @id @default(cuid())
+  name  String @unique // e.g. "cambridge", "cbse"
+  title String // e.g. "Cambridge International", "CBSE Board"
+
+  qualifications Qualification[]
+
+  @@map("boards")
+}
+
+model Qualification {
+  id      String @id @default(cuid())
+  boardId String @map("board_id")
+  name    String // e.g. "igcse", "class-12"
+  title   String // e.g. "IGCSE", "Class 12"
+
+  board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  subjects Subject[]
+
+  @@unique([boardId, name])
+  @@map("qualifications")
+}
+
+model Subject {
+  id              String  @id @default(cuid())
+  qualificationId String  @map("qualification_id")
+  code            String? // e.g. "0478"
+  name            String  // e.g. "Computer Science"
+  slug            String  // e.g. "computer-science-0478"
+
+  qualification Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+  papers        Paper[]
+  notes         Note[]
+  topics        Topic[]
+  courses       Course[] // Add course relation here to link courses to subjects properly
+
+  @@unique([qualificationId, slug])
+  @@map("subjects")
+}
+
 model Course {
   id          String   @id @default(cuid())
   title       String
   description String?
   price       Float    @default(0.0)
-  level       String   // IGCSE, AS, CBSE
-  subject     String
+  subjectId   String   @map("subject_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
 
   @@map("courses")
@@ -97,41 +138,73 @@ model Enrollment {
 
 model Paper {
   id               String   @id @default(cuid())
-  subject          String
-  level            String
+  subjectId        String   @map("subject_id")
   year             Int
   paperNumber      Int      @map("paper_number")
   variant          Int?
+  season           String?  // e.g. "May/June", "Oct/Nov"
   questionPdfUrl   String?  @map("question_pdf_url")
   msPdfUrl         String?  @map("ms_pdf_url")
 
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   progress UserProgress[]
+  savedBy  SavedPaper[]
 
   @@map("papers")
+}
+
+model SavedPaper {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  paperId   String   @map("paper_id")
+  savedAt   DateTime @default(now()) @map("saved_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, paperId])
+  @@map("saved_papers")
 }
 
 model UserProgress {
   id         String   @id @default(cuid())
   userId     String   @map("user_id")
   paperId    String   @map("paper_id")
-  completed  Boolean  @default(false)
+  status     String   @default("not_started") // not_started, in_progress, completed
   score      Float?
   lastViewed DateTime @default(now()) @map("last_viewed")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, paperId])
   @@map("user_progress")
 }
 
 model Topic {
   id        String   @id @default(cuid())
-  subject   String
+  subjectId String   @map("subject_id")
   topicName String   @map("topic_name")
 
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress UserTopicProgress[]
+  notes        Note[]
 
   @@map("topics")
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  subjectId String   @map("subject_id")
+  title     String
+  content   String?  @db.Text
+  pdfUrl    String?  @map("pdf_url")
+  topicId   String?  @map("topic_id")
+  
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@map("notes")
 }
 
 model UserTopicProgress {
@@ -143,6 +216,7 @@ model UserTopicProgress {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, topicId])
   @@map("user_topic_progress")
 }
 

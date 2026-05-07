@@ -25,8 +25,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
   const [loading, setLoading] = useState(false);
 
   // Form states
-  const [subject, setSubject] = useState("");
-  const [level, setLevel] = useState("");
+  const [subjectId, setSubjectId] = useState("");
   const [year, setYear] = useState("");
   const [paperNumber, setPaperNumber] = useState("");
   const [variant, setVariant] = useState("");
@@ -40,8 +39,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
   const [msPdfUrl, setMsPdfUrl] = useState("");
 
   const resetForm = () => {
-    setSubject("");
-    setLevel("");
+    setSubjectId("");
     setYear("");
     setPaperNumber("");
     setVariant("");
@@ -54,8 +52,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
 
   const openEdit = (paper: any) => {
     setSelectedPaper(paper);
-    setSubject(paper.subject);
-    setLevel(paper.level);
+    setSubjectId(paper.subjectId);
     setYear(paper.year.toString());
     setPaperNumber(paper.paperNumber.toString());
     setVariant(paper.variant?.toString() || "");
@@ -103,8 +100,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
       }
 
       const res = await createPaper({
-        subject,
-        level,
+        subjectId,
         year: parseInt(year),
         paperNumber: parseInt(paperNumber),
         variant: variant ? parseInt(variant) : null,
@@ -145,8 +141,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
       }
 
       const res = await updatePaper(selectedPaper.id, {
-        subject,
-        level,
+        subjectId,
         year: parseInt(year),
         paperNumber: parseInt(paperNumber),
         variant: variant ? parseInt(variant) : null,
@@ -195,8 +190,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Subject</TableHead>
-              <TableHead>Level</TableHead>
+              <TableHead>Subject ID</TableHead>
               <TableHead>Year</TableHead>
               <TableHead>Paper No</TableHead>
               <TableHead>PDFs</TableHead>
@@ -213,8 +207,7 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
             ) : (
               papers.map((paper: any) => (
                 <TableRow key={paper.id}>
-                  <TableCell className="font-medium">{paper.subject}</TableCell>
-                  <TableCell>{paper.level}</TableCell>
+                  <TableCell className="font-medium">{paper.subjectId}</TableCell>
                   <TableCell>{paper.year}</TableCell>
                   <TableCell>{paper.paperNumber} {paper.variant ? `(v${paper.variant})` : ''}</TableCell>
                   <TableCell>
@@ -245,15 +238,9 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
             <DialogTitle>Add New Paper</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Subject Code</Label>
-                <Input required value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. 0417" />
-              </div>
-              <div className="space-y-2">
-                <Label>Level</Label>
-                <Input required value={level} onChange={e => setLevel(e.target.value)} placeholder="e.g. IGCSE" />
-              </div>
+            <div className="space-y-2">
+              <Label>Subject ID</Label>
+              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} placeholder="e.g. cuid..." />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -291,15 +278,9 @@ export default function AdminPapersClient({ papers }: { papers: any[] }) {
             <DialogTitle>Edit Paper</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Subject Code</Label>
-                <Input required value={subject} onChange={e => setSubject(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Level</Label>
-                <Input required value={level} onChange={e => setLevel(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>Subject ID</Label>
+              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} />
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">

@@ -28,15 +28,13 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [level, setLevel] = useState("");
-  const [subject, setSubject] = useState("");
+  const [subjectId, setSubjectId] = useState("");
 
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setPrice("");
-    setLevel("");
-    setSubject("");
+    setSubjectId("");
     setSelectedCourse(null);
   };
 
@@ -45,8 +43,7 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
     setTitle(course.title);
     setDescription(course.description || "");
     setPrice(course.price.toString());
-    setLevel(course.level);
-    setSubject(course.subject);
+    setSubjectId(course.subjectId || "");
     setIsEditOpen(true);
   };
 
@@ -62,8 +59,7 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
       title,
       description: description || null,
       price: parseFloat(price) || 0,
-      level,
-      subject,
+      subjectId,
     });
     setLoading(false);
     if (res.success) {
@@ -82,8 +78,7 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
       title,
       description: description || null,
       price: parseFloat(price) || 0,
-      level,
-      subject,
+      subjectId,
     });
     setLoading(false);
     if (res.success) {
@@ -123,8 +118,7 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead>Subject</TableHead>
+              <TableHead>Subject ID</TableHead>
               <TableHead>Price</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -140,8 +134,7 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
               courses.map((course: any) => (
                 <TableRow key={course.id}>
                   <TableCell className="font-medium">{course.title}</TableCell>
-                  <TableCell>{course.level}</TableCell>
-                  <TableCell>{course.subject}</TableCell>
+                  <TableCell>{course.subjectId}</TableCell>
                   <TableCell>₹{course.price}</TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button variant="outline" size="sm" onClick={() => openEdit(course)}>
@@ -173,15 +166,9 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
               <Label>Description</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Level</Label>
-                <Input required value={level} onChange={e => setLevel(e.target.value)} placeholder="e.g. IGCSE" />
-              </div>
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Input required value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. ICT" />
-              </div>
+            <div className="space-y-2">
+              <Label>Subject ID</Label>
+              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} placeholder="e.g. cuid..." />
             </div>
             <div className="space-y-2">
               <Label>Price (₹)</Label>
@@ -209,15 +196,9 @@ export default function AdminCoursesClient({ courses }: { courses: any[] }) {
               <Label>Description</Label>
               <Input value={description} onChange={e => setDescription(e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Level</Label>
-                <Input required value={level} onChange={e => setLevel(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label>Subject</Label>
-                <Input required value={subject} onChange={e => setSubject(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <Label>Subject ID</Label>
+              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Price (₹)</Label>

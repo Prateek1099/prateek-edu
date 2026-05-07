@@ -6,16 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  
+  const isVerified = searchParams.get("verified") === "true";
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +90,7 @@ export default function LoginPage() {
             </div>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
+            {isVerified && <div className="text-green-600 bg-green-500/10 p-3 rounded-md text-sm text-center font-medium">Email successfully verified! You can now log in.</div>}
             {error && <div className="text-red-500 text-sm text-center font-medium">{error}</div>}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -124,5 +128,13 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[calc(100vh-140px)]">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

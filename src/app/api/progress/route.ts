@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     const userId = (session.user as any).id;
     const body = await req.json();
-    const { paperId, completed } = body;
+    const { paperId, status } = body;
 
     if (!paperId) {
       return NextResponse.json({ error: "Paper ID is required" }, { status: 400 });
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         progress = await prisma.userProgress.update({
             where: { id: existing.id },
             data: {
-                completed: completed !== undefined ? completed : true,
+                status: status !== undefined ? status : "completed",
                 lastViewed: new Date(),
             }
         });
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
             data: {
                 userId,
                 paperId,
-                completed: completed !== undefined ? completed : true,
+                status: status !== undefined ? status : "completed",
             }
         });
     }

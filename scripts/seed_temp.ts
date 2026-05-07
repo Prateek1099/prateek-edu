@@ -1,6 +1,10 @@
-import { prisma } from '../src/lib/prisma';
+import { loadEnvConfig } from '@next/env';
+loadEnvConfig(process.cwd());
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
 async function main() {
+  console.log("Seeding board data...");
   const board = await prisma.board.upsert({
     where: { name: 'cambridge' },
     update: {},
@@ -24,26 +28,7 @@ async function main() {
     }
   });
 
-  const paper = await prisma.paper.create({
-    data: {
-      subjectId: subject.id,
-      year: 2023,
-      paperNumber: 1,
-      variant: 2,
-      season: 'May/June',
-      questionPdfUrl: 'https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/0478_s23_qp_12.pdf',
-      msPdfUrl: 'https://pastpapers.papacambridge.com/directories/CAIE/CAIE-pastpapers/upload/0478_s23_ms_12.pdf',
-    },
-  });
-
-  console.log('Test paper created:', paper);
+  console.log('Seed success!', subject);
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(console.error).finally(() => prisma.$disconnect());

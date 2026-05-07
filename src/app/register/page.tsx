@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -50,6 +51,7 @@ export default function RegisterPage() {
         setError("Account created, but automatic login failed. Please log in manually.");
         setLoading(false);
       } else {
+        toast.success("Account created! Please check your email to verify your account.", { duration: 5000 });
         router.push("/dashboard");
         router.refresh();
       }

@@ -6,54 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { BookOpen, ChevronRight, Download, SplitSquareHorizontal, Folder, Search } from "lucide-react";
+import { BookOpen, ChevronRight, SplitSquareHorizontal, Folder, Search } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
 export default function PapersClient({ initialPapers }: { initialPapers: any[] }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState<string>("all");
-  const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState<string>("all");
+  const [selectedSeason, setSelectedSeason] = useState<string>("all");
 
-  // Extract unique levels, subjects, years for dropdowns
-  const levels = useMemo(() => Array.from(new Set(initialPapers.map(p => p.level))), [initialPapers]);
-  const subjects = useMemo(() => Array.from(new Set(initialPapers.map(p => p.subject))), [initialPapers]);
   const years = useMemo(() => Array.from(new Set(initialPapers.map(p => p.year))).sort((a,b) => b-a), [initialPapers]);
+  const seasons = useMemo(() => Array.from(new Set(initialPapers.filter(p => p.season).map(p => p.season))), [initialPapers]);
 
   // Filter papers
   const filteredPapers = useMemo(() => {
     return initialPapers.filter(p => {
-      const matchSearch = p.subject.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          p.year.toString().includes(searchQuery) ||
-                          `Paper ${p.paperNumber}`.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchLevel = selectedLevel === "all" || p.level === selectedLevel;
-      const matchSubject = selectedSubject === "all" || p.subject === selectedSubject;
+      const matchSearch = p.year.toString().includes(searchQuery) ||
+                          `Paper ${p.paperNumber}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (p.season && p.season.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchYear = selectedYear === "all" || p.year.toString() === selectedYear;
+      const matchSeason = selectedSeason === "all" || p.season === selectedSeason;
       
-      return matchSearch && matchLevel && matchSubject && matchYear;
+      return matchSearch && matchYear && matchSeason;
     });
-  }, [initialPapers, searchQuery, selectedLevel, selectedSubject, selectedYear]);
+  }, [initialPapers, searchQuery, selectedYear, selectedSeason]);
 
-  // Group by Year and Subject
+  // Group by Year and Season
   const groupedPapers = useMemo(() => {
     return filteredPapers.reduce((acc, paper) => {
-      const key = `${paper.subject} - ${paper.year}`;
+      const key = `${paper.year} - ${paper.season || "Unknown Season"}`;
       if (!acc[key]) acc[key] = [];
       acc[key].push(paper);
       return acc;
     }, {} as Record<string, typeof initialPapers>);
   }, [filteredPapers]);
 
+  // Sort groups by year descending, then season
   const sortedKeys = Object.keys(groupedPapers).sort((a, b) => b.localeCompare(a));
 
   return (
-    <div className="container px-4 md:px-8 py-8 max-w-7xl mx-auto flex flex-col md:flex-row gap-8">
+    <div className="flex flex-col md:flex-row gap-8 mt-6">
       {/* Sidebar Filters */}
       <aside className="w-full md:w-64 shrink-0 space-y-6">
-        <div>
+        <div className="sticky top-24">
           <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-             <BookOpen className="h-5 w-5 text-primary" /> Filter Papers
+             <Search className="h-5 w-5 text-primary" /> Filter Papers
           </h2>
           <div className="space-y-4">
             
@@ -63,38 +60,12 @@ export default function PapersClient({ initialPapers }: { initialPapers: any[] }
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="e.g., Computer Science..."
+                  placeholder="e.g., Paper 2..."
                   className="pl-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Level</Label>
-              <Select value={selectedLevel} onValueChange={(val) => setSelectedLevel(val || "all")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Levels" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Levels</SelectItem>
-                  {levels.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Subject</Label>
-              <Select value={selectedSubject} onValueChange={(val) => setSelectedSubject(val || "all")}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All Subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Subjects</SelectItem>
-                  {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-2">
@@ -110,8 +81,23 @@ export default function PapersClient({ initialPapers }: { initialPapers: any[] }
               </Select>
             </div>
 
+            {seasons.length > 0 && (
+              <div className="space-y-2">
+                <Label>Season</Label>
+                <Select value={selectedSeason} onValueChange={(val) => setSelectedSeason(val || "all")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Seasons" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Seasons</SelectItem>
+                    {seasons.map((s: any) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <Button variant="outline" className="w-full" onClick={() => {
-              setSearchQuery(""); setSelectedLevel("all"); setSelectedSubject("all"); setSelectedYear("all");
+              setSearchQuery(""); setSelectedYear("all"); setSelectedSeason("all");
             }}>
               Clear Filters
             </Button>
@@ -159,22 +145,15 @@ export default function PapersClient({ initialPapers }: { initialPapers: any[] }
                             Paper {paper.paperNumber}
                           </h4>
                           <p className="text-sm text-muted-foreground mt-1 font-medium">
-                            Variant {paper.variant || 'N/A'} • {paper.level}
+                            Variant {paper.variant || 'N/A'}
                           </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                          <Link href={`/papers/viewer?id=${paper.id}&qp=${paper.questionPdfUrl}&ms=${paper.msPdfUrl}`} className="w-full sm:w-auto">
+                          <Link href={`/papers/viewer?id=${paper.id}&qp=${encodeURIComponent(paper.questionPdfUrl || '')}&ms=${encodeURIComponent(paper.msPdfUrl || '')}`} className="w-full sm:w-auto">
                             <Button variant="default" size="sm" className="w-full gap-2 shadow-sm">
                               <SplitSquareHorizontal className="h-4 w-4" /> Practice Split View
                             </Button>
                           </Link>
-                          {paper.sourceFilesUrl && (
-                            <a href={paper.sourceFilesUrl} download className="w-full sm:w-auto flex" target="_blank" rel="noreferrer">
-                              <Button variant="outline" size="sm" className="w-full gap-2 text-primary border-primary/30 hover:bg-primary/10 hover:text-primary">
-                                <Download className="h-4 w-4" /> Source Files
-                              </Button>
-                            </a>
-                          )}
                         </div>
                       </div>
                     ))}
