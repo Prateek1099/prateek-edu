@@ -13,6 +13,7 @@ import { useSession, signOut } from 'next-auth/react';
 // Removing unused dropdown menu imports
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
+import { GlobalSearch } from "./GlobalSearch";
 
 function UserDropdown({ session }: { session: any }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -88,7 +89,7 @@ export default function Navbar() {
   const routes = [
     { label: 'Home', href: '/' },
     { label: 'Courses', href: '/courses' },
-    { label: 'Past Papers', href: '/board/cambridge/igcse/computer-science-0478/papers' }, // Temporary generic link
+    { label: 'Past Papers', href: '/board/cambridge/igcse' },
     { label: 'Resources', href: '/resources' },
   ];
 
@@ -108,6 +109,7 @@ export default function Navbar() {
         
         {/* Mobile Nav */}
         <div className="flex md:hidden items-center gap-2">
+          <GlobalSearch />
           <ThemeToggle />
           <Sheet>
             <SheetTrigger className="p-2 rounded-md hover:bg-muted transition-colors">
@@ -162,8 +164,7 @@ export default function Navbar() {
           
           <div className="h-4 w-px bg-border mx-2"></div>
 
-          {/* Search Placeholder Removed */}
-
+          <GlobalSearch />
           <ThemeToggle />
 
           {status === 'authenticated' ? (
