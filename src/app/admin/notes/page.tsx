@@ -1,26 +1,25 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
-import AdminPapersClient from "./AdminPapersClient";
+import AdminNotesClient from "./AdminNotesClient";
 
-export default async function AdminPapersPage() {
-  const [papers, subjects] = await Promise.all([
-    prisma.paper.findMany({
+export default async function AdminNotesPage() {
+  const [notes, subjects] = await Promise.all([
+    prisma.note.findMany({
       include: {
         subject: {
           include: {
             qualification: { include: { board: true } },
           },
         },
+        topic: true,
       },
-      orderBy: [
-        { year: "desc" },
-        { season: "desc" },
-        { paperNumber: "asc" },
-      ],
+      orderBy: { id: "desc" },
+      take: 300,
     }),
     prisma.subject.findMany({
       include: {
         qualification: { include: { board: true } },
+        topics: { orderBy: { topicName: "asc" } },
       },
       orderBy: [
         { qualification: { board: { title: "asc" } } },
@@ -30,10 +29,11 @@ export default async function AdminPapersPage() {
     }),
   ]);
 
-  const subjectOptions = subjects.map((s) => ({
+  const subjectRows = subjects.map((s) => ({
     id: s.id,
     label: `${s.name}${s.code ? ` (${s.code})` : ""} · ${s.qualification.title} · ${s.qualification.board.title}`,
+    topics: s.topics.map((t) => ({ id: t.id, topicName: t.topicName })),
   }));
 
-  return <AdminPapersClient papers={papers} subjectOptions={subjectOptions} />;
+  return <AdminNotesClient notes={notes} subjectRows={subjectRows} />;
 }
