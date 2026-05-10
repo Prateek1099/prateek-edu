@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
@@ -48,7 +49,7 @@ export default async function AdminUsersPage() {
                   <TableCell className="font-medium">{user.name || 'N/A'}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
+                    <Badge variant={isAdminRole(user.role) ? "destructive" : "secondary"}>
                       {user.role}
                     </Badge>
                   </TableCell>

@@ -8,7 +8,15 @@ import { GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
+import { isAdminRole } from "@/lib/roles";
+
+function readInternalCallbackPath(raw: string | null): string | null {
+  if (!raw || !raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
+  if (raw.includes("://")) return null;
+  return raw;
+}
 
 function LoginForm() {
   const router = useRouter();
@@ -35,7 +43,11 @@ function LoginForm() {
       setError(res.error);
       setLoading(false);
     } else {
-      router.push("/admin"); // Redirect to admin for now, middleware handles role routing
+      const session = await getSession();
+      const next =
+        isAdminRole((session?.user as { role?: string })?.role) ? "/admin" : "/dashboard";
+      const callback = readInternalCallbackPath(searchParams.get("callbackUrl"));
+      router.push(callback ?? next);
       router.refresh();
     }
   };

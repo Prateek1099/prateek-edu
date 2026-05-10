@@ -2,11 +2,12 @@ import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 
 export async function POST(request: Request): Promise<NextResponse> {
   const session = await getServerSession(authOptions);
   
-  if (!session || (session.user as any).role !== 'ADMIN') {
+  if (!session || !isAdminRole((session.user as { role?: string }).role)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

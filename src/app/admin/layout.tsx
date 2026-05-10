@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  FileText, 
-  Users, 
-  CreditCard, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  FileText,
+  Users,
+  CreditCard,
   MessageSquare,
-  LogOut
+  LogOut,
+  StickyNote,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -34,6 +35,10 @@ export default function AdminLayout({
           <Link href="/admin/papers" className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors">
             <FileText className="w-5 h-5" />
             Papers
+          </Link>
+          <Link href="/admin/notes" className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors">
+            <StickyNote className="w-5 h-5" />
+            Notes
           </Link>
           <Link href="/admin/users" className="flex items-center gap-3 px-3 py-2 text-gray-700 rounded-md hover:bg-gray-100 transition-colors">
             <Users className="w-5 h-5" />
