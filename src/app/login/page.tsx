@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GraduationCap } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
-import { getSession, signIn } from "next-auth/react";
-import { isAdminRole } from "@/lib/roles";
+import { signIn } from "next-auth/react";
 
 function readInternalCallbackPath(raw: string | null): string | null {
   if (!raw || !raw.startsWith("/")) return null;
@@ -19,7 +18,6 @@ function readInternalCallbackPath(raw: string | null): string | null {
 }
 
 function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -43,12 +41,14 @@ function LoginForm() {
       setError(res.error);
       setLoading(false);
     } else {
-      const session = await getSession();
-      const next =
-        isAdminRole((session?.user as { role?: string })?.role) ? "/admin" : "/dashboard";
       const callback = readInternalCallbackPath(searchParams.get("callbackUrl"));
-      router.push(callback ?? next);
-      router.refresh();
+      // Full navigation so the new session cookie is always sent; `getSession()` right after
+      // `signIn` often races and misses `role`, sending admins to /dashboard by mistake.
+      if (callback) {
+        window.location.assign(callback);
+      } else {
+        window.location.assign("/admin");
+      }
     }
   };
 

@@ -19,7 +19,7 @@ export default async function AdminNotesPage() {
     prisma.subject.findMany({
       include: {
         qualification: { include: { board: true } },
-        topics: { orderBy: { topicName: "asc" } },
+        topics: { orderBy: [{ sortOrder: "asc" }, { topicName: "asc" }] },
       },
       orderBy: [
         { qualification: { board: { title: "asc" } } },

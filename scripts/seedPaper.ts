@@ -1,6 +1,7 @@
 import { loadEnvConfig } from '@next/env';
 loadEnvConfig(process.cwd());
 import { prisma } from '../src/lib/prisma';
+import { syncIgcseIct0417TopicsForSubject } from './lib/syncIgcseIct0417Topics';
 
 async function main() {
   const board = await prisma.board.upsert({
@@ -36,6 +37,11 @@ async function main() {
       slug: 'ict-0417'
     }
   });
+
+  const topicsSync = await syncIgcseIct0417TopicsForSubject(prisma, ict.id);
+  console.log(
+    `IGCSE ICT (0417) syllabus topics — ${topicsSync.created} added, ${topicsSync.updated} order updates`
+  );
 
   // Seed CS paper
   await prisma.paper.create({

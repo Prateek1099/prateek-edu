@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -12,217 +13,353 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, Pencil, Trash2, BookOpen } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { createCourse, updateCourse, deleteCourse } from "@/app/actions/admin";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function AdminCoursesClient({ courses }: { courses: any[] }) {
+type SubjectOption = { id: string; label: string };
+
+type CourseRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  subjectId: string;
+  subject: {
+    name: string;
+    code: string | null;
+    qualification: { title: string };
+  };
+};
+
+export default function AdminCoursesClient({
+  courses,
+  subjectOptions,
+}: {
+  courses: CourseRow[];
+  subjectOptions: SubjectOption[];
+}) {
+  const router = useRouter();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedCourse, setSelectedCourse] = useState<CourseRow | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
 
-  // Form states
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [subjectId, setSubjectId] = useState("");
+  const [subjectId, setSubjectId] = useState(subjectOptions[0]?.id ?? "");
 
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setPrice("");
-    setSubjectId("");
+    setSubjectId(subjectOptions[0]?.id ?? "");
     setSelectedCourse(null);
   };
 
-  const openEdit = (course: any) => {
+  const refresh = () => router.refresh();
+
+  const openAdd = () => {
+    resetForm();
+    setIsAddOpen(true);
+  };
+
+  const openEdit = (course: CourseRow) => {
     setSelectedCourse(course);
     setTitle(course.title);
     setDescription(course.description || "");
     setPrice(course.price.toString());
-    setSubjectId(course.subjectId || "");
+    setSubjectId(course.subjectId);
     setIsEditOpen(true);
   };
 
-  const openDelete = (course: any) => {
+  const openDelete = (course: CourseRow) => {
     setSelectedCourse(course);
     setIsDeleteOpen(true);
   };
 
+  const filteredCourses = useMemo(() => {
+    const q = tableSearch.trim().toLowerCase();
+    if (!q) return courses;
+    return courses.filter((c) => {
+      const sub = `${c.subject.name} ${c.subject.code ?? ""} ${c.subject.qualification.title}`.toLowerCase();
+      return (
+        c.title.toLowerCase().includes(q) ||
+        (c.description ?? "").toLowerCase().includes(q) ||
+        sub.includes(q) ||
+        String(c.price).includes(q)
+      );
+    });
+  }, [courses, tableSearch]);
+
+  const SubjectSelect = ({ id }: { id: string }) => (
+    <div className="space-y-2">
+      <Label htmlFor={id}>Subject</Label>
+      <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
+        <SelectTrigger id={id}>
+          <SelectValue placeholder="Choose subject" />
+        </SelectTrigger>
+        <SelectContent className="max-h-72 overflow-y-auto">
+          {subjectOptions.map((s) => (
+            <SelectItem key={s.id} value={s.id}>
+              {s.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!subjectId) {
+      toast.error("Choose a subject");
+      return;
+    }
     setLoading(true);
     const res = await createCourse({
       title,
-      description: description || null,
+      description: description.trim() === "" ? null : description,
       price: parseFloat(price) || 0,
       subjectId,
     });
     setLoading(false);
     if (res.success) {
-      toast.success("Course added successfully");
+      toast.success("Course added");
       setIsAddOpen(false);
       resetForm();
+      refresh();
     } else {
-      toast.error(res.error || "Failed to add course");
+      toast.error(res.error || "Failed");
     }
   };
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedCourse) return;
+    if (!subjectId) {
+      toast.error("Choose a subject");
+      return;
+    }
     setLoading(true);
     const res = await updateCourse(selectedCourse.id, {
       title,
-      description: description || null,
+      description: description.trim() === "" ? null : description,
       price: parseFloat(price) || 0,
       subjectId,
     });
     setLoading(false);
     if (res.success) {
-      toast.success("Course updated successfully");
+      toast.success("Course updated");
       setIsEditOpen(false);
       resetForm();
+      refresh();
     } else {
-      toast.error(res.error || "Failed to update course");
+      toast.error(res.error || "Failed");
     }
   };
 
   const handleDelete = async () => {
+    if (!selectedCourse) return;
     setLoading(true);
     const res = await deleteCourse(selectedCourse.id);
     setLoading(false);
     if (res.success) {
-      toast.success("Course deleted successfully");
+      toast.success("Course deleted");
       setIsDeleteOpen(false);
       resetForm();
+      refresh();
     } else {
-      toast.error(res.error || "Failed to delete course");
+      toast.error(res.error || "Failed");
     }
   };
 
+  const formFields = (idPrefix: "add-course" | "edit-course") => (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-title`}>Title</Label>
+        <Input
+          id={`${idPrefix}-title`}
+          required
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. IGCSE Computer Science — full course"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-desc`}>Description</Label>
+        <Textarea
+          id={`${idPrefix}-desc`}
+          className="min-h-[100px] resize-y"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What students get, duration, format…"
+        />
+      </div>
+      <SubjectSelect id={`${idPrefix}-subject`} />
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-price`}>Price (₹)</Label>
+        <Input
+          id={`${idPrefix}-price`}
+          required
+          type="number"
+          min="0"
+          step="0.01"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="0"
+        />
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Courses</h1>
-        <Button onClick={() => { resetForm(); setIsAddOpen(true); }}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Course
+    <div className="space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <BookOpen className="size-8 text-primary" />
+            Courses
+          </h1>
+          <p className="text-muted-foreground mt-1 max-w-xl">
+            Sellable courses linked to a subject. Students see these on the public courses page after you publish pricing and copy here.
+          </p>
+        </div>
+        <Button onClick={openAdd}>
+          <Plus className="size-4" />
+          Add course
         </Button>
       </div>
-      
-      <div className="border rounded-md bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Subject ID</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {courses.length === 0 ? (
+
+      <Card className="border border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Catalog</CardTitle>
+          <CardDescription>Filter by title, description, subject, or price.</CardDescription>
+        </CardHeader>
+        <div className="px-6 pb-4 max-w-md">
+          <Input
+            placeholder="Filter courses…"
+            value={tableSearch}
+            onChange={(e) => setTableSearch(e.target.value)}
+          />
+        </div>
+        <div className="border-t overflow-x-auto">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                  No courses found. Create one to get started.
-                </TableCell>
+                <TableHead>Title</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead className="w-28">Price</TableHead>
+                <TableHead className="text-right w-52">Actions</TableHead>
               </TableRow>
-            ) : (
-              courses.map((course: any) => (
-                <TableRow key={course.id}>
-                  <TableCell className="font-medium">{course.title}</TableCell>
-                  <TableCell>{course.subjectId}</TableCell>
-                  <TableCell>₹{course.price}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(course)}>
-                      <Pencil className="w-4 h-4 mr-1" /> Edit
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => openDelete(course)}>
-                      <Trash2 className="w-4 h-4 mr-1" /> Delete
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {filteredCourses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-14">
+                    No courses match this filter.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                filteredCourses.map((course) => (
+                  <TableRow key={course.id}>
+                    <TableCell>
+                      <div className="font-medium">{course.title}</div>
+                      {course.description && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 max-w-md">
+                          {course.description}
+                        </p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm font-medium">{course.subject.name}</div>
+                      <div className="text-xs text-muted-foreground">{course.subject.qualification.title}</div>
+                    </TableCell>
+                    <TableCell className="tabular-nums">₹{course.price}</TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(course)}>
+                        <Pencil className="size-4" /> Edit
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openDelete(course)}>
+                        <Trash2 className="size-4" /> Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
 
-      {/* Add Modal */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Course</DialogTitle>
+            <DialogTitle>Add course</DialogTitle>
+            <DialogDescription>Create a priced offering tied to one subject.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAdd} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. IGCSE ICT Full Course" />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" />
-            </div>
-            <div className="space-y-2">
-              <Label>Subject ID</Label>
-              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} placeholder="e.g. cuid..." />
-            </div>
-            <div className="space-y-2">
-              <Label>Price (₹)</Label>
-              <Input required type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 500" />
-            </div>
+            {formFields("add-course")}
             <DialogFooter>
-              <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Course"}</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving…" : "Save"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Modal */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Course</DialogTitle>
+            <DialogTitle>Edit course</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input required value={title} onChange={e => setTitle(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input value={description} onChange={e => setDescription(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Subject ID</Label>
-              <Input required value={subjectId} onChange={e => setSubjectId(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Price (₹)</Label>
-              <Input required type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} />
-            </div>
+            {formFields("edit-course")}
             <DialogFooter>
-              <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save Changes"}</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving…" : "Update"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Modal */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Course</DialogTitle>
+            <DialogTitle>Delete course</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedCourse?.title}"? This action cannot be undone.
+              Remove <span className="font-medium">{selectedCourse?.title}</span>? This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={loading}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={loading}>{loading ? "Deleting..." : "Delete"}</Button>
+            <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+              {loading ? "Deleting…" : "Delete"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
