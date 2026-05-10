@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "seed:topics-ict-0417": "npx tsx scripts/seedTopicsIct0417.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

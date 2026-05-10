@@ -25,11 +25,20 @@ export default async function SubjectNotesPage({
     notFound();
   }
 
-  const notes = await prisma.note.findMany({
-    where: { subjectId: subject.id },
-    include: { topic: true },
-    orderBy: { title: "asc" },
-  });
+  const [notes, syllabusTopics] = await Promise.all([
+    prisma.note.findMany({
+      where: { subjectId: subject.id },
+      include: { topic: true },
+      orderBy: { title: "asc" },
+    }),
+    prisma.topic.findMany({
+      where: { subjectId: subject.id },
+      orderBy: [{ sortOrder: "asc" }, { topicName: "asc" }],
+      select: { topicName: true },
+    }),
+  ]);
 
-  return <NotesClient initialNotes={notes} />;
+  const syllabusTopicOrder = syllabusTopics.map((t) => t.topicName);
+
+  return <NotesClient initialNotes={notes} syllabusTopicOrder={syllabusTopicOrder} />;
 }

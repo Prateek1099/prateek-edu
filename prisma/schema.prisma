@@ -182,9 +182,10 @@ model UserProgress {
 }
 
 model Topic {
-  id        String   @id @default(cuid())
-  subjectId String   @map("subject_id")
-  topicName String   @map("topic_name")
+  id        String @id @default(cuid())
+  subjectId String @map("subject_id")
+  topicName String @map("topic_name")
+  sortOrder Int @default(0) @map("sort_order") // syllabus sequence; seeded for ICT (0417)
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress UserTopicProgress[]

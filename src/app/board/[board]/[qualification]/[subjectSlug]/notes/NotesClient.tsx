@@ -31,19 +31,42 @@ function topicLabel(note: NoteRow): string {
   return note.topic?.topicName ?? WHOLE_SUBJECT_LABEL;
 }
 
-export default function NotesClient({ initialNotes }: { initialNotes: NoteRow[] }) {
+function compareTopicSections(
+  a: string,
+  b: string,
+  syllabusTopicOrder: readonly string[]
+): number {
+  if (a === WHOLE_SUBJECT_LABEL && b === WHOLE_SUBJECT_LABEL) return 0;
+  if (a === WHOLE_SUBJECT_LABEL) return -1;
+  if (b === WHOLE_SUBJECT_LABEL) return 1;
+
+  const index = new Map(syllabusTopicOrder.map((name, i) => [name, i]));
+  const ia = index.has(a) ? (index.get(a) as number) : Number.MAX_SAFE_INTEGER;
+  const ib = index.has(b) ? (index.get(b) as number) : Number.MAX_SAFE_INTEGER;
+  if (ia !== ib) return ia - ib;
+  return a.localeCompare(b);
+}
+
+export default function NotesClient({
+  initialNotes,
+  syllabusTopicOrder = [],
+}: {
+  initialNotes: NoteRow[];
+  /** Topic names from DB in syllabus sequence (seeded curriculum). Empty = alphabetical fallback. */
+  syllabusTopicOrder?: readonly string[];
+}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>(TOPIC_ALL);
 
   const topicOptions = useMemo(() => {
-    const set = new Set<string>();
-    initialNotes.forEach((n) => set.add(topicLabel(n)));
-    return Array.from(set).sort((a, b) => {
-      if (a === WHOLE_SUBJECT_LABEL) return -1;
-      if (b === WHOLE_SUBJECT_LABEL) return 1;
-      return a.localeCompare(b);
-    });
-  }, [initialNotes]);
+    const uniq = new Set<string>();
+    syllabusTopicOrder.forEach((t) => uniq.add(t));
+    initialNotes.forEach((n) => uniq.add(topicLabel(n)));
+
+    return Array.from(uniq).sort((a, b) =>
+      compareTopicSections(a, b, syllabusTopicOrder)
+    );
+  }, [initialNotes, syllabusTopicOrder]);
 
   const filteredNotes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -71,11 +94,9 @@ export default function NotesClient({ initialNotes }: { initialNotes: NoteRow[] 
     );
   }, [filteredNotes]);
 
-  const sortedKeys = Object.keys(grouped).sort((a, b) => {
-    if (a === WHOLE_SUBJECT_LABEL) return -1;
-    if (b === WHOLE_SUBJECT_LABEL) return 1;
-    return a.localeCompare(b);
-  });
+  const sortedKeys = Object.keys(grouped).sort((a, b) =>
+    compareTopicSections(a, b, syllabusTopicOrder)
+  );
 
   return (
     <div className="flex flex-col md:flex-row gap-8 mt-2">
@@ -99,7 +120,7 @@ export default function NotesClient({ initialNotes }: { initialNotes: NoteRow[] 
               </div>
             </div>
 
-            {topicOptions.length > 0 && (
+            {topicOptions.length > 1 && (
               <div className="space-y-2">
                 <Label>Topic</Label>
                 <Select
