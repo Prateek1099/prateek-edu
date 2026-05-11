@@ -4,7 +4,9 @@
  * Run after `npx prisma db push` (adds `sort_order` on topics):
  *   npm run seed:topics-ict-0417
  */
+import 'dotenv/config';
 import { loadEnvConfig } from "@next/env";
+
 loadEnvConfig(process.cwd());
 
 import { prisma } from "../src/lib/prisma";
