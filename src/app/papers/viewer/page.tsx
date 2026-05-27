@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Maximize2, Download, BookOpen, CheckSquare } from "lucide-react";
 import { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { PremiumViewer } from "@/components/PremiumViewer";
 
 function PaperViewerInner() {
   const searchParams = useSearchParams();
@@ -109,21 +110,22 @@ function PaperViewerInner() {
       </div>
 
       {/* Viewer Area */}
-      <div className="flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4">
+      <PremiumViewer isPremiumContent={true}>
+        <div className="flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4 h-[calc(100vh-130px)]">
         {viewMode === "dual" && qp && ms ? (
           /* @ts-ignore - Prop compatibility with latest react-resizable-panels */
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full flex flex-col relative group bg-muted/10">
                 <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur border rounded text-xs font-semibold z-10 opacity-60 group-hover:opacity-100 transition-opacity">Question Paper</div>
-                <iframe src={`${qp}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" />
+                <iframe src={`/api/protected/pdf?url=${encodeURIComponent(qp || "")}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300 pointer-events-none sm:pointer-events-auto" />
               </div>
             </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full flex flex-col relative group bg-muted/10">
                 <div className="absolute top-2 left-2 px-2 py-1 bg-background/80 backdrop-blur border rounded text-xs font-semibold z-10 opacity-60 group-hover:opacity-100 transition-opacity">Mark Scheme</div>
-                <iframe src={`${ms}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" />
+                <iframe src={`/api/protected/pdf?url=${encodeURIComponent(ms || "")}#toolbar=0&navpanes=0`} className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300 pointer-events-none sm:pointer-events-auto" />
               </div>
             </ResizablePanel>
           </ResizablePanelGroup>
@@ -133,12 +135,13 @@ function PaperViewerInner() {
                {viewMode === "ms" || !qp ? "Mark Scheme" : "Question Paper"}
             </div>
             <iframe 
-               src={`${viewMode === "ms" || !qp ? ms : qp}#toolbar=0&navpanes=0`} 
-               className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300" 
+               src={`/api/protected/pdf?url=${encodeURIComponent((viewMode === "ms" || !qp ? ms : qp) || "")}#toolbar=0&navpanes=0`} 
+               className="w-full h-full border-0 dark:invert-[.9] dark:hue-rotate-180 transition-all duration-300 pointer-events-none sm:pointer-events-auto" 
             />
           </div>
         )}
-      </div>
+        </div>
+      </PremiumViewer>
     </div>
   );
 }
