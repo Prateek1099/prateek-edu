@@ -52,11 +52,29 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
         name: "ExamNest Premium",
         description: `${plan.name} Subscription`,
         order_id: order.id,
-        handler: function (response: any) {
-          // Verify on client (optional since Webhook handles true fulfillment)
-          // Webhook will activate the subscription.
-          alert("Payment successful! Your premium features will be unlocked shortly.");
-          router.push("/dashboard");
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+            
+            if (verifyRes.ok) {
+              alert("Payment successful! Your premium features are now unlocked.");
+              // Force a hard refresh so NextAuth refetches the session from DB
+              window.location.href = "/dashboard";
+            } else {
+              alert("Payment verification failed. Please contact support.");
+            }
+          } catch (e) {
+            console.error("Verification error:", e);
+            alert("Payment verified but failed to update status locally.");
+          }
         },
         prefill: {
           name: session.user?.name || "",
