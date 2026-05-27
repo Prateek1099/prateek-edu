@@ -8,7 +8,8 @@ export async function POST(req: Request) {
     const signature = req.headers.get("x-razorpay-signature");
 
     if (!signature || !process.env.RAZORPAY_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Missing signature or webhook secret" }, { status: 400 });
+      console.error("Webhook Error: Missing signature or webhook secret in ENV");
+      return NextResponse.json({ error: "Missing signature or webhook secret", details: !process.env.RAZORPAY_WEBHOOK_SECRET ? "Missing Secret in ENV" : "Missing Signature" }, { status: 400 });
     }
 
     // Verify signature
@@ -18,7 +19,8 @@ export async function POST(req: Request) {
       .digest("hex");
 
     if (expectedSignature !== signature) {
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+      console.error("Webhook Error: Signature mismatch. Expected vs Received mismatch.");
+      return NextResponse.json({ error: "Invalid signature", expected: false }, { status: 400 });
     }
 
     const event = JSON.parse(bodyText);
@@ -40,7 +42,10 @@ export async function POST(req: Request) {
 
       const plan = payment.plan;
       if (!plan) {
-        return NextResponse.json({ error: "Plan not found for payment" }, { status: 400 });
+        // If this payment has no plan, it might be a course payment. 
+        // We shouldn't fail with 400, otherwise Razorpay will keep retrying.
+        // We just return 200 to acknowledge receipt.
+        return NextResponse.json({ status: "ignored", reason: "not_a_subscription_payment" });
       }
 
       // Calculate expiry date (assuming 1 month by default for monthly plans, 1 year for yearly)

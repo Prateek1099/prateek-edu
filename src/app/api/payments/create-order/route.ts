@@ -20,40 +20,62 @@ export async function POST(req: Request) {
       key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const { planId } = await req.json();
+    const { planId, courseId } = await req.json();
 
-    if (!planId) {
-      return NextResponse.json({ error: "Plan ID is required" }, { status: 400 });
+    if (!planId && !courseId) {
+      return NextResponse.json({ error: "Plan ID or Course ID is required" }, { status: 400 });
     }
 
-    const plan = await prisma.subscriptionPlan.findUnique({
-      where: { id: planId },
-    });
+    let amount = 0;
+    let receiptStr = "";
 
-    if (!plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+    if (planId) {
+      const plan = await prisma.subscriptionPlan.findUnique({
+        where: { id: planId },
+      });
+      if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+      amount = plan.price;
+      receiptStr = `rcpt_${(session.user as any).id.substring(0, 5)}_${planId.substring(0, 5)}`;
+    } else if (courseId) {
+      const course = await prisma.course.findUnique({
+        where: { id: courseId },
+      });
+      if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      amount = course.price;
+      receiptStr = `rcpt_${(session.user as any).id.substring(0, 5)}_${courseId.substring(0, 5)}`;
     }
 
     // Initialize Razorpay Order
-    const amountInPaise = Math.round(plan.price * 100);
+    const amountInPaise = Math.round(amount * 100);
     const options = {
       amount: amountInPaise,
       currency: "INR",
-      receipt: `rcpt_${(session.user as any).id.substring(0, 5)}_${planId.substring(0, 5)}`,
+      receipt: receiptStr,
     };
 
     const order = await razorpay.orders.create(options);
 
-    // Create a pending payment record linked to the plan
+    // Create a pending payment record
     await prisma.payment.create({
       data: {
         userId: (session.user as any).id,
         razorpayOrderId: order.id,
-        amount: plan.price,
+        amount: amount,
         status: "pending",
-        planId: plan.id,
+        planId: planId || null,
       },
     });
+
+    if (courseId) {
+      // Create a pending enrollment record for courses
+      await prisma.enrollment.create({
+        data: {
+          userId: (session.user as any).id,
+          courseId: courseId,
+          paymentStatus: "pending",
+        },
+      });
+    }
 
     return NextResponse.json(order);
   } catch (error: any) {

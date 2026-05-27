@@ -27,10 +27,19 @@ export async function GET(req: Request) {
     }
     */
 
-    // Fetch the PDF from the original source (e.g. Vercel Blob)
-    const response = await fetch(url);
+    let targetUrl = url;
+    // If the URL is relative (e.g., stored locally in public folder)
+    if (targetUrl.startsWith("/")) {
+      const host = req.headers.get("host") || "localhost:3000";
+      const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+      targetUrl = `${protocol}://${host}${targetUrl}`;
+    }
+
+    // Fetch the PDF from the original source
+    const response = await fetch(targetUrl);
     
     if (!response.ok) {
+      console.error(`PDF Proxy failed to fetch: ${targetUrl} (Status: ${response.status})`);
       return new NextResponse("Failed to fetch PDF", { status: response.status });
     }
 
