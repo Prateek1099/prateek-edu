@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { createNote, updateNote, deleteNote } from "@/app/actions/admin";
 import { toast } from "sonner";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -353,9 +354,14 @@ export default function AdminNotesClient({
                     <TableCell className="font-medium">{n.title}</TableCell>
                     <TableCell>
                       {n.pdfUrl ? (
-                        <a href={n.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-primary text-xs hover:underline">
-                          Open PDF
-                        </a>
+                        <Link
+                          href={`/notes/viewer?pdf=${encodeURIComponent(n.pdfUrl)}&title=${encodeURIComponent(
+                            n.title
+                          )}`}
+                          className="text-primary text-xs hover:underline"
+                        >
+                          Open
+                        </Link>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -403,9 +409,14 @@ export default function AdminNotesClient({
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
               <Label className="text-muted-foreground">Current PDF</Label>
               {pdfUrlExisting ? (
-                <a href={pdfUrlExisting} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
+                <Link
+                  href={`/notes/viewer?pdf=${encodeURIComponent(pdfUrlExisting)}&title=${encodeURIComponent(
+                    selected?.title ?? "Note"
+                  )}`}
+                  className="text-sm text-primary underline break-all"
+                >
                   Open current
-                </a>
+                </Link>
               ) : (
                 <p className="text-sm">None</p>
               )}

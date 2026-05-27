@@ -66,6 +66,9 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;
+        (session.user as any).isPremium = token.isPremium as boolean;
+        (session.user as any).subscriptionExpiry = token.subscriptionExpiry as string | null;
+        (session.user as any).planId = token.planId as string | null;
       }
       return session;
     },
@@ -74,6 +77,32 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         const r = (user as { role?: string }).role;
         token.role = typeof r === "string" ? r.toLowerCase() : r;
+      }
+      
+      // Fetch latest premium status to enable instant Netflix-style unlock
+      if (token.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: { isPremium: true, subscriptionExpiry: true, planId: true }
+          });
+          if (dbUser) {
+            token.isPremium = dbUser.isPremium;
+            token.subscriptionExpiry = dbUser.subscriptionExpiry?.toISOString() || null;
+            token.planId = dbUser.planId;
+            
+            // Auto-revoke if expired
+            if (dbUser.isPremium && dbUser.subscriptionExpiry && new Date() > dbUser.subscriptionExpiry) {
+              await prisma.user.update({
+                where: { id: token.id as string },
+                data: { isPremium: false }
+              });
+              token.isPremium = false;
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching latest user status in JWT:", e);
+        }
       }
       return token;
     },

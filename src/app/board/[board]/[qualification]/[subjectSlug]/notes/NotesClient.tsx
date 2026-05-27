@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, Folder, Search, StickyNote, ChevronRight, ExternalLink } from "lucide-react";
+import { FileText, Folder, Search, StickyNote, ChevronRight } from "lucide-react";
 
 type NoteRow = {
   id: string;
@@ -214,19 +215,18 @@ export default function NotesClient({
                           </div>
                           {note.pdfUrl && (
                             <div className="shrink-0">
-                              <a
-                                href={note.pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <Link
+                                href={`/notes/viewer?pdf=${encodeURIComponent(
+                                  note.pdfUrl
+                                )}&title=${encodeURIComponent(note.title)}`}
                                 className={cn(
                                   buttonVariants({ variant: "default", size: "sm" }),
                                   "gap-2 shadow-sm inline-flex items-center"
                                 )}
                               >
                                 <FileText className="h-4 w-4" />
-                                PDF
-                                <ExternalLink className="h-3.5 w-3.5 opacity-70" />
-                              </a>
+                                View
+                              </Link>
                             </div>
                           )}
                         </div>

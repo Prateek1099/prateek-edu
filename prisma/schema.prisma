@@ -49,8 +49,17 @@ model User {
   role          String    @default("student") // student or admin
   createdAt     DateTime  @default(now()) @map("created_at")
 
+  isPremium          Boolean   @default(false) @map("is_premium")
+  subscriptionStart  DateTime? @map("subscription_start")
+  subscriptionExpiry DateTime? @map("subscription_expiry")
+  monthlyAIQuota     Int       @default(10) @map("monthly_ai_quota")
+  usageConsumed      Int       @default(0) @map("usage_consumed")
+  planId             String?   @map("plan_id")
+
   accounts            Account[]
   sessions            Session[]
+  deviceSessions      DeviceSession[]
+  plan                SubscriptionPlan? @relation(fields: [planId], references: [id])
   enrollments         Enrollment[]
   progress            UserProgress[]
   topicProgress       UserTopicProgress[]
@@ -58,6 +67,34 @@ model User {
   savedPapers         SavedPaper[]
 
   @@map("users")
+}
+
+model DeviceSession {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  deviceFingerprint String   @map("device_fingerprint")
+  userAgent         String?  @map("user_agent")
+  ipAddress         String?  @map("ip_address")
+  lastActive        DateTime @default(now()) @map("last_active")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceFingerprint])
+  @@map("device_sessions")
+}
+
+model SubscriptionPlan {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "free", "monthly", "yearly"
+  price       Float
+  features    String?  @db.Text
+  maxDevices  Int      @default(1) @map("max_devices")
+  aiQuota     Int      @default(10) @map("ai_quota")
+
+  users       User[]
+  payments    Payment[]
+
+  @@map("subscription_plans")
 }
 
 model VerificationToken {
@@ -229,9 +266,11 @@ model Payment {
   razorpaySignature   String?  @map("razorpay_signature")
   amount              Float
   status              String   @default("pending") // pending, successful, failed
+  planId              String?  @map("plan_id")
   createdAt           DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan SubscriptionPlan? @relation(fields: [planId], references: [id])
 
   @@map("payments")
 }
