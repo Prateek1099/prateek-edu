@@ -36,7 +36,13 @@ async function getDashboardData(userId?: string) {
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
-  const pref = await getEcosystemPreference();
+  const prefRaw = await getEcosystemPreference();
+  let ecosystemPref: { board: string, qualification: string, boardTitle: string, qualTitle: string } | null = null;
+  if (prefRaw) {
+    let boardTitle = prefRaw.board === 'cambridge' ? 'Cambridge International' : prefRaw.board === 'cbse' ? 'CBSE' : prefRaw.board;
+    let qualTitle = prefRaw.qualification === 'igcse' ? 'IGCSE' : prefRaw.qualification === 'as-a-level' ? 'AS & A Level' : prefRaw.qualification === 'o-level' ? 'O Level' : prefRaw.qualification?.toUpperCase() || "";
+    ecosystemPref = { ...prefRaw, boardTitle, qualTitle };
+  }
   const { recentProgress, newPapers } = await getDashboardData(userId);
 
   return (
@@ -57,7 +63,7 @@ export default async function Home() {
             Free, highly organized, and distraction-free past papers and study resources built for serious students.
           </p>
           
-          {!pref ? (
+          {!ecosystemPref ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto mt-4 px-2">
               <form action={async () => {
                 "use server";
@@ -120,13 +126,13 @@ export default async function Home() {
                      <GraduationCap className="w-8 h-8 text-primary" />
                    </div>
                    <h2 className="text-3xl font-bold mb-2">Welcome Back.</h2>
-                   <p className="text-muted-foreground text-lg mb-8">Currently Studying: <span className="font-semibold text-foreground block mt-1">{pref.boardTitle} {pref.qualTitle ? `• ${pref.qualTitle}` : ''}</span></p>
+                   <p className="text-muted-foreground text-lg mb-8">Currently Studying: <span className="font-semibold text-foreground block mt-1">{ecosystemPref.boardTitle} {ecosystemPref.qualTitle ? `• ${ecosystemPref.qualTitle}` : ''}</span></p>
                    
                    <div className="flex flex-col sm:flex-row w-full gap-4 justify-center">
-                     <Link href={pref.qualification ? `/resources/${pref.board}/${pref.qualification}` : `/resources/${pref.board}`} className="w-full sm:w-auto">
+                     <Link href={ecosystemPref.qualification ? `/resources/${ecosystemPref.board}/${ecosystemPref.qualification}` : `/resources/${ecosystemPref.board}`} className="w-full sm:w-auto">
                        <Button size="lg" className="w-full sm:w-auto font-semibold shadow-md transition-transform hover:scale-105">Continue Learning <ArrowRight className="ml-2 w-4 h-4" /></Button>
                      </Link>
-                     <Link href={`/resources/${pref.board}`} className="w-full sm:w-auto">
+                     <Link href={`/resources/${ecosystemPref.board}`} className="w-full sm:w-auto">
                        <Button size="lg" variant="secondary" className="w-full sm:w-auto transition-transform hover:scale-105">Open Resources</Button>
                      </Link>
                    </div>

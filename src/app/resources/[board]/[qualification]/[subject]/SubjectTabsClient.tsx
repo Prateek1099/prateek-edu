@@ -28,7 +28,7 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
             <p className="text-muted-foreground">Papers for this subject will be uploaded soon.</p>
           </div>
         ) : (
-          <Accordion type="single" className="w-full space-y-4" defaultValue={years[0].toString()}>
+          <Accordion className="w-full space-y-4" defaultValue={[years[0].toString()]}>
             {years.map((year) => (
               <AccordionItem value={year.toString()} key={year} className="border rounded-xl bg-card overflow-hidden shadow-sm">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 transition-colors">
