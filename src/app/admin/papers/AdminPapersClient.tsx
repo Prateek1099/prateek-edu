@@ -599,7 +599,7 @@ export default function AdminPapersClient({
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              <Select value={filterSubjectId} onValueChange={setFilterSubjectId}>
+              <Select value={filterSubjectId} onValueChange={(v) => setFilterSubjectId(v || "all")}>
                 <SelectTrigger className="w-[220px]">
                   <SelectValue placeholder="All Subjects">
                     {filterSubjectId === "all" ? "All Subjects" : subjectOptions.find(s => s.id === filterSubjectId)?.label}
@@ -615,7 +615,7 @@ export default function AdminPapersClient({
                 </SelectContent>
               </Select>
 
-              <Select value={filterYear} onValueChange={setFilterYear}>
+              <Select value={filterYear} onValueChange={(v) => setFilterYear(v || "all")}>
                 <SelectTrigger className="w-[120px]">
                   <SelectValue placeholder="All Years" />
                 </SelectTrigger>
@@ -629,7 +629,7 @@ export default function AdminPapersClient({
                 </SelectContent>
               </Select>
 
-              <Select value={filterSession} onValueChange={setFilterSession}>
+              <Select value={filterSession} onValueChange={(v) => setFilterSession(v || "all")}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="All Sessions" />
                 </SelectTrigger>

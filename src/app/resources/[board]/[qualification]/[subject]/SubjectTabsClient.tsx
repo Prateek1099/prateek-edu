@@ -28,7 +28,7 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
             <p className="text-muted-foreground">Papers for this subject will be uploaded soon.</p>
           </div>
         ) : (
-          <Accordion type="multiple" className="w-full space-y-4" defaultValue={[years[0].toString()]}>
+          <Accordion className="w-full space-y-4" defaultValue={[years[0].toString()]}>
             {years.map((year) => (
               <AccordionItem value={year.toString()} key={year} className="border rounded-xl bg-card overflow-hidden shadow-sm">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 transition-colors">
@@ -40,7 +40,7 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 pt-2">
-                  <Accordion type="multiple" className="w-full space-y-4 mt-4">
+                  <Accordion className="w-full space-y-4 mt-4">
                     {Object.entries(papersByYear[year]).sort(([a], [b]) => a.localeCompare(b)).map(([season, papers]) => (
                       <AccordionItem value={season} key={season} className="border rounded-lg bg-muted/10 overflow-hidden">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 transition-colors">
