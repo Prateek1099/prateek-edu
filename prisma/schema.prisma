@@ -55,6 +55,8 @@ model User {
   monthlyAIQuota     Int       @default(10) @map("monthly_ai_quota")
   usageConsumed      Int       @default(0) @map("usage_consumed")
   planId             String?   @map("plan_id")
+  preferredBoard         String?
+  preferredQualification String?
 
   accounts            Account[]
   sessions            Session[]

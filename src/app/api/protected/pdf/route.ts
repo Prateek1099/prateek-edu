@@ -30,10 +30,17 @@ export async function GET(req: Request) {
     let targetUrl = url;
     // If the URL is relative (e.g., stored locally in public folder)
     if (targetUrl.startsWith("/")) {
-      const host = req.headers.get("host") || "localhost:3000";
+      let host = req.headers.get("host") || "localhost:3000";
+      // Fix Node.js fetch localhost IPv6 resolution issue in dev
+      if (host.startsWith("localhost")) {
+        host = host.replace("localhost", "127.0.0.1");
+      }
       const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
       targetUrl = `${protocol}://${host}${targetUrl}`;
     }
+
+    // Ensure the URL is properly encoded (searchParams.get decodes it, which breaks fetch for paths with spaces)
+    targetUrl = encodeURI(targetUrl);
 
     // Fetch the PDF from the original source
     const response = await fetch(targetUrl);

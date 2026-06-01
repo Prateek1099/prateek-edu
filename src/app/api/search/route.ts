@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    // 1. Search Subjects (e.g. "Computer Science", "0478")
+    // Search Subjects
     const subjects = await prisma.subject.findMany({
       where: {
         OR: [
@@ -23,11 +24,10 @@ export async function GET(request: Request) {
           include: { board: true }
         }
       },
-      take: 5,
+      take: 10, // take a bit more so we can sort in memory
     });
 
-    // 2. Search Papers (e.g. "0478 2023", "0478 p2")
-    // Very simple heuristic search: just check if subject matches or year string matches
+    // Search Papers
     const papers = await prisma.paper.findMany({
       where: {
         OR: [
@@ -44,14 +44,12 @@ export async function GET(request: Request) {
         { year: "desc" },
         { season: "desc" }
       ],
-      take: 10,
+      take: 20,
     });
 
-    // We can manually filter papers down based on year / paper number if present in query string
     const queryParts = query.toLowerCase().split(/\s+/);
     let filteredPapers = papers;
     
-    // Simple filter to check if query contains year or paper number
     for (const part of queryParts) {
       if (part.match(/20\d\d/)) {
         filteredPapers = filteredPapers.filter(p => p.year.toString() === part);
@@ -61,9 +59,35 @@ export async function GET(request: Request) {
       }
     }
 
+    // Read Ecosystem Preference Cookie for Boosting
+    const cookieStore = await cookies();
+    const prefCookie = cookieStore.get("examnest_ecosystem");
+    let prefBoard = "";
+    if (prefCookie) {
+      try {
+        const parsed = JSON.parse(prefCookie.value);
+        prefBoard = parsed.board;
+      } catch (e) {}
+    }
+
+    // Boost logic: Sort items so that the preferred board appears first
+    const sortWithBoost = (a: any, b: any) => {
+      if (!prefBoard) return 0;
+      
+      const aBoard = a.subject?.qualification?.board?.name || a.qualification?.board?.name;
+      const bBoard = b.subject?.qualification?.board?.name || b.qualification?.board?.name;
+      
+      if (aBoard === prefBoard && bBoard !== prefBoard) return -1;
+      if (bBoard === prefBoard && aBoard !== prefBoard) return 1;
+      return 0;
+    };
+
+    const finalSubjects = subjects.sort(sortWithBoost).slice(0, 5);
+    const finalPapers = filteredPapers.sort(sortWithBoost).slice(0, 5);
+
     return NextResponse.json({ 
-      subjects, 
-      papers: filteredPapers.slice(0, 5) 
+      subjects: finalSubjects, 
+      papers: finalPapers 
     });
   } catch (error: any) {
     console.error("Search API Error:", error);
