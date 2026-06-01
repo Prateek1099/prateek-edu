@@ -21,6 +21,7 @@ const nav = [
   { href: "/admin/notes", label: "Notes", icon: StickyNote, match: "prefix" as const },
   { href: "/admin/users", label: "Users", icon: Users, match: "prefix" as const },
   { href: "/admin/payments", label: "Payments", icon: CreditCard, match: "prefix" as const },
+  { href: "/admin/insights", label: "Insights", icon: MessageSquare, match: "prefix" as const },
   { href: "/admin/queries", label: "Queries", icon: MessageSquare, match: "prefix" as const },
 ];
 

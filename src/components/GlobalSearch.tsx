@@ -80,7 +80,7 @@ export function GlobalSearch() {
         </kbd>
       </button>
 
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={setOpen} shouldFilter={false}>
         <CommandInput 
           placeholder="Type a subject, paper, or code (e.g., '0478 2023')..." 
           value={query}
@@ -103,7 +103,7 @@ export function GlobalSearch() {
                 <CommandItem
                   key={subject.id}
                   value={subject.name + subject.code}
-                  onSelect={() => runCommand(() => router.push(`/board/${subject.qualification.board.name}/${subject.qualification.name}/${subject.slug}`))}
+                  onSelect={() => runCommand(() => router.push(`/resources/${subject.qualification.board.name}/${subject.qualification.name}/${subject.slug}`))}
                 >
                   <BookOpen className="mr-2 h-4 w-4 text-primary" />
                   <div className="flex flex-col">

@@ -28,7 +28,7 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
             <p className="text-muted-foreground">Papers for this subject will be uploaded soon.</p>
           </div>
         ) : (
-          <Accordion className="w-full space-y-4" defaultValue={[years[0].toString()]}>
+          <Accordion type="multiple" className="w-full space-y-4" defaultValue={[years[0].toString()]}>
             {years.map((year) => (
               <AccordionItem value={year.toString()} key={year} className="border rounded-xl bg-card overflow-hidden shadow-sm">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 transition-colors">
@@ -40,45 +40,64 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pb-6 pt-2">
-                  <div className="space-y-8 mt-4">
+                  <Accordion type="multiple" className="w-full space-y-4 mt-4">
                     {Object.entries(papersByYear[year]).sort(([a], [b]) => a.localeCompare(b)).map(([season, papers]) => (
-                      <div key={season}>
-                        <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4 border-b pb-2">{season}</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {papers.map((paper) => (
-                            <Card key={paper.id} className="hover:border-primary/50 transition-colors shadow-sm group">
-                              <CardContent className="p-4 flex flex-col justify-between h-full gap-4">
-                                <div>
-                                  <div className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                                    Paper {paper.paperNumber} {paper.variant ? `(Variant ${paper.variant})` : ''}
+                      <AccordionItem value={season} key={season} className="border rounded-lg bg-muted/10 overflow-hidden">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 transition-colors">
+                          <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{season}</h4>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-4 pb-4 pt-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {papers.map((paper) => (
+                              <Card key={paper.id} className="hover:border-primary/50 transition-colors shadow-sm group">
+                                <CardContent className="p-4 flex flex-col justify-between h-full gap-4">
+                                  <div>
+                                    <div className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
+                                      Paper {paper.paperNumber} {paper.variant ? `(Variant ${paper.variant})` : ''}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="flex gap-2 w-full mt-auto">
-                                  <Link 
-                                    href={paper.questionPdfUrl ? `/papers/viewer?qp=${encodeURIComponent(paper.questionPdfUrl)}&ms=${encodeURIComponent(paper.msPdfUrl || '')}&id=${paper.id}` : '#'}
-                                    className={cn(buttonVariants({ size: "sm", variant: paper.questionPdfUrl ? "default" : "secondary" }), "flex-1 font-medium", !paper.questionPdfUrl && "pointer-events-none opacity-50")}
-                                  >
-                                    {paper.questionPdfUrl ? "Open Viewer" : "Coming Soon"}
-                                  </Link>
-                                  {paper.sourceFilesUrl && (
-                                    <a
-                                      href={paper.sourceFilesUrl}
-                                      download
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
+                                  <div className="flex flex-wrap gap-2 w-full mt-auto">
+                                    <Link 
+                                      href={paper.questionPdfUrl ? `/papers/viewer?qp=${encodeURIComponent(paper.questionPdfUrl)}&ms=${encodeURIComponent(paper.msPdfUrl || '')}&id=${paper.id}` : '#'}
+                                      className={cn(buttonVariants({ size: "sm", variant: paper.questionPdfUrl ? "default" : "secondary" }), "flex-1 font-medium", !paper.questionPdfUrl && "pointer-events-none opacity-50")}
                                     >
-                                      <Download className="w-4 h-4 mr-1" /> ZIP
-                                    </a>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))}
-                        </div>
-                      </div>
+                                      {paper.questionPdfUrl ? "Open Viewer" : "Coming Soon"}
+                                    </Link>
+                                    
+                                    {paper.questionPdfUrl && (
+                                      <a
+                                        href={`/api/protected/pdf?url=${encodeURIComponent(paper.questionPdfUrl)}&download=true`}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
+                                        title="Download QP"
+                                      >
+                                        <Download className="w-4 h-4 mr-1" /> QP
+                                      </a>
+                                    )}
+
+                                    {paper.sourceFilesUrl && (
+                                      <a
+                                        href={paper.sourceFilesUrl}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
+                                        title="Download SF"
+                                      >
+                                        <Download className="w-4 h-4 mr-1" /> SF
+                                      </a>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
                     ))}
-                  </div>
+                  </Accordion>
                 </AccordionContent>
               </AccordionItem>
             ))}

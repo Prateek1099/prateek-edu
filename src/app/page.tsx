@@ -37,8 +37,8 @@ export default async function Home() {
   const { recentProgress } = await getDashboardData(userId);
 
   return (
-    <div className="flex flex-col w-full bg-background font-sans items-center justify-center min-h-[calc(100vh-64px)] overflow-hidden">
-      <section className="w-full h-full flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-primary/5 to-background relative py-12 lg:py-24">
+    <div className="flex flex-col w-full bg-background font-sans items-center justify-center overflow-hidden">
+      <section className="w-full flex flex-col items-center justify-center bg-gradient-to-b from-primary/5 to-background relative pt-12 pb-8">
         {/* Subtle decorative background shapes */}
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-primary/10 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 -ml-20 w-72 h-72 bg-primary/20 rounded-full blur-3xl opacity-30 pointer-events-none"></div>
@@ -109,8 +109,8 @@ export default async function Home() {
               </form>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center space-y-6 mt-4 w-full max-w-2xl mx-auto">
-              <div className="bg-card border-2 border-primary/20 rounded-2xl p-8 w-full shadow-lg relative overflow-hidden group">
+            <div className="flex flex-col items-center justify-center space-y-6 mt-8 mb-8 w-full max-w-4xl mx-auto">
+              <div className="bg-card border-2 border-primary/20 rounded-2xl p-12 w-full shadow-lg relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50"></div>
                 <div className="relative z-10 flex flex-col items-center text-center">
                    <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
@@ -142,32 +142,7 @@ export default async function Home() {
             </div>
           )}
 
-          {/* Subtle Dashboard Preview */}
-          <div className="w-full max-w-4xl mx-auto mt-20 px-2 hidden sm:block relative z-10">
-            <div className="rounded-t-2xl border border-b-0 bg-card shadow-2xl overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 z-10 pointer-events-none"></div>
-              <div className="h-12 bg-muted/40 border-b flex items-center px-4 gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                <div className="ml-4 h-4 w-48 bg-background rounded-full opacity-50"></div>
-              </div>
-              <div className="p-8 grid grid-cols-3 gap-6 opacity-80 h-64">
-                <div className="col-span-2 space-y-6">
-                   <div className="h-6 w-1/3 bg-muted rounded-md"></div>
-                   <div className="h-24 w-full bg-muted/60 rounded-xl"></div>
-                   <div className="grid grid-cols-2 gap-4">
-                     <div className="h-20 bg-muted/50 rounded-xl"></div>
-                     <div className="h-20 bg-muted/50 rounded-xl"></div>
-                   </div>
-                </div>
-                <div className="space-y-6">
-                   <div className="h-6 w-1/2 bg-muted rounded-md"></div>
-                   <div className="h-full w-full bg-muted/40 rounded-xl"></div>
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </section>
 
@@ -202,43 +177,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* Dynamic Logged In Sections */}
-      {session && (
-        <section className="w-full py-16 bg-muted/10 border-t border-border">
-          <div className="container px-4 md:px-8 max-w-7xl mx-auto">
-            
-            {recentProgress.length > 0 && (
-              <div className="mb-16">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="bg-primary/10 p-2 rounded-lg">
-                    <Clock className="w-6 h-6 text-primary" />
-                  </div>
-                  <h2 className="text-2xl font-bold tracking-tight">Continue Studying</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {recentProgress.map((progress) => (
-                    <Link key={progress.id} href={`/papers/viewer?qp=${encodeURIComponent(progress.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(progress.paper.msPdfUrl || '')}&id=${progress.paper.id}`} className="block">
-                      <Card className="hover:border-primary/50 transition-colors shadow-sm bg-card group cursor-pointer h-full">
-                        <CardHeader className="pb-2">
-                          <CardDescription className="text-xs font-semibold text-primary/80 uppercase tracking-wider">{progress.paper.subject.code || progress.paper.subject.name} • {progress.paper.subject.qualification.name.toUpperCase()}</CardDescription>
-                          <CardTitle className="text-lg group-hover:text-primary transition-colors">{progress.paper.year} • {progress.paper.season}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="flex justify-between items-center text-sm text-muted-foreground">
-                            <span>Paper {progress.paper.paperNumber} {progress.paper.variant ? `(Var ${progress.paper.variant})` : ''}</span>
-                            <span className="flex items-center gap-1 text-yellow-600 dark:text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full text-xs font-medium"><Clock className="w-3 h-3"/> In Progress</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
 
-          </div>
-        </section>
-      )}
 
       {/* Features Section */}
       <section className="w-full py-24 bg-card border-t border-border/50">

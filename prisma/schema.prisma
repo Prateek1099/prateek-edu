@@ -67,6 +67,7 @@ model User {
   topicProgress       UserTopicProgress[]
   payments            Payment[]
   savedPapers         SavedPaper[]
+  reflections         StudentReflection[]
 
   @@map("users")
 }
@@ -288,4 +289,16 @@ model ContactQuery {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("contact_queries")
+}
+
+model StudentReflection {
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  challengingTopics String[] @map("challenging_topics") // PostgreSQL handles String[] natively
+  message           String?  @db.Text
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_reflections")
 }
