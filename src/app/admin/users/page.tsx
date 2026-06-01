@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { isAdminRole } from "@/lib/roles";
+import DeleteUserButton from "./DeleteUserButton";
 
 export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
@@ -34,6 +35,7 @@ export default async function AdminUsersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Enrollments</TableHead>
               <TableHead>Joined</TableHead>
+              <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -55,6 +57,9 @@ export default async function AdminUsersPage() {
                   </TableCell>
                   <TableCell>{user.enrollments.length}</TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <DeleteUserButton userId={user.id} userName={user.name} />
+                  </TableCell>
                 </TableRow>
               ))
             )}

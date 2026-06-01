@@ -1,14 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, FileText } from "lucide-react";
+import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { AiInsightCard } from "./AiInsightCard";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -31,7 +33,6 @@ export default async function DashboardPage() {
       where: { userId },
       include: { paper: { include: { subject: { include: { qualification: true } } } } },
       orderBy: { lastViewed: "desc" },
-      take: 6,
     }),
     prisma.userTopicProgress.findMany({
       where: { userId },
@@ -42,6 +43,11 @@ export default async function DashboardPage() {
       where: { userId, lastViewed: { gte: sevenDaysAgo } }
     })
   ]);
+
+  const allPapers = recentPapers; // Renamed for clarity since it fetches all now
+  const recentPapersSliced = allPapers.slice(0, 6);
+  const completedList = allPapers.filter((p: any) => p.status === 'completed');
+  const inProgressList = allPapers.filter((p: any) => p.status === 'in_progress');
 
   // 2. Process Subject Progress accurately
   const subjectIds = Array.from(new Set(topicProgress.map(tp => tp.topic.subjectId)));
@@ -69,6 +75,19 @@ export default async function DashboardPage() {
   // 3. Process Strengths & Weaknesses heuristics
   const strongTopics = topicProgress.filter(tp => tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
   const weakTopics = topicProgress.filter(tp => !tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
+  
+  // 4. Generate Context & Lists for AI & Reflections
+  const contextData = `
+Completed Papers: ${papersCompleted}
+Papers In Progress: ${papersInProgress}
+Recent Papers Viewed (Last 7 days): ${recentActivityCount}
+Strong Topics: ${strongTopics.join(", ") || "None yet"}
+Needs Revision: ${weakTopics.join(", ") || "None yet"}
+  `.trim();
+  const recentTopicsList = Array.from(new Set(topicProgress.map(tp => tp.topic.topicName))).slice(0, 6);
+  
+  // 5. Smart Recommendation (Rule-based)
+  const recommendedPaper = allPapers.find((p: any) => p.status !== 'completed') || allPapers[0];
 
   return (
     <div className="container px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-10">
@@ -77,29 +96,105 @@ export default async function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-lg">Welcome back, {session.user.name || "Student"}. Here is your learning progress.</p>
         </div>
+        <div className="md:self-start pt-1 w-full md:w-auto">
+          <Link 
+            href="/dashboard/ask-teacher"
+            className={cn(
+              buttonVariants({ size: "lg" }), 
+              "w-full md:w-auto px-10 py-6 shadow-md hover:shadow-lg transition-all text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+          >
+            Ask Teacher
+          </Link>
+        </div>
       </div>
 
       {/* 1. Progress Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Papers Completed</CardTitle>
-             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{papersCompleted}</div>
-          </CardContent>
-        </Card>
         
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-             <Clock className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{papersInProgress}</div>
-          </CardContent>
-        </Card>
+        <Dialog>
+          <DialogTrigger render={
+            <button type="button" className="text-left w-full focus:outline-none rounded-xl">
+              <Card className="bg-card shadow-sm border-border hover:border-primary/40 transition-colors cursor-pointer group">
+                <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium group-hover:text-primary transition-colors">Papers Completed</CardTitle>
+                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </CardHeader>
+                <CardContent>
+                   <div className="text-2xl font-bold">{papersCompleted}</div>
+                </CardContent>
+              </Card>
+            </button>
+          } />
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Completed Papers</DialogTitle>
+              <DialogDescription>A complete list of papers you have successfully finished.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+               {completedList.length === 0 ? (
+                 <p className="text-sm text-muted-foreground">No completed papers yet.</p>
+               ) : (
+                 completedList.map((rp: any) => (
+                    <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
+                      <div>
+                        <h4 className="font-semibold text-sm">Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''} • {rp.paper.year} {rp.paper.season}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rp.paper.subject.name} ({rp.paper.subject.code})</p>
+                      </div>
+                      <Link 
+                        href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`}
+                        className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-3 sm:mt-0")}
+                      >
+                        Review
+                      </Link>
+                    </div>
+                 ))
+               )}
+            </div>
+          </DialogContent>
+        </Dialog>
+        
+        <Dialog>
+          <DialogTrigger render={
+            <button type="button" className="text-left w-full focus:outline-none rounded-xl">
+              <Card className="bg-card shadow-sm border-border hover:border-primary/40 transition-colors cursor-pointer group">
+                <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
+                   <CardTitle className="text-sm font-medium group-hover:text-primary transition-colors">In Progress</CardTitle>
+                   <Clock className="h-4 w-4 text-amber-500" />
+                </CardHeader>
+                <CardContent>
+                   <div className="text-2xl font-bold">{papersInProgress}</div>
+                </CardContent>
+              </Card>
+            </button>
+          } />
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>In Progress</DialogTitle>
+              <DialogDescription>Papers you've started but haven't marked as completed yet.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 mt-2">
+               {inProgressList.length === 0 ? (
+                 <p className="text-sm text-muted-foreground">No papers in progress.</p>
+               ) : (
+                 inProgressList.map((rp: any) => (
+                    <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
+                      <div>
+                        <h4 className="font-semibold text-sm">Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''} • {rp.paper.year} {rp.paper.season}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{rp.paper.subject.name} ({rp.paper.subject.code})</p>
+                      </div>
+                      <Link 
+                        href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`}
+                        className={cn(buttonVariants({ size: "sm", variant: "default" }), "mt-3 sm:mt-0")}
+                      >
+                        Resume
+                      </Link>
+                    </div>
+                 ))
+               )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
           <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
@@ -126,13 +221,13 @@ export default async function DashboardPage() {
         
         <div className="lg:col-span-2 space-y-10">
           {/* 2. Continue Learning Section */}
-          {recentPapers.length > 0 && (
+          {recentPapersSliced.length > 0 && (
             <section>
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                 <PlayCircle className="w-5 h-5 text-primary" /> Continue Learning
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recentPapers.slice(0, 2).map((rp: any) => (
+                {recentPapersSliced.slice(0, 2).map((rp: any) => (
                   <Link key={rp.id} href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`} className="block h-full">
                     <Card className="hover:border-primary/50 transition-colors shadow-sm bg-card group cursor-pointer h-full">
                       <CardHeader className="pb-2">
@@ -162,11 +257,11 @@ export default async function DashboardPage() {
             </h2>
             <Card className="bg-card shadow-sm border-border overflow-hidden">
               <div className="divide-y divide-border">
-                {recentPapers.length === 0 ? (
+                {recentPapersSliced.length === 0 ? (
                   <div className="p-8 text-center text-muted-foreground">
                     No recent papers found. <Link href="/resources" className="text-primary hover:underline">Start practicing</Link>
                   </div>
-                ) : recentPapers.map((rp: any) => (
+                ) : recentPapersSliced.map((rp: any) => (
                   <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-4 mb-3 sm:mb-0">
                       <div>
@@ -219,84 +314,34 @@ export default async function DashboardPage() {
         </div>
 
         {/* Right Col */}
-        <div className="space-y-10">
+        <div className="space-y-10 relative">
           
-          {/* 5. Strengths & Weaknesses */}
-          <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-primary" /> Insights
-            </h2>
-            <Card className="bg-card shadow-sm border-border">
-              <CardContent className="p-5 space-y-6">
-                <div>
-                  <h4 className="text-sm font-semibold flex items-center gap-2 text-emerald-500 mb-3"><CheckCircle2 className="w-4 h-4" /> Strong Topics</h4>
-                  <div className="flex flex-col gap-2">
-                    {strongTopics.length > 0 ? strongTopics.map((topic, i) => (
-                      <div key={i} className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm px-3 py-2 rounded-md font-medium">{topic}</div>
-                    )) : <div className="text-xs text-muted-foreground italic">No completed topics yet.</div>}
-                  </div>
-                </div>
-                
-                <div className="h-px bg-border w-full"></div>
+          <AiInsightCard contextData={contextData} />
 
-                <div>
-                  <h4 className="text-sm font-semibold flex items-center gap-2 text-amber-500 mb-3"><AlertCircle className="w-4 h-4" /> Needs Revision</h4>
-                  <div className="flex flex-col gap-2">
-                    {weakTopics.length > 0 ? weakTopics.map((topic, i) => (
-                      <div key={i} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-sm px-3 py-2 rounded-md font-medium">{topic}</div>
-                    )) : <div className="text-xs text-muted-foreground italic">No weak topics identified yet.</div>}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* 6. Quick Actions */}
-          <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Bookmark className="w-5 h-5 text-primary" /> Quick Actions
-            </h2>
-            <Card className="bg-card shadow-sm border-border">
-              <CardContent className="p-4 space-y-3">
-                <Link href="/resources" className="flex items-center p-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/30 transition-all group">
-                  <div className="bg-primary/10 p-2 rounded-md mr-4 group-hover:bg-primary/20 transition-colors">
-                    <BookOpen className="w-5 h-5 text-primary" />
-                  </div>
+          {/* Smart Recommendation */}
+          {recommendedPaper && (
+            <section>
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" /> Recommended Next Step
+              </h2>
+              <Card className="bg-primary/5 border-primary/20 shadow-sm hover:border-primary/40 transition-colors">
+                <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
-                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">Browse Resources</h4>
-                    <p className="text-xs text-muted-foreground">Find notes and past papers</p>
+                    <h4 className="font-semibold text-foreground">
+                      Practice Paper {recommendedPaper.paper.paperNumber} {recommendedPaper.paper.variant ? `V${recommendedPaper.paper.variant}` : ''} • {recommendedPaper.paper.year}
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">Based on your recent activity.</p>
                   </div>
-                  <ArrowRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </Link>
-                
-                <div className="h-px bg-border w-full"></div>
-                
-                <Link href="/dashboard/saved" className="flex items-center p-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/30 transition-all group">
-                  <div className="bg-primary/10 p-2 rounded-md mr-4 group-hover:bg-primary/20 transition-colors">
-                    <Bookmark className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">Saved Papers</h4>
-                    <p className="text-xs text-muted-foreground">Access your bookmarked exams</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </Link>
-
-                <div className="h-px bg-border w-full"></div>
-
-                <Link href="/courses" className="flex items-center p-3 rounded-lg border border-transparent hover:border-border hover:bg-muted/30 transition-all group">
-                  <div className="bg-primary/10 p-2 rounded-md mr-4 group-hover:bg-primary/20 transition-colors">
-                    <FileText className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">My Courses</h4>
-                    <p className="text-xs text-muted-foreground">View enrolled premium courses</p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 ml-auto text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                </Link>
-              </CardContent>
-            </Card>
-          </section>
+                  <Link 
+                    href={`/papers/viewer?qp=${encodeURIComponent(recommendedPaper.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(recommendedPaper.paper.msPdfUrl || '')}&id=${recommendedPaper.paper.id}`}
+                    className={buttonVariants({ size: "sm" })}
+                  >
+                    Start Paper
+                  </Link>
+                </CardContent>
+              </Card>
+            </section>
+          )}
 
         </div>
       </div>

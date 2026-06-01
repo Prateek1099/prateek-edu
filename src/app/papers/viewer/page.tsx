@@ -2,8 +2,8 @@
 
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Maximize2, Download, BookOpen, CheckSquare } from "lucide-react";
-import { Suspense, useState, useEffect } from "react";
+import { ArrowLeft, Maximize2, Minimize2, Download, BookOpen, CheckSquare, Square } from "lucide-react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PremiumViewer } from "@/components/PremiumViewer";
 
@@ -19,6 +19,28 @@ function PaperViewerInner() {
   const [viewMode, setViewMode] = useState<"dual" | "qp" | "ms">("dual");
   const [status, setStatus] = useState<string>("not_started");
   const [isSaving, setIsSaving] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const viewerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      viewerRef.current?.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -27,7 +49,19 @@ function PaperViewerInner() {
         const res = await fetch(`/api/progress?paperId=${id}`);
         if (res.ok) {
           const data = await res.json();
-          setStatus(data.status);
+          let currentStatus = data.status;
+          
+          // If they just opened it and it's not started, mark it in progress immediately
+          if (currentStatus === "not_started") {
+            fetch("/api/progress", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paperId: id, status: "in_progress" }),
+            }).catch(console.error);
+            currentStatus = "in_progress";
+          }
+          
+          setStatus(currentStatus);
         }
       } catch (e) {
         console.error("Failed to fetch initial progress:", e);
@@ -39,7 +73,7 @@ function PaperViewerInner() {
   const toggleCompleted = async () => {
     if (!id) return;
     setIsSaving(true);
-    const newStatus = status === "completed" ? "not_started" : "completed";
+    const newStatus = status === "completed" ? "in_progress" : "completed";
     try {
       const res = await fetch("/api/progress", {
         method: "POST",
@@ -65,7 +99,7 @@ function PaperViewerInner() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-65px)] overflow-hidden bg-muted/20">
+    <div ref={viewerRef} className={`flex flex-col overflow-hidden bg-muted/20 ${isFullscreen ? 'h-screen' : 'h-[calc(100vh-65px)]'}`}>
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b bg-background shadow-sm z-10 shrink-0">
         <div className="flex items-center gap-2">
@@ -138,19 +172,23 @@ function PaperViewerInner() {
               disabled={isSaving}
               className={status === "completed" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""}
             >
-               <CheckSquare className="h-4 w-4 mr-2" /> 
+               {status === "completed" ? (
+                 <CheckSquare className="h-4 w-4 mr-2" />
+               ) : (
+                 <Square className="h-4 w-4 mr-2" />
+               )}
                {isSaving ? "Saving..." : status === "completed" ? "Completed" : "Mark as Completed"}
             </Button>
           )}
-          <Button variant="outline" size="sm">
-             <Maximize2 className="h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={toggleFullScreen}>
+             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
         </div>
       </div>
 
       {/* Viewer Area */}
       <PremiumViewer isPremiumContent={false}>
-        <div className="flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4 h-[calc(100vh-130px)]">
+        <div className={`flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4 ${isFullscreen ? 'h-[calc(100vh-60px)]' : 'h-[calc(100vh-130px)]'}`}>
         {viewMode === "dual" && qp && ms ? (
           /* @ts-ignore - Prop compatibility with latest react-resizable-panels */
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">

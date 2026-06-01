@@ -55,22 +55,8 @@ function UserDropdown({ session }: { session: any }) {
             <BookOpen className="mr-2 h-4 w-4" />
             <span>Dashboard</span>
           </Link>
-          <Link 
-            href="/dashboard/progress" 
-            className="flex items-center w-full px-2 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            <Clock className="mr-2 h-4 w-4" />
-            <span>My Progress</span>
-          </Link>
-          <Link 
-            href="/dashboard/saved" 
-            className="flex items-center w-full px-2 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            <BookOpen className="mr-2 h-4 w-4" />
-            <span>Saved Papers</span>
-          </Link>
+
+
           <div className="h-px bg-border my-1" />
           <Link 
             href="/dashboard/settings" 
@@ -129,7 +115,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
   const { data: session, status } = useSession();
 
   const routes = [
-    { label: 'Home', href: '/' },
+    { label: status === 'authenticated' ? 'Dashboard' : 'Home', href: status === 'authenticated' ? '/dashboard' : '/' },
     { label: 'Courses', href: '/courses' },
   ];
   
@@ -142,7 +128,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
       <div className="container flex h-16 items-center justify-between px-4 md:px-8 max-w-7xl mx-auto">
         
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2 transition-transform hover:scale-105 mr-4">
+        <Link href="/" className="flex items-center space-x-2 transition-transform hover:scale-105 mr-4 -ml-2 md:-ml-4">
           <div className="bg-primary/10 p-2 rounded-xl">
             <GraduationCap className="h-6 w-6 text-primary" />
           </div>

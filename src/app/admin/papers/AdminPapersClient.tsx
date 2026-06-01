@@ -107,6 +107,9 @@ export default function AdminPapersClient({
   const [selectedPaper, setSelectedPaper] = useState<PaperWithSubject | null>(null);
   const [loading, setLoading] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
+  const [filterSubjectId, setFilterSubjectId] = useState("all");
+  const [filterYear, setFilterYear] = useState("all");
+  const [filterSession, setFilterSession] = useState("all");
 
   const [subjectId, setSubjectId] = useState("");
   const [year, setYear] = useState("");
@@ -190,23 +193,48 @@ export default function AdminPapersClient({
 
   const sessionForSave = resolveSession(sessionSelect, sessionCustom);
 
+  const uniqueYears = useMemo(() => {
+    const years = new Set(papers.map((p) => p.year.toString()));
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [papers]);
+
+  const uniqueSessions = useMemo(() => {
+    const sessions = new Set(papers.map((p) => p.season || "none"));
+    return Array.from(sessions).sort();
+  }, [papers]);
+
   const filteredPapers = useMemo(() => {
+    let result = papers;
+
+    if (filterSubjectId !== "all") {
+      result = result.filter((p) => p.subjectId === filterSubjectId);
+    }
+    if (filterYear !== "all") {
+      result = result.filter((p) => p.year.toString() === filterYear);
+    }
+    if (filterSession !== "all") {
+      result = result.filter((p) => (p.season || "none") === filterSession);
+    }
+
     const q = tableSearch.trim().toLowerCase();
-    if (!q) return papers;
-    return papers.filter((p) => {
-      const sub =
-        `${p.subject.name} ${p.subject.code ?? ""} ${p.subject.qualification.title}`.toLowerCase();
-      const yr = String(p.year);
-      const seas = (p.season ?? "").toLowerCase();
-      const pn = `${p.paperNumber} ${p.variant ?? ""}`;
-      return (
-        sub.includes(q) ||
-        yr.includes(q) ||
-        seas.includes(q) ||
-        pn.includes(q)
-      );
-    });
-  }, [papers, tableSearch]);
+    if (q) {
+      result = result.filter((p) => {
+        const sub =
+          `${p.subject.name} ${p.subject.code ?? ""} ${p.subject.qualification.title}`.toLowerCase();
+        const yr = String(p.year);
+        const seas = (p.season ?? "").toLowerCase();
+        const pn = `${p.paperNumber} ${p.variant ?? ""}`;
+        return (
+          sub.includes(q) ||
+          yr.includes(q) ||
+          seas.includes(q) ||
+          pn.includes(q)
+        );
+      });
+    }
+
+    return result;
+  }, [papers, tableSearch, filterSubjectId, filterYear, filterSession]);
 
   const refresh = () => router.refresh();
 
@@ -461,23 +489,26 @@ export default function AdminPapersClient({
     value: string;
     onChange: (id: string) => void;
     id: string;
-  }) => (
-    <div className="space-y-2">
-      <Label htmlFor={id}>Subject</Label>
-      <Select value={value} onValueChange={(v) => onChange(v || "")}>
-        <SelectTrigger id={id}>
-          <SelectValue placeholder="Choose subject" />
-        </SelectTrigger>
-        <SelectContent className="max-h-72 overflow-y-auto">
-          {subjectOptions.map((s) => (
-            <SelectItem key={s.id} value={s.id}>
-              {s.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
+  }) => {
+    const selectedLabel = subjectOptions.find((s) => s.id === value)?.label || "Choose subject";
+    return (
+      <div className="space-y-2">
+        <Label htmlFor={id}>Subject</Label>
+        <Select value={value} onValueChange={(v) => onChange(v || "")}>
+          <SelectTrigger id={id}>
+            <SelectValue placeholder="Choose subject">{selectedLabel}</SelectValue>
+          </SelectTrigger>
+          <SelectContent className="max-h-72 overflow-y-auto">
+            {subjectOptions.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    );
+  };
 
   const renderPaperFields = (idPrefix: "add-paper" | "edit-paper") => (
     <>
@@ -559,12 +590,59 @@ export default function AdminPapersClient({
           <CardDescription>Search across subject, session, year, and paper numbers.</CardDescription>
         </CardHeader>
         <div className="px-6 pb-4">
-          <div className="relative max-w-md">
-            <Input
-              placeholder="Filter papers…"
-              value={tableSearch}
-              onChange={(e) => setTableSearch(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1 max-w-sm">
+              <Input
+                placeholder="Search papers…"
+                value={tableSearch}
+                onChange={(e) => setTableSearch(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filterSubjectId} onValueChange={setFilterSubjectId}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="All Subjects">
+                    {filterSubjectId === "all" ? "All Subjects" : subjectOptions.find(s => s.id === filterSubjectId)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {subjectOptions.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterYear} onValueChange={setFilterYear}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="All Years" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Years</SelectItem>
+                  {uniqueYears.map((y) => (
+                    <SelectItem key={y} value={y}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterSession} onValueChange={setFilterSession}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="All Sessions" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sessions</SelectItem>
+                  {uniqueSessions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s === "none" ? "No session" : s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         <div className="border-t overflow-x-auto">
@@ -784,7 +862,7 @@ export default function AdminPapersClient({
       </Dialog>
 
       <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto gap-6">
+        <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[92vh] overflow-y-auto gap-6">
           <DialogHeader>
             <DialogTitle>Bulk add papers</DialogTitle>
             <DialogDescription>
@@ -814,16 +892,16 @@ export default function AdminPapersClient({
               />
             </div>
 
-            <div className="rounded-xl border shadow-xs overflow-hidden">
-              <Table>
+            <div className="rounded-xl border shadow-xs overflow-x-auto">
+              <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow className="bg-muted/40">
-                    <TableHead className="w-28">Paper #</TableHead>
-                    <TableHead className="w-28">Variant</TableHead>
-                    <TableHead>Question PDF</TableHead>
-                    <TableHead>Mark scheme PDF</TableHead>
-                    <TableHead>Source Files (ZIP)</TableHead>
-                    <TableHead className="text-right w-24" />
+                    <TableHead className="w-20">Paper #</TableHead>
+                    <TableHead className="w-20">Variant</TableHead>
+                    <TableHead className="min-w-[12rem]">Question PDF</TableHead>
+                    <TableHead className="min-w-[12rem]">Mark scheme PDF</TableHead>
+                    <TableHead className="min-w-[12rem]">Source Files (ZIP)</TableHead>
+                    <TableHead className="text-right w-20" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -861,7 +939,7 @@ export default function AdminPapersClient({
                         <Input
                           type="file"
                           accept="application/pdf"
-                          className="min-w-[9rem]"
+                          className="w-full text-xs"
                           onChange={(e) =>
                             setBulkRows((prev) =>
                               prev.map((r) =>
@@ -875,7 +953,7 @@ export default function AdminPapersClient({
                         <Input
                           type="file"
                           accept="application/pdf"
-                          className="min-w-[9rem]"
+                          className="w-full text-xs"
                           onChange={(e) =>
                             setBulkRows((prev) =>
                               prev.map((r) =>
@@ -889,7 +967,7 @@ export default function AdminPapersClient({
                         <Input
                           type="file"
                           accept=".zip,.rar,.7z"
-                          className="min-w-[9rem]"
+                          className="w-full text-xs"
                           onChange={(e) =>
                             setBulkRows((prev) =>
                               prev.map((r) =>

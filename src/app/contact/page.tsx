@@ -69,7 +69,7 @@ export default function ContactPage() {
             <CardDescription>We usually reply within 24 hours.</CardDescription>
           </CardHeader>
           <CardContent className="text-center font-medium">
-            support@examnest.com
+            support@
           </CardContent>
         </Card>
 
@@ -82,7 +82,7 @@ export default function ContactPage() {
             <CardDescription>Mon-Fri from 8am to 5pm.</CardDescription>
           </CardHeader>
           <CardContent className="text-center font-medium">
-            +91 99999 99999
+            +91 7014769931
           </CardContent>
         </Card>
 
@@ -92,10 +92,10 @@ export default function ContactPage() {
               <MapPin className="h-6 w-6 text-primary" />
             </div>
             <CardTitle>Office</CardTitle>
-            <CardDescription>Come say hello at our HQ.</CardDescription>
+            <CardDescription>Visit our Office for any queries.</CardDescription>
           </CardHeader>
           <CardContent className="text-center font-medium">
-            123 Education Lane, Tech City
+            iStart Nest Incubation Center, Vikramaditya Nagar, Jodhpur
           </CardContent>
         </Card>
       </div>
@@ -113,15 +113,15 @@ export default function ContactPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
               {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" name="name" placeholder="John Doe" required />
+                  <Input id="name" name="name" placeholder="Rohan Sharma" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" placeholder="john@example.com" required />
+                  <Input id="email" name="email" type="email" placeholder="rohan@example.com" required />
                 </div>
               </div>
 
