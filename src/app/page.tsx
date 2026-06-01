@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Globe2, ShieldCheck, ArrowRight, Layers, SplitSquareHorizontal, FolderTree, Clock, FileText, Sparkles } from "lucide-react";
+import { Globe2, ShieldCheck, ArrowRight, Layers, SplitSquareHorizontal, FolderTree, Clock, FileText, Sparkles, GraduationCap } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEcosystemPreference } from "@/app/actions/resources-actions";
 
 async function getDashboardData(userId?: string) {
   if (!userId) return { recentProgress: [], newPapers: [] };
@@ -35,6 +36,7 @@ async function getDashboardData(userId?: string) {
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const userId = (session?.user as any)?.id;
+  const pref = await getEcosystemPreference();
   const { recentProgress, newPapers } = await getDashboardData(userId);
 
   return (
@@ -55,44 +57,93 @@ export default async function Home() {
             Free, highly organized, and distraction-free past papers and study resources built for serious students.
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto mt-4 px-2">
-            
-            <Link href="/board/cambridge" aria-label="Select Cambridge Board" className="w-full transition-transform hover:-translate-y-1 duration-300">
-              <Card className="h-full border-2 border-muted hover:border-primary/40 shadow-sm hover:shadow-xl transition-all overflow-hidden relative group rounded-2xl bg-card">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <CardContent className="p-8 sm:p-10 flex flex-col items-center justify-center text-center h-full relative z-10">
-                  <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <Globe2 className="h-10 w-10 text-primary" />
-                  </div>
-                  <h2 className="text-3xl font-bold mb-4 tracking-tight">Cambridge International</h2>
-                  <p className="text-muted-foreground mb-8 text-lg font-medium leading-relaxed">
-                    IGCSE, O Level, AS & A Level resources including ICT and Computer Science.
-                  </p>
-                  <Button className="w-full gap-2 rounded-xl mt-auto h-12 text-base shadow-md group-hover:bg-primary/90" size="lg">
-                    Select Cambridge <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
+          {!pref ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl mx-auto mt-4 px-2">
+              <form action={async () => {
+                "use server";
+                const { setEcosystemPreference } = await import("@/app/actions/resources-actions");
+                const { redirect } = await import("next/navigation");
+                await setEcosystemPreference("cambridge", "");
+                redirect("/resources");
+              }} className="w-full">
+                <button type="submit" aria-label="Select Cambridge Board" className="w-full text-left transition-transform hover:-translate-y-1 duration-300 outline-none">
+                  <Card className="h-full border-2 border-muted hover:border-primary/40 shadow-sm hover:shadow-xl transition-all overflow-hidden relative group rounded-2xl bg-card">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <CardContent className="p-8 sm:p-10 flex flex-col items-center justify-center text-center h-full relative z-10">
+                      <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <Globe2 className="h-10 w-10 text-primary" />
+                      </div>
+                      <h2 className="text-3xl font-bold mb-4 tracking-tight">Cambridge International</h2>
+                      <p className="text-muted-foreground mb-8 text-lg font-medium leading-relaxed">
+                        IGCSE, O Level, AS & A Level resources including ICT and Computer Science.
+                      </p>
+                      <div className="w-full gap-2 rounded-xl mt-auto h-12 text-base shadow-md group-hover:bg-primary/90 bg-primary text-primary-foreground flex items-center justify-center px-8 py-2 font-medium transition-colors">
+                        Select Cambridge <ArrowRight className="h-5 w-5 ml-2" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </button>
+              </form>
 
-            <Link href="/board/cbse" aria-label="Select CBSE Board" className="w-full transition-transform hover:-translate-y-1 duration-300">
-              <Card className="h-full border-2 border-muted hover:border-primary/40 shadow-sm hover:shadow-xl transition-all overflow-hidden relative group rounded-2xl bg-card">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <CardContent className="p-8 sm:p-10 flex flex-col items-center justify-center text-center h-full relative z-10">
-                  <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                    <ShieldCheck className="h-10 w-10 text-primary" />
-                  </div>
-                  <h2 className="text-3xl font-bold mb-4 tracking-tight">CBSE Board</h2>
-                  <p className="text-muted-foreground mb-8 text-lg font-medium leading-relaxed">
-                    Class 10 and Class 12 resources including Informatics Practices & IT.
-                  </p>
-                  <Button className="w-full gap-2 rounded-xl mt-auto h-12 text-base shadow-md group-hover:bg-primary/90" size="lg">
-                    Select CBSE <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
+              <form action={async () => {
+                "use server";
+                const { setEcosystemPreference } = await import("@/app/actions/resources-actions");
+                const { redirect } = await import("next/navigation");
+                await setEcosystemPreference("cbse", "");
+                redirect("/resources");
+              }} className="w-full">
+                <button type="submit" aria-label="Select CBSE Board" className="w-full text-left transition-transform hover:-translate-y-1 duration-300 outline-none">
+                  <Card className="h-full border-2 border-muted hover:border-primary/40 shadow-sm hover:shadow-xl transition-all overflow-hidden relative group rounded-2xl bg-card">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <CardContent className="p-8 sm:p-10 flex flex-col items-center justify-center text-center h-full relative z-10">
+                      <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <ShieldCheck className="h-10 w-10 text-primary" />
+                      </div>
+                      <h2 className="text-3xl font-bold mb-4 tracking-tight">CBSE Board</h2>
+                      <p className="text-muted-foreground mb-8 text-lg font-medium leading-relaxed">
+                        Class 10 and Class 12 resources including Informatics Practices & IT.
+                      </p>
+                      <div className="w-full gap-2 rounded-xl mt-auto h-12 text-base shadow-md group-hover:bg-primary/90 bg-primary text-primary-foreground flex items-center justify-center px-8 py-2 font-medium transition-colors">
+                        Select CBSE <ArrowRight className="h-5 w-5 ml-2" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center space-y-6 mt-4 w-full max-w-2xl mx-auto">
+              <div className="bg-card border-2 border-primary/20 rounded-2xl p-8 w-full shadow-lg relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50"></div>
+                <div className="relative z-10 flex flex-col items-center text-center">
+                   <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                     <GraduationCap className="w-8 h-8 text-primary" />
+                   </div>
+                   <h2 className="text-3xl font-bold mb-2">Welcome Back.</h2>
+                   <p className="text-muted-foreground text-lg mb-8">Currently Studying: <span className="font-semibold text-foreground block mt-1">{pref.boardTitle} {pref.qualTitle ? `• ${pref.qualTitle}` : ''}</span></p>
+                   
+                   <div className="flex flex-col sm:flex-row w-full gap-4 justify-center">
+                     <Link href={pref.qualification ? `/resources/${pref.board}/${pref.qualification}` : `/resources/${pref.board}`} className="w-full sm:w-auto">
+                       <Button size="lg" className="w-full sm:w-auto font-semibold shadow-md transition-transform hover:scale-105">Continue Learning <ArrowRight className="ml-2 w-4 h-4" /></Button>
+                     </Link>
+                     <Link href={`/resources/${pref.board}`} className="w-full sm:w-auto">
+                       <Button size="lg" variant="secondary" className="w-full sm:w-auto transition-transform hover:scale-105">Open Resources</Button>
+                     </Link>
+                   </div>
+                   
+                   <form action={async () => {
+                     "use server";
+                     const { clearEcosystemPreference } = await import("@/app/actions/resources-actions");
+                     const { redirect } = await import("next/navigation");
+                     await clearEcosystemPreference();
+                     redirect("/");
+                   }} className="mt-8 w-full">
+                     <button type="submit" className="text-sm text-muted-foreground hover:text-primary transition-colors underline underline-offset-4">Switch Ecosystem</button>
+                   </form>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
