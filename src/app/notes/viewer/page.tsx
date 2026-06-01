@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { ArrowLeft } from "lucide-react";
+import { PremiumViewer } from "@/components/PremiumViewer";
 
 const NotePdfViewer = dynamic(() => import("@/components/NotePdfViewer"), {
   ssr: false,
@@ -25,7 +26,12 @@ function NotesViewerInner() {
     }
   }, [pdf]);
 
-  if (!decodedPdf) {
+  const proxiedPdfUrl = useMemo(() => {
+    if (!decodedPdf) return null;
+    return `/api/protected/pdf?url=${encodeURIComponent(decodedPdf)}&isNote=true`;
+  }, [decodedPdf]);
+
+  if (!decodedPdf || !proxiedPdfUrl) {
     return (
       <div className="flex h-[calc(100vh-140px)] items-center justify-center">
         <p className="text-muted-foreground">No note PDF provided.</p>
@@ -45,7 +51,11 @@ function NotesViewerInner() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <NotePdfViewer url={decodedPdf} />
+        <PremiumViewer isPremiumContent={true}>
+          <div className="h-[calc(100vh-130px)]">
+            <NotePdfViewer url={proxiedPdfUrl} />
+          </div>
+        </PremiumViewer>
       </div>
     </div>
   );
@@ -58,4 +68,5 @@ export default function NotesViewerPage() {
     </Suspense>
   );
 }
+
 

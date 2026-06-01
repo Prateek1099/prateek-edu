@@ -56,10 +56,21 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
                                 <div className="flex gap-2 w-full mt-auto">
                                   <Link 
                                     href={paper.questionPdfUrl ? `/papers/viewer?qp=${encodeURIComponent(paper.questionPdfUrl)}&ms=${encodeURIComponent(paper.msPdfUrl || '')}&id=${paper.id}` : '#'}
-                                    className={cn(buttonVariants({ size: "sm", variant: paper.questionPdfUrl ? "default" : "secondary" }), "w-full font-medium", !paper.questionPdfUrl && "pointer-events-none opacity-50")}
+                                    className={cn(buttonVariants({ size: "sm", variant: paper.questionPdfUrl ? "default" : "secondary" }), "flex-1 font-medium", !paper.questionPdfUrl && "pointer-events-none opacity-50")}
                                   >
                                     {paper.questionPdfUrl ? "Open Viewer" : "Coming Soon"}
                                   </Link>
+                                  {paper.sourceFilesUrl && (
+                                    <a
+                                      href={paper.sourceFilesUrl}
+                                      download
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
+                                    >
+                                      <Download className="w-4 h-4 mr-1" /> ZIP
+                                    </a>
+                                  )}
                                 </div>
                               </CardContent>
                             </Card>

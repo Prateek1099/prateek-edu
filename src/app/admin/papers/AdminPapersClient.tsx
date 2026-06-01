@@ -45,6 +45,7 @@ type PaperWithSubject = {
   season: string | null;
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
+  sourceFilesUrl: string | null;
   subject: {
     name: string;
     code: string | null;
@@ -81,6 +82,7 @@ type BulkRow = {
   variant: string;
   qp: File | null;
   ms: File | null;
+  sf: File | null;
 };
 
 function randomKey(): string {
@@ -115,16 +117,18 @@ export default function AdminPapersClient({
 
   const [questionFile, setQuestionFile] = useState<File | null>(null);
   const [msFile, setMsFile] = useState<File | null>(null);
+  const [sfFile, setSfFile] = useState<File | null>(null);
   const [questionPdfUrl, setQuestionPdfUrl] = useState("");
   const [msPdfUrl, setMsPdfUrl] = useState("");
+  const [sourceFilesUrl, setSourceFilesUrl] = useState("");
 
   const [bulkSubjectId, setBulkSubjectId] = useState("");
   const [bulkYear, setBulkYear] = useState("");
   const [bulkSessionSelect, setBulkSessionSelect] = useState(SEASON_NONE);
   const [bulkSessionCustom, setBulkSessionCustom] = useState("");
   const [bulkRows, setBulkRows] = useState<BulkRow[]>(() => [
-    { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null },
-    { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null },
+    { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null, sf: null },
+    { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null, sf: null },
   ]);
 
   const resetForm = () => {
@@ -136,8 +140,10 @@ export default function AdminPapersClient({
     setSessionCustom("");
     setQuestionFile(null);
     setMsFile(null);
+    setSfFile(null);
     setQuestionPdfUrl("");
     setMsPdfUrl("");
+    setSourceFilesUrl("");
     setSelectedPaper(null);
   };
 
@@ -157,8 +163,10 @@ export default function AdminPapersClient({
     setSessionCustom(sel === SEASON_CUSTOM ? (paper.season ?? "") : "");
     setQuestionPdfUrl(paper.questionPdfUrl || "");
     setMsPdfUrl(paper.msPdfUrl || "");
+    setSourceFilesUrl(paper.sourceFilesUrl || "");
     setQuestionFile(null);
     setMsFile(null);
+    setSfFile(null);
     setIsEditOpen(true);
   };
 
@@ -212,6 +220,7 @@ export default function AdminPapersClient({
     try {
       let finalQpUrl: string | null = questionPdfUrl || null;
       let finalMsUrl: string | null = msPdfUrl || null;
+      let finalSfUrl: string | null = sourceFilesUrl || null;
 
       if (questionFile) {
         toast("Uploading Question Paper PDF...");
@@ -222,6 +231,11 @@ export default function AdminPapersClient({
         toast("Uploading Mark Scheme PDF...");
         finalMsUrl = await uploadFile(msFile);
       }
+      
+      if (sfFile) {
+        toast("Uploading Source Files (ZIP)...");
+        finalSfUrl = await uploadFile(sfFile);
+      }
 
       const res = await createPaper({
         subjectId,
@@ -231,6 +245,7 @@ export default function AdminPapersClient({
         season: sessionForSave,
         questionPdfUrl: finalQpUrl,
         msPdfUrl: finalMsUrl,
+        sourceFilesUrl: finalSfUrl,
       });
 
       if (res.success) {
@@ -259,6 +274,7 @@ export default function AdminPapersClient({
     try {
       let finalQpUrl = questionPdfUrl;
       let finalMsUrl = msPdfUrl;
+      let finalSfUrl = sourceFilesUrl;
 
       if (questionFile) {
         toast("Uploading Question Paper PDF...");
@@ -269,6 +285,11 @@ export default function AdminPapersClient({
         toast("Uploading Mark Scheme PDF...");
         finalMsUrl = await uploadFile(msFile);
       }
+      
+      if (sfFile) {
+        toast("Uploading Source Files (ZIP)...");
+        finalSfUrl = await uploadFile(sfFile);
+      }
 
       const res = await updatePaper(selectedPaper.id, {
         subjectId,
@@ -278,6 +299,7 @@ export default function AdminPapersClient({
         season: sessionForSave,
         questionPdfUrl: finalQpUrl || null,
         msPdfUrl: finalMsUrl || null,
+        sourceFilesUrl: finalSfUrl || null,
       });
 
       if (res.success) {
@@ -318,8 +340,8 @@ export default function AdminPapersClient({
     setBulkSessionSelect(sessionSelect);
     setBulkSessionCustom(sessionCustom);
     setBulkRows([
-      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null },
-      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null },
+      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null, sf: null },
+      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null, sf: null },
     ]);
     setBulkOpen(true);
   };
@@ -360,8 +382,10 @@ export default function AdminPapersClient({
 
         let qpUrl: string | null = null;
         let msUrl: string | null = null;
+        let sfUrl: string | null = null;
         if (row.qp) qpUrl = await uploadFile(row.qp);
         if (row.ms) msUrl = await uploadFile(row.ms);
+        if (row.sf) sfUrl = await uploadFile(row.sf);
 
         const res = await createPaper({
           subjectId: bulkSubjectId,
@@ -371,6 +395,7 @@ export default function AdminPapersClient({
           season: bulkSessionResolved,
           questionPdfUrl: qpUrl,
           msPdfUrl: msUrl,
+          sourceFilesUrl: sfUrl,
         });
         if (!res.success) {
           toast.error(`Paper ${pn}: ${res.error}`);
@@ -550,7 +575,7 @@ export default function AdminPapersClient({
                 <TableHead>Session</TableHead>
                 <TableHead className="w-24">Year</TableHead>
                 <TableHead className="w-28">Paper</TableHead>
-                <TableHead>PDFs</TableHead>
+                <TableHead>Files</TableHead>
                 <TableHead className="text-right w-52">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -605,6 +630,18 @@ export default function AdminPapersClient({
                         ) : (
                           <span className="text-muted-foreground">No MS</span>
                         )}
+                        {paper.sourceFilesUrl ? (
+                          <a
+                            href={paper.sourceFilesUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Source (ZIP)
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">No ZIP</span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
@@ -647,6 +684,14 @@ export default function AdminPapersClient({
                 type="file"
                 accept="application/pdf"
                 onChange={(e) => setMsFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Source Files (ZIP)</Label>
+              <Input
+                type="file"
+                accept=".zip,.rar,.7z"
+                onChange={(e) => setSfFile(e.target.files?.[0] ?? null)}
               />
             </div>
             <DialogFooter>
@@ -692,6 +737,18 @@ export default function AdminPapersClient({
               )}
               <Label className="mt-3 block text-muted-foreground">Replace mark scheme</Label>
               <Input type="file" accept="application/pdf" onChange={(e) => setMsFile(e.target.files?.[0] ?? null)} />
+            </div>
+            <div className="space-y-2 rounded-lg border bg-muted/30 p-4">
+              <Label className="text-muted-foreground">Current Source Files</Label>
+              {sourceFilesUrl ? (
+                <a href={sourceFilesUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
+                  Open current ZIP
+                </a>
+              ) : (
+                <p className="text-sm">None uploaded</p>
+              )}
+              <Label className="mt-3 block text-muted-foreground">Replace Source Files</Label>
+              <Input type="file" accept=".zip,.rar,.7z" onChange={(e) => setSfFile(e.target.files?.[0] ?? null)} />
             </div>
             <DialogFooter>
               <Button type="submit" disabled={loading}>
@@ -765,6 +822,7 @@ export default function AdminPapersClient({
                     <TableHead className="w-28">Variant</TableHead>
                     <TableHead>Question PDF</TableHead>
                     <TableHead>Mark scheme PDF</TableHead>
+                    <TableHead>Source Files (ZIP)</TableHead>
                     <TableHead className="text-right w-24" />
                   </TableRow>
                 </TableHeader>
@@ -827,6 +885,20 @@ export default function AdminPapersClient({
                           }
                         />
                       </TableCell>
+                      <TableCell>
+                        <Input
+                          type="file"
+                          accept=".zip,.rar,.7z"
+                          className="min-w-[9rem]"
+                          onChange={(e) =>
+                            setBulkRows((prev) =>
+                              prev.map((r) =>
+                                r.key === row.key ? { ...r, sf: e.target.files?.[0] ?? null } : r
+                              )
+                            )
+                          }
+                        />
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           type="button"
@@ -849,7 +921,7 @@ export default function AdminPapersClient({
                   onClick={() =>
                     setBulkRows((prev) => [
                       ...prev,
-                      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null },
+                      { key: randomKey(), paperNumber: "", variant: "", qp: null, ms: null, sf: null },
                     ])
                   }
                 >

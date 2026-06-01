@@ -79,6 +79,7 @@ export async function createPaper(data: {
   season?: string | null;
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
+  sourceFilesUrl: string | null;
 }) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
@@ -99,6 +100,7 @@ export async function updatePaper(id: string, data: {
   season?: string | null;
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
+  sourceFilesUrl: string | null;
 }) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };

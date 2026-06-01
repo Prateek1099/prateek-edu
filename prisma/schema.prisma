@@ -185,6 +185,7 @@ model Paper {
   season           String?  // e.g. "May/June", "Oct/Nov"
   questionPdfUrl   String?  @map("question_pdf_url")
   msPdfUrl         String?  @map("ms_pdf_url")
+  sourceFilesUrl   String?  @map("source_files_url")
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   progress UserProgress[]

@@ -73,7 +73,7 @@ function UserDropdown({ session }: { session: any }) {
           </Link>
           <div className="h-px bg-border my-1" />
           <Link 
-            href="/settings" 
+            href="/dashboard/settings" 
             className="flex items-center w-full px-2 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => setIsOpen(false)}
           >

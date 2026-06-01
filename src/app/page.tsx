@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Globe2, ShieldCheck, ArrowRight, Layers, SplitSquareHorizontal, FolderTree, Clock, FileText, Sparkles, GraduationCap } from "lucide-react";
+import { Globe2, ShieldCheck, ArrowRight, Layers, SplitSquareHorizontal, FolderTree, Clock, FileText, Sparkles, GraduationCap, Target, LineChart } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -21,16 +21,7 @@ async function getDashboardData(userId?: string) {
     take: 3
   });
 
-  const newPapers = await prisma.paper.findMany({
-    orderBy: [
-      { year: 'desc' },
-      { season: 'desc' }
-    ],
-    take: 4,
-    include: { subject: { include: { qualification: true } } }
-  });
-
-  return { recentProgress, newPapers };
+  return { recentProgress };
 }
 
 export default async function Home() {
@@ -43,7 +34,7 @@ export default async function Home() {
     let qualTitle = prefRaw.qualification === 'igcse' ? 'IGCSE' : prefRaw.qualification === 'as-a-level' ? 'AS & A Level' : prefRaw.qualification === 'o-level' ? 'O Level' : prefRaw.qualification?.toUpperCase() || "";
     ecosystemPref = { ...prefRaw, boardTitle, qualTitle };
   }
-  const { recentProgress, newPapers } = await getDashboardData(userId);
+  const { recentProgress } = await getDashboardData(userId);
 
   return (
     <div className="flex flex-col w-full bg-background font-sans items-center justify-center min-h-[calc(100vh-64px)] overflow-hidden">
@@ -150,6 +141,64 @@ export default async function Home() {
               </div>
             </div>
           )}
+
+          {/* Subtle Dashboard Preview */}
+          <div className="w-full max-w-4xl mx-auto mt-20 px-2 hidden sm:block relative z-10">
+            <div className="rounded-t-2xl border border-b-0 bg-card shadow-2xl overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/90 z-10 pointer-events-none"></div>
+              <div className="h-12 bg-muted/40 border-b flex items-center px-4 gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                <div className="ml-4 h-4 w-48 bg-background rounded-full opacity-50"></div>
+              </div>
+              <div className="p-8 grid grid-cols-3 gap-6 opacity-80 h-64">
+                <div className="col-span-2 space-y-6">
+                   <div className="h-6 w-1/3 bg-muted rounded-md"></div>
+                   <div className="h-24 w-full bg-muted/60 rounded-xl"></div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div className="h-20 bg-muted/50 rounded-xl"></div>
+                     <div className="h-20 bg-muted/50 rounded-xl"></div>
+                   </div>
+                </div>
+                <div className="space-y-6">
+                   <div className="h-6 w-1/2 bg-muted rounded-md"></div>
+                   <div className="h-full w-full bg-muted/40 rounded-xl"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How ExamNest Works Section */}
+      <section className="w-full py-20 bg-background relative z-20">
+        <div className="container px-4 md:px-8 max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">How ExamNest Works</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Your streamlined path to better grades.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+            <div className="hidden md:block absolute top-8 left-[16.6%] right-[16.6%] h-px bg-border/80" />
+            
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">1</div>
+              <h3 className="text-xl font-bold mb-2">Select Ecosystem</h3>
+              <p className="text-muted-foreground">Choose your academic board, like Cambridge or CBSE.</p>
+            </div>
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">2</div>
+              <h3 className="text-xl font-bold mb-2">Choose Subjects</h3>
+              <p className="text-muted-foreground">Access perfectly organized notes, topicals, and past papers.</p>
+            </div>
+            <div className="flex flex-col items-center text-center relative z-10">
+              <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">3</div>
+              <h3 className="text-xl font-bold mb-2">Study Smarter</h3>
+              <p className="text-muted-foreground">Track completed papers and manage your revision effectively.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -187,33 +236,6 @@ export default async function Home() {
               </div>
             )}
 
-            {newPapers.length > 0 && (
-              <div>
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="bg-primary/10 p-2 rounded-lg">
-                    <Sparkles className="w-6 h-6 text-primary" />
-                  </div>
-                  <h2 className="text-2xl font-bold tracking-tight">Recently Added Papers</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  {newPapers.map((paper) => (
-                    <Link key={paper.id} href={`/papers/viewer?qp=${encodeURIComponent(paper.questionPdfUrl || '')}&ms=${encodeURIComponent(paper.msPdfUrl || '')}&id=${paper.id}`} className="block">
-                      <Card className="hover:border-primary/50 transition-colors shadow-sm bg-card group cursor-pointer h-full">
-                        <CardHeader className="p-4 pb-2">
-                          <CardDescription className="text-xs font-semibold">{paper.subject.code || paper.subject.name}</CardDescription>
-                          <CardTitle className="text-base group-hover:text-primary transition-colors">{paper.year} {paper.season}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                          <div className="text-xs text-muted-foreground">
-                            Paper {paper.paperNumber} {paper.variant ? `• V${paper.variant}` : ''}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </section>
       )}
@@ -231,31 +253,31 @@ export default async function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="bg-background border-muted hover:border-primary/50 transition-colors shadow-sm">
               <CardContent className="p-8">
-                <div className="bg-primary/10 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
-                  <Layers className="h-7 w-7 text-primary" />
+                <div className="bg-primary/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
+                  <Target className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Ad-free Experience</h3>
-                <p className="text-muted-foreground">100% ad-free environment to ensure distraction-free studying and focus.</p>
+                <h3 className="text-xl font-bold mb-3">Focused Revision</h3>
+                <p className="text-muted-foreground leading-relaxed">Clean, distraction-free study environment built for serious students.</p>
               </CardContent>
             </Card>
 
             <Card className="bg-background border-muted hover:border-primary/50 transition-colors shadow-sm">
               <CardContent className="p-8">
-                <div className="bg-primary/10 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
-                  <SplitSquareHorizontal className="h-7 w-7 text-primary" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">Dual Split Viewer</h3>
-                <p className="text-muted-foreground">View the Question Paper and Mark Scheme side-by-side simultaneously natively.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-background border-muted hover:border-primary/50 transition-colors shadow-sm">
-              <CardContent className="p-8">
-                <div className="bg-primary/10 w-14 h-14 rounded-lg flex items-center justify-center mb-6">
+                <div className="bg-primary/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
                   <FolderTree className="h-7 w-7 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Series Bundling</h3>
-                <p className="text-muted-foreground">Theory, practical components, and source files perfectly bundled by exam series.</p>
+                <h3 className="text-xl font-bold mb-3">Organized Resources</h3>
+                <p className="text-muted-foreground leading-relaxed">Past papers, notes, and topic resources structured by board, qualification, and subject.</p>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-background border-muted hover:border-primary/50 transition-colors shadow-sm">
+              <CardContent className="p-8">
+                <div className="bg-primary/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
+                  <LineChart className="h-7 w-7 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-3">Track Your Progress</h3>
+                <p className="text-muted-foreground leading-relaxed">Track completed papers, continue studying, and manage revision more effectively.</p>
               </CardContent>
             </Card>
           </div>
