@@ -3,7 +3,7 @@
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Maximize2, Download, BookOpen, CheckSquare } from "lucide-react";
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { PremiumViewer } from "@/components/PremiumViewer";
 
@@ -17,20 +17,37 @@ function PaperViewerInner() {
   const id = searchParams.get('id'); // Paper ID from database
   
   const [viewMode, setViewMode] = useState<"dual" | "qp" | "ms">("dual");
-  const [isCompleted, setIsCompleted] = useState(false);
+  const [status, setStatus] = useState<string>("not_started");
   const [isSaving, setIsSaving] = useState(false);
 
-  const markCompleted = async () => {
+  useEffect(() => {
+    if (!id) return;
+    const fetchProgress = async () => {
+      try {
+        const res = await fetch(`/api/progress?paperId=${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setStatus(data.status);
+        }
+      } catch (e) {
+        console.error("Failed to fetch initial progress:", e);
+      }
+    };
+    fetchProgress();
+  }, [id]);
+
+  const toggleCompleted = async () => {
     if (!id) return;
     setIsSaving(true);
+    const newStatus = status === "completed" ? "not_started" : "completed";
     try {
       const res = await fetch("/api/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paperId: id, completed: true }),
+        body: JSON.stringify({ paperId: id, status: newStatus }),
       });
       if (res.ok) {
-        setIsCompleted(true);
+        setStatus(newStatus);
       }
     } catch (e) {
       console.error(e);
@@ -88,19 +105,41 @@ function PaperViewerInner() {
               </Button>
             </a>
           )}
-          <Button variant="outline" size="sm" className="hidden md:flex">
-             <Download className="h-4 w-4 mr-2" /> Download PDF
-          </Button>
+          
+          {/* Dynamic Download PDF buttons based on viewMode and availability */}
+          {qp && (viewMode === "qp" || viewMode === "dual") && (
+            <a 
+              href={`/api/protected/pdf?url=${encodeURIComponent(qp)}&download=true`} 
+              download 
+              className="hidden md:flex"
+            >
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" /> Download QP
+              </Button>
+            </a>
+          )}
+          {ms && (viewMode === "ms" || viewMode === "dual") && (
+            <a 
+              href={`/api/protected/pdf?url=${encodeURIComponent(ms)}&download=true`} 
+              download 
+              className="hidden md:flex"
+            >
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" /> Download MS
+              </Button>
+            </a>
+          )}
+
           {id && (
             <Button 
-              variant={isCompleted ? "default" : "secondary"} 
+              variant={status === "completed" ? "default" : "secondary"} 
               size="sm" 
-              onClick={markCompleted}
-              disabled={isSaving || isCompleted}
-              className={isCompleted ? "bg-emerald-500 hover:bg-emerald-600" : ""}
+              onClick={toggleCompleted}
+              disabled={isSaving}
+              className={status === "completed" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : ""}
             >
                <CheckSquare className="h-4 w-4 mr-2" /> 
-               {isSaving ? "Saving..." : isCompleted ? "Completed" : "Mark as Completed"}
+               {isSaving ? "Saving..." : status === "completed" ? "Completed" : "Mark as Completed"}
             </Button>
           )}
           <Button variant="outline" size="sm">
@@ -110,7 +149,7 @@ function PaperViewerInner() {
       </div>
 
       {/* Viewer Area */}
-      <PremiumViewer isPremiumContent={true}>
+      <PremiumViewer isPremiumContent={false}>
         <div className="flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4 h-[calc(100vh-130px)]">
         {viewMode === "dual" && qp && ms ? (
           /* @ts-ignore - Prop compatibility with latest react-resizable-panels */
@@ -142,6 +181,7 @@ function PaperViewerInner() {
         )}
         </div>
       </PremiumViewer>
+
     </div>
   );
 }

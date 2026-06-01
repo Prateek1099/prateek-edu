@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { BookOpen, ChevronRight, SplitSquareHorizontal, Folder, Search } from "lucide-react";
+import { BookOpen, ChevronRight, SplitSquareHorizontal, Folder, Search, Download } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -154,6 +154,19 @@ export default function PapersClient({ initialPapers }: { initialPapers: any[] }
                               <SplitSquareHorizontal className="h-4 w-4" /> Practice Split View
                             </Button>
                           </Link>
+                          {paper.sourceFilesUrl && (
+                            <a
+                              href={paper.sourceFilesUrl}
+                              download
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="w-full sm:w-auto"
+                            >
+                              <Button variant="outline" size="sm" className="w-full gap-2 shadow-sm">
+                                <Download className="h-4 w-4" /> ZIP
+                              </Button>
+                            </a>
+                          )}
                         </div>
                       </div>
                     ))}

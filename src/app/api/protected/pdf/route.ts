@@ -1,31 +1,43 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const url = searchParams.get("url");
+    const download = searchParams.get("download") === "true";
+    let isNote = searchParams.get("isNote") === "true";
 
     if (!url) {
       return new NextResponse("Missing URL", { status: 400 });
     }
 
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    // Fallback: If not explicitly flagged as note, check DB to see if it is a Note
+    if (!isNote) {
+      const noteExists = await prisma.note.findFirst({
+        where: {
+          pdfUrl: url,
+        },
+      });
+      if (noteExists) {
+        isNote = true;
+      }
     }
 
-    const isPremium = (session.user as any).isPremium;
-    
-    // In the future, we could check if this specific paper is premium-only.
-    // For now, if you are hitting the secure proxy, we enforce a session.
-    // If we want to strictly lock ALL proxy requests to premium users:
-    /*
-    if (!isPremium) {
-      return new NextResponse("Premium Required", { status: 403 });
+    // Notes require session and premium status
+    if (isNote) {
+      const session = await getServerSession(authOptions);
+      if (!session || !session.user) {
+        return new NextResponse("Unauthorized", { status: 401 });
+      }
+
+      const isPremium = (session.user as any).isPremium;
+      if (!isPremium) {
+        return new NextResponse("Premium Required", { status: 403 });
+      }
     }
-    */
 
     let targetUrl = url;
     // If the URL is relative (e.g., stored locally in public folder)
@@ -53,12 +65,15 @@ export async function GET(req: Request) {
     const contentType = response.headers.get("content-type") || "application/pdf";
     const arrayBuffer = await response.arrayBuffer();
 
+    const filename = url.split("/").pop() || "document.pdf";
+
     return new NextResponse(arrayBuffer, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "private, max-age=3600",
-        // Do not allow direct download easily
-        "Content-Disposition": "inline", 
+        "Content-Disposition": download 
+          ? `attachment; filename="${filename}"`
+          : "inline", 
       },
     });
   } catch (error) {
@@ -66,3 +81,4 @@ export async function GET(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
+
