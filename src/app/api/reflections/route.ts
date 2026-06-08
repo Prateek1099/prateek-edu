@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     const userId = (session.user as any).id;
     const body = await req.json();
-    const { challengingTopics, message } = body;
+    const { challengingTopics, message, context } = body;
 
     if (!challengingTopics || !Array.isArray(challengingTopics)) {
       return NextResponse.json({ error: "challengingTopics array is required" }, { status: 400 });
@@ -23,6 +23,7 @@ export async function POST(req: Request) {
         userId,
         challengingTopics,
         message: message || null,
+        context: context || null,
       }
     });
     

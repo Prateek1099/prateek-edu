@@ -4,19 +4,46 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { FileText, BookOpen, Layers, ScrollText, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FileText, BookOpen, Layers, ScrollText, Download, Trophy, Clock, Zap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-export default function SubjectTabsClient({ papersByYear, topics, notes, subject }: { papersByYear: Record<number, Record<string, any[]>>, topics: any[], notes: any[], subject: any }) {
+const difficultyColor: Record<string, string> = {
+  easy: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+  medium: "border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-500/10",
+  hard: "border-red-500/50 text-red-600 dark:text-red-400 bg-red-500/10",
+  mixed: "border-primary/50 text-primary bg-primary/10",
+};
+
+export default function SubjectTabsClient({
+  papersByYear,
+  topics,
+  notes,
+  subject,
+  challenges = [],
+  board = "",
+  qualification = "",
+}: {
+  papersByYear: Record<number, Record<string, any[]>>;
+  topics: any[];
+  notes: any[];
+  subject: any;
+  challenges?: any[];
+  board?: string;
+  qualification?: string;
+}) {
   const years = Object.keys(papersByYear).map(Number).sort((a, b) => b - a);
 
   return (
     <Tabs defaultValue="past-papers" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 max-w-2xl mb-8 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 max-w-3xl mb-8 h-auto p-1">
         <TabsTrigger value="past-papers" className="py-2">Past Papers</TabsTrigger>
         <TabsTrigger value="topical" className="py-2">Topical</TabsTrigger>
         <TabsTrigger value="notes" className="py-2">Notes</TabsTrigger>
+        <TabsTrigger value="challenges" className="py-2 flex items-center gap-1.5">
+          <Trophy className="h-3.5 w-3.5" />Challenges
+        </TabsTrigger>
         <TabsTrigger value="syllabus" className="py-2">Syllabus</TabsTrigger>
       </TabsList>
       
@@ -162,6 +189,61 @@ export default function SubjectTabsClient({ papersByYear, topics, notes, subject
                  </CardContent>
                </Card>
              ))}
+          </div>
+        )}
+      </TabsContent>
+
+      {/* Challenges Tab */}
+      <TabsContent value="challenges" className="mt-0">
+        {challenges.length === 0 ? (
+          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
+            <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold text-foreground">No challenges available</h3>
+            <p className="text-muted-foreground">Topic challenges for this subject will be added soon.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {challenges.map((challenge) => (
+              <Card key={challenge.id} className="hover:border-primary/50 transition-all shadow-sm bg-card group overflow-hidden relative">
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/80 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="bg-primary/10 p-3 rounded-xl">
+                      <Trophy className="h-6 w-6 text-primary" />
+                    </div>
+                    <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
+                      {challenge.difficulty}
+                    </Badge>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                    {challenge.title}
+                  </h3>
+
+                  {challenge.topic && (
+                    <p className="text-sm text-muted-foreground mt-1">{challenge.topic.topicName}</p>
+                  )}
+
+                  <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5" />
+                      {challenge._count.questions} Questions
+                    </span>
+                    <span>·</span>
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      {challenge.estimatedTime} min
+                    </span>
+                  </div>
+
+                  <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`}>
+                    <Button className="w-full mt-5 font-semibold" size="lg">
+                      Start Challenge
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </TabsContent>
