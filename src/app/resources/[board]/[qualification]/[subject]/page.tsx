@@ -29,7 +29,15 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
       topics: {
         orderBy: { sortOrder: 'asc' }
       },
-      notes: true
+      notes: true,
+      challenges: {
+        where: { isPublished: true },
+        include: {
+          topic: true,
+          _count: { select: { questions: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      },
     }
   });
 
@@ -82,7 +90,11 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
         topics={subjectData.topics}
         notes={subjectData.notes}
         subject={subjectData}
+        challenges={subjectData.challenges}
+        board={board}
+        qualification={qualification}
       />
     </div>
   );
 }
+

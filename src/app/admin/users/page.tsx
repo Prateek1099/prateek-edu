@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -9,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { isAdminRole } from "@/lib/roles";
 import DeleteUserButton from "./DeleteUserButton";
 
@@ -58,7 +60,16 @@ export default async function AdminUsersPage() {
                   <TableCell>{user.enrollments.length}</TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    <DeleteUserButton userId={user.id} userName={user.name} />
+                    <div className="flex items-center gap-2">
+                      <DeleteUserButton userId={user.id} userName={user.name} />
+                      {!isAdminRole(user.role) && (
+                        <Link href={`/admin/users/${user.id}/performance`}>
+                          <Button variant="ghost" size="sm" className="text-primary text-xs">
+                            Performance
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

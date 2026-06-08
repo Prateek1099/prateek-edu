@@ -13,7 +13,6 @@ interface Plan {
   name: string;
   price: number;
   aiQuota: number;
-  maxDevices: number;
   isActive: boolean;
 }
 
@@ -131,10 +130,6 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />
                   <span><strong>{plan.aiQuota}</strong> AI Evaluations / month</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <Check className="h-5 w-5 text-emerald-500" />
-                  <span>Use on up to <strong>{plan.maxDevices}</strong> devices</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />

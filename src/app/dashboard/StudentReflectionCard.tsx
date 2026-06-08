@@ -6,9 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { MessageSquarePlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquarePlus, Info, BookOpen, Trophy } from "lucide-react";
+
+export type AskTeacherContext = {
+  source: string;
+  topic?: string;
+  mistakes?: number;
+  challengeName?: string;
+  score?: number;
+  reasons?: string[];
+};
+
+type Props = {
+  prefillContext?: AskTeacherContext;
+  onSuccess?: () => void;
+};
 
 const CATEGORIES = ["Theory", "Paper 2", "Paper 3"];
+
+const REASONS = [
+  "I don't understand this topic",
+  "I keep making mistakes in this topic",
+  "I need more practice questions",
+  "I am not confident about exam questions from this topic"
+];
 
 const TOPICS = {
   "Theory": [
@@ -34,9 +56,10 @@ const TOPICS = {
   ]
 };
 
-export function StudentReflectionCard() {
+export function StudentReflectionCard({ prefillContext, onSuccess }: Props = {}) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -47,31 +70,52 @@ export function StudentReflectionCard() {
     );
   };
 
+  const toggleReason = (reason: string) => {
+    setSelectedReasons(prev => 
+      prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason]
+    );
+  };
+
   const handleCategorySelect = (category: string) => {
     setSelectedCategory(category);
     setSelectedTopics([]); // reset topics when category changes
   };
 
   const handleSubmit = async () => {
-    if (selectedTopics.length === 0 && !message.trim()) {
+    if (selectedTopics.length === 0 && !message.trim() && selectedReasons.length === 0 && !prefillContext) {
       toast.error("Please select a topic or write your doubt.");
+      return;
+    }
+
+    if (selectedReasons.length === 0 && !message.trim()) {
+      toast.error("Please select a reason or write a message.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // We prepend the category to the topic for better context in the teacher dashboard
-      const challengingTopics = selectedTopics.map(t => `${selectedCategory}: ${t}`);
+      const challengingTopics = prefillContext?.topic 
+        ? [prefillContext.topic]
+        : selectedTopics.map(t => `${selectedCategory}: ${t}`);
       
+      const finalContext = prefillContext 
+        ? { ...prefillContext, reasons: selectedReasons } 
+        : { reasons: selectedReasons };
+
       const res = await fetch("/api/reflections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challengingTopics, message })
+        body: JSON.stringify({ 
+          challengingTopics, 
+          message,
+          context: finalContext
+        })
       });
 
       if (!res.ok) throw new Error("Failed to submit");
       setSubmitted(true);
       toast.success("Doubt sent to your teacher!");
+      if (onSuccess) onSuccess();
     } catch (e) {
       toast.error("Failed to send doubt");
     } finally {
@@ -106,8 +150,42 @@ export function StudentReflectionCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         
-        {/* Step 1: Select Category */}
-        <div className="space-y-2">
+        {prefillContext ? (
+          <div className="p-4 bg-muted/30 border rounded-lg space-y-3 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold">Context Included</span>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {prefillContext.source === "Mistake Book" && (
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                  <BookOpen className="w-3 h-3 mr-1" /> Mistake Book
+                </Badge>
+              )}
+              {prefillContext.source === "Challenge Results" && (
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                  <Trophy className="w-3 h-3 mr-1" /> Challenge Results
+                </Badge>
+              )}
+              {prefillContext.topic && (
+                <Badge variant="secondary">Topic: {prefillContext.topic}</Badge>
+              )}
+              {prefillContext.challengeName && (
+                <Badge variant="secondary">Challenge: {prefillContext.challengeName}</Badge>
+              )}
+              {prefillContext.score !== undefined && (
+                <Badge variant="outline" className="border-red-500/30 text-red-500">Score: {prefillContext.score}%</Badge>
+              )}
+              {prefillContext.mistakes !== undefined && prefillContext.mistakes > 0 && (
+                <Badge variant="outline" className="border-amber-500/30 text-amber-500">{prefillContext.mistakes} Mistakes</Badge>
+              )}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Step 1: Select Category */}
+            <div className="space-y-2">
           <label className="text-sm font-semibold">1. Select Paper Type</label>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(cat => (
@@ -144,10 +222,31 @@ export function StudentReflectionCard() {
             </div>
           </div>
         )}
+        </>
+      )}
+
+        {/* Reasons Checkboxes */}
+        <div className="space-y-3 mt-4">
+          <label className="text-sm font-semibold">{prefillContext ? "What kind of help do you need?" : "3. What kind of help do you need?"}</label>
+          <div className="grid grid-cols-1 gap-2">
+            {REASONS.map((reason, i) => (
+              <div key={`reason-${i}`} className="flex items-center space-x-2 border rounded-md p-3 hover:bg-muted/30 transition-colors">
+                <Checkbox 
+                  id={`reason-${i}`} 
+                  checked={selectedReasons.includes(reason)}
+                  onCheckedChange={() => toggleReason(reason)}
+                />
+                <label htmlFor={`reason-${i}`} className="text-sm font-medium leading-tight cursor-pointer flex-1">
+                  {reason}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Step 3: Doubt text area */}
         <div className="space-y-2 mt-4">
-          <label className="text-sm font-semibold">3. Mention the particular topic / Doubt</label>
+          <label className="text-sm font-semibold">{prefillContext ? "Any specific questions? (Optional)" : "4. Mention the particular topic / Doubt (Optional)"}</label>
           <Textarea 
             placeholder="Explain what you are struggling with..." 
             className="resize-none h-24 text-sm"
@@ -158,7 +257,7 @@ export function StudentReflectionCard() {
         
         <Button 
           onClick={handleSubmit} 
-          disabled={isSubmitting || (!selectedCategory) || (selectedTopics.length === 0 && !message.trim())}
+          disabled={isSubmitting || (!prefillContext && !selectedCategory) || (selectedReasons.length === 0 && !message.trim())}
           className="w-full mt-2"
         >
           Send to Teacher

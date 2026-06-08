@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, FileText, Sparkles } from "lucide-react";
+import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -25,7 +25,7 @@ export default async function DashboardPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [papersCompleted, papersInProgress, enrollments, recentPapers, topicProgress, recentActivityCount] = await Promise.all([
+  const [papersCompleted, papersInProgress, enrollments, recentPapers, topicProgress, recentActivityCount, recentChallenges, challengeAgg, mistakeTotal, mistakeNeedsRevision, mistakeRevised, topMistakeTopics] = await Promise.all([
     prisma.userProgress.count({ where: { userId, status: "completed" } }),
     prisma.userProgress.count({ where: { userId, status: "in_progress" } }),
     prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
@@ -41,7 +41,29 @@ export default async function DashboardPage() {
     }),
     prisma.userProgress.count({
       where: { userId, lastViewed: { gte: sevenDaysAgo } }
-    })
+    }),
+    prisma.challengeAttempt.findMany({
+      where: { userId },
+      include: { challenge: { include: { subject: true } } },
+      orderBy: { completedAt: "desc" },
+      take: 5,
+    }),
+    prisma.challengeAttempt.aggregate({
+      where: { userId },
+      _avg: { percentage: true },
+      _max: { percentage: true },
+      _count: true,
+    }),
+    prisma.mistakeEntry.count({ where: { userId } }),
+    prisma.mistakeEntry.count({ where: { userId, status: "needs_revision" } }),
+    prisma.mistakeEntry.count({ where: { userId, status: "revised" } }),
+    prisma.mistakeEntry.groupBy({
+      by: ["topicTag"],
+      where: { userId, topicTag: { not: null } },
+      _sum: { mistakeCount: true },
+      orderBy: { _sum: { mistakeCount: "desc" } },
+      take: 5,
+    }),
   ]);
 
   const allPapers = recentPapers; // Renamed for clarity since it fetches all now
@@ -77,12 +99,16 @@ export default async function DashboardPage() {
   const weakTopics = topicProgress.filter(tp => !tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
   
   // 4. Generate Context & Lists for AI & Reflections
+  const mistakeTopicsList = topMistakeTopics.map((t: any) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
   const contextData = `
 Completed Papers: ${papersCompleted}
 Papers In Progress: ${papersInProgress}
 Recent Papers Viewed (Last 7 days): ${recentActivityCount}
 Strong Topics: ${strongTopics.join(", ") || "None yet"}
 Needs Revision: ${weakTopics.join(", ") || "None yet"}
+Mistake Book: ${mistakeTotal} total, ${mistakeNeedsRevision} needs revision, ${mistakeRevised} revised
+Most Repeated Mistakes: ${mistakeTopicsList || "None yet"}
+Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}% average
   `.trim();
   const recentTopicsList = Array.from(new Set(topicProgress.map(tp => tp.topic.topicName))).slice(0, 6);
   
@@ -310,6 +336,143 @@ Needs Revision: ${weakTopics.join(", ") || "None yet"}
                 })}
               </CardContent>
             </Card>
+          </section>
+
+          {/* 5. Performance & Revision */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-primary" /> Performance & Revision
+              </h2>
+              {mistakeTotal > 0 && (
+                <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary")}>
+                  View Mistake Book <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              )}
+            </div>
+
+            {/* Mistake Book Summary */}
+            {mistakeTotal > 0 && (
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <Card className="bg-card shadow-sm border-border">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold">{mistakeTotal}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Total Mistakes</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card shadow-sm border-amber-500/20">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{mistakeNeedsRevision}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Needs Revision</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card shadow-sm border-emerald-500/20">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{mistakeRevised}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Revised</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Most Repeated Mistakes + Challenge Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {topMistakeTopics.length > 0 && (
+                <Card className="bg-card shadow-sm border-border">
+                  <CardContent className="p-5">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-500" /> Most Repeated Mistakes
+                    </h3>
+                    <div className="space-y-2.5">
+                      {topMistakeTopics.map((t: any, i: number) => (
+                        <div key={t.topicTag} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}.</span>
+                            <span className="text-sm font-medium">{t.topicTag}</span>
+                          </div>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                            {t._sum.mistakeCount}×
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {challengeAgg._count > 0 && (
+                <Card className="bg-card shadow-sm border-border">
+                  <CardContent className="p-5">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-primary" /> Challenge Performance
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Challenges Taken</span>
+                        <span className="font-bold">{challengeAgg._count}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Average Score</span>
+                        <span className="font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Best Score</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{challengeAgg._max?.percentage ? Math.round(challengeAgg._max.percentage) : 0}%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Recent Challenges */}
+            {recentChallenges.length > 0 && (
+              <Card className="bg-card shadow-sm border-border overflow-hidden">
+                <div className="divide-y divide-border">
+                  {recentChallenges.map((ca: any) => (
+                    <div key={ca.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+                      <div>
+                        <h4 className="font-semibold text-sm">{ca.challenge.title}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{ca.challenge.subject.name} · {new Date(ca.completedAt).toLocaleDateString()}</p>
+                      </div>
+                      <Badge variant="outline" className={`${ca.percentage >= 75 ? 'border-emerald-500 text-emerald-500' : ca.percentage >= 50 ? 'border-amber-500 text-amber-500' : 'border-red-500 text-red-500'}`}>
+                        {Math.round(ca.percentage)}%
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* Recommended Revision */}
+            {topMistakeTopics.length > 0 && (
+              <Card className="bg-primary/5 border-primary/20 shadow-sm mt-4">
+                <CardContent className="p-5">
+                  <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" /> Recommended Revision
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {topMistakeTopics.slice(0, 3).map((t: any) => (
+                      <Badge key={t.topicTag} variant="outline" className="py-1.5 px-3 text-sm border-primary/30 text-primary">
+                        Review: {t.topicTag}
+                      </Badge>
+                    ))}
+                  </div>
+                  <Link href="/dashboard/mistakes" className="text-sm text-primary font-medium mt-3 inline-block hover:underline">
+                    Open Mistake Book →
+                  </Link>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Empty State */}
+            {mistakeTotal === 0 && challengeAgg._count === 0 && (
+              <Card className="bg-muted/20 border-dashed shadow-sm">
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  Complete a Topic Challenge to see your performance insights here.
+                </CardContent>
+              </Card>
+            )}
           </section>
         </div>
 

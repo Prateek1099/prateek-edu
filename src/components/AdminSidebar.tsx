@@ -11,6 +11,7 @@ import {
   MessageSquare,
   LogOut,
   StickyNote,
+  Trophy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,7 @@ const nav = [
   { href: "/admin/courses", label: "Courses", icon: BookOpen, match: "prefix" as const },
   { href: "/admin/papers", label: "Papers", icon: FileText, match: "prefix" as const },
   { href: "/admin/notes", label: "Notes", icon: StickyNote, match: "prefix" as const },
+  { href: "/admin/challenges", label: "Challenges", icon: Trophy, match: "prefix" as const },
   { href: "/admin/users", label: "Users", icon: Users, match: "prefix" as const },
   { href: "/admin/payments", label: "Payments", icon: CreditCard, match: "prefix" as const },
   { href: "/admin/insights", label: "Insights", icon: MessageSquare, match: "prefix" as const },

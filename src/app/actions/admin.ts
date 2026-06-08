@@ -177,3 +177,154 @@ export async function deleteNote(id: string) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
   }
 }
+
+// --- CHALLENGES ---
+
+function revalidateChallengeRelated() {
+  revalidatePath("/admin/challenges");
+  revalidatePath("/resources", "layout");
+}
+
+export async function createChallenge(data: {
+  title: string;
+  subjectId: string;
+  topicId: string | null;
+  difficulty: string;
+  estimatedTime: number;
+  questions: {
+    questionText: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: string;
+    explanation?: string;
+    topicTag?: string;
+  }[];
+}) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.challenge.create({
+      data: {
+        title: data.title,
+        subjectId: data.subjectId,
+        topicId: data.topicId || undefined,
+        difficulty: data.difficulty,
+        estimatedTime: data.estimatedTime,
+        questions: {
+          create: data.questions.map((q, i) => ({
+            questionText: q.questionText,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation || null,
+            topicTag: q.topicTag || null,
+            sortOrder: i,
+          })),
+        },
+      },
+    });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function updateChallenge(id: string, data: {
+  title: string;
+  subjectId: string;
+  topicId: string | null;
+  difficulty: string;
+  estimatedTime: number;
+}) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.challenge.update({ where: { id }, data: { ...data, topicId: data.topicId || null } });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function deleteChallenge(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.challenge.delete({ where: { id } });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function toggleChallengePublished(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    const challenge = await prisma.challenge.findUnique({ where: { id } });
+    if (!challenge) return { success: false as const, error: "Challenge not found" };
+    await prisma.challenge.update({
+      where: { id },
+      data: { isPublished: !challenge.isPublished },
+    });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function appendQuestions(challengeId: string, questions: {
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  explanation?: string;
+  topicTag?: string;
+}[]) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    const existing = await prisma.question.count({ where: { challengeId } });
+    await prisma.question.createMany({
+      data: questions.map((q, i) => ({
+        challengeId,
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || null,
+        topicTag: q.topicTag || null,
+        sortOrder: existing + i,
+      })),
+    });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function deleteQuestion(questionId: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.question.delete({ where: { id: questionId } });
+    revalidateChallengeRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+

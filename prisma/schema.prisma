@@ -60,7 +60,6 @@ model User {
 
   accounts            Account[]
   sessions            Session[]
-  deviceSessions      DeviceSession[]
   plan                SubscriptionPlan? @relation(fields: [planId], references: [id])
   enrollments         Enrollment[]
   progress            UserProgress[]
@@ -68,22 +67,10 @@ model User {
   payments            Payment[]
   savedPapers         SavedPaper[]
   reflections         StudentReflection[]
+  challengeAttempts   ChallengeAttempt[]
+  mistakeEntries      MistakeEntry[]
 
   @@map("users")
-}
-
-model DeviceSession {
-  id                String   @id @default(cuid())
-  userId            String   @map("user_id")
-  deviceFingerprint String   @map("device_fingerprint")
-  userAgent         String?  @map("user_agent")
-  ipAddress         String?  @map("ip_address")
-  lastActive        DateTime @default(now()) @map("last_active")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, deviceFingerprint])
-  @@map("device_sessions")
 }
 
 model SubscriptionPlan {
@@ -91,7 +78,6 @@ model SubscriptionPlan {
   name        String   @unique // e.g. "free", "monthly", "yearly"
   price       Float
   features    String?  @db.Text
-  maxDevices  Int      @default(1) @map("max_devices")
   aiQuota     Int      @default(10) @map("ai_quota")
   isActive    Boolean  @default(true) @map("is_active")
 
@@ -145,6 +131,7 @@ model Subject {
   notes         Note[]
   topics        Topic[]
   courses       Course[] // Add course relation here to link courses to subjects properly
+  challenges    Challenge[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -232,6 +219,7 @@ model Topic {
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress UserTopicProgress[]
   notes        Note[]
+  challenges   Challenge[]
 
   @@map("topics")
 }
@@ -296,9 +284,87 @@ model StudentReflection {
   userId            String   @map("user_id")
   challengingTopics String[] @map("challenging_topics") // PostgreSQL handles String[] natively
   message           String?  @db.Text
+  context           Json?
   createdAt         DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("student_reflections")
+}
+
+model Challenge {
+  id            String   @id @default(cuid())
+  title         String
+  subjectId     String   @map("subject_id")
+  topicId       String?  @map("topic_id")
+  difficulty    String   @default("medium")    // easy, medium, hard, mixed
+  estimatedTime Int      @default(15)          @map("estimated_time") // minutes
+  isPublished   Boolean  @default(false)       @map("is_published")
+  createdAt     DateTime @default(now())       @map("created_at")
+  updatedAt     DateTime @updatedAt            @map("updated_at")
+
+  subject   Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic     Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  questions Question[]
+  attempts  ChallengeAttempt[]
+  mistakes  MistakeEntry[]
+
+  @@map("challenges")
+}
+
+model Question {
+  id             String  @id @default(cuid())
+  challengeId    String  @map("challenge_id")
+  questionText   String  @map("question_text") @db.Text
+  optionA        String  @map("option_a")
+  optionB        String  @map("option_b")
+  optionC        String  @map("option_c")
+  optionD        String  @map("option_d")
+  correctAnswer  String  @map("correct_answer")  // A, B, C, or D
+  explanation    String? @db.Text
+  topicTag       String? @map("topic_tag")        // granular topic e.g. "Normalization"
+  sortOrder      Int     @default(0) @map("sort_order")
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  mistakes  MistakeEntry[]
+
+  @@map("questions")
+}
+
+model ChallengeAttempt {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  challengeId    String   @map("challenge_id")
+  score          Int
+  totalQuestions Int      @map("total_questions")
+  percentage     Float
+  answers        String   @db.Text               // JSON: {questionId: selectedAnswer}
+  timeTaken      Int?     @map("time_taken")      // seconds elapsed
+  completedAt    DateTime @default(now())         @map("completed_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@map("challenge_attempts")
+}
+
+model MistakeEntry {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  questionId     String   @map("question_id")
+  challengeId    String   @map("challenge_id")
+  topicTag       String?  @map("topic_tag")
+  studentAnswer  String   @map("student_answer")
+  correctAnswer  String   @map("correct_answer")
+  mistakeCount   Int      @default(1) @map("mistake_count")
+  status         String   @default("needs_revision") // needs_revision | revised
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question  Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@map("mistake_entries")
 }
