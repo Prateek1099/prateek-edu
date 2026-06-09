@@ -18,6 +18,21 @@ function revalidateNoteRelated() {
   revalidatePath("/admin/notes");
 }
 
+// --- SUBJECTS & SYLLABUS ---
+
+export async function updateSubjectSyllabus(id: string, data: { syllabusPdfUrl: string | null }) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.subject.update({ where: { id }, data });
+    revalidatePath("/admin/syllabus");
+    revalidatePath("/resources", "layout");
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
 // --- COURSES ---
 
 export async function createCourse(data: {
