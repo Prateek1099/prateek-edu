@@ -89,7 +89,7 @@ export default function SyllabusClient({ boards }: { boards: BoardData[] }) {
                         {subject.syllabusPdfUrl ? (
                           <>
                             <Link 
-                              href={`/api/protected/pdf?url=${encodeURIComponent(subject.syllabusPdfUrl)}`}
+                              href={subject.syllabusPdfUrl}
                               target="_blank" 
                               rel="noopener noreferrer" 
                               className={cn(buttonVariants({ variant: "outline" }), "w-full gap-2")}
@@ -97,8 +97,10 @@ export default function SyllabusClient({ boards }: { boards: BoardData[] }) {
                               View PDF
                             </Link>
                             <a 
-                              href={`/api/protected/pdf?url=${encodeURIComponent(subject.syllabusPdfUrl)}&download=true`} 
+                              href={subject.syllabusPdfUrl} 
                               download 
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className={buttonVariants({ variant: "secondary", className: "px-3" })}
                             >
                               <Download className="h-4 w-4" />

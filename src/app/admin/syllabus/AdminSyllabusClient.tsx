@@ -166,7 +166,7 @@ export default function AdminSyllabusClient({ subjects }: { subjects: SubjectRow
                     <TableCell>
                       {s.syllabusPdfUrl ? (
                         <Link
-                          href={`/api/protected/pdf?url=${encodeURIComponent(s.syllabusPdfUrl)}`}
+                          href={s.syllabusPdfUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:underline flex items-center gap-1"
@@ -213,7 +213,7 @@ export default function AdminSyllabusClient({ subjects }: { subjects: SubjectRow
               {pdfUrlExisting ? (
                 <div className="flex flex-col gap-1">
                   <Link
-                    href={`/api/protected/pdf?url=${encodeURIComponent(pdfUrlExisting)}`}
+                    href={pdfUrlExisting}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-primary underline break-all"

@@ -260,7 +260,7 @@ export default function SubjectTabsClient({
                  <p className="text-muted-foreground">The official syllabus document is available for viewing or downloading below.</p>
                  <div className="flex gap-4">
                    <Link
-                     href={`/api/protected/pdf?url=${encodeURIComponent(subject.syllabusPdfUrl)}`}
+                     href={subject.syllabusPdfUrl}
                      target="_blank"
                      rel="noopener noreferrer"
                      className={cn(buttonVariants({ variant: "default" }), "gap-2")}
@@ -268,7 +268,7 @@ export default function SubjectTabsClient({
                      <FileText className="h-4 w-4" /> View PDF
                    </Link>
                    <a
-                     href={`/api/protected/pdf?url=${encodeURIComponent(subject.syllabusPdfUrl)}&download=true`}
+                     href={subject.syllabusPdfUrl}
                      download
                      target="_blank"
                      rel="noopener noreferrer"
