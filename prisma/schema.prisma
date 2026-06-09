@@ -125,6 +125,7 @@ model Subject {
   code            String? // e.g. "0478"
   name            String  // e.g. "Computer Science"
   slug            String  // e.g. "computer-science-0478"
+  syllabusPdfUrl  String? @map("syllabus_pdf_url")
 
   qualification Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
   papers        Paper[]

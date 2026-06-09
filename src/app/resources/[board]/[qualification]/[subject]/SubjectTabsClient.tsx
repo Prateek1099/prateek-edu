@@ -255,8 +255,36 @@ export default function SubjectTabsClient({
             <CardDescription>Overview of the {subject.name} curriculum.</CardDescription>
           </CardHeader>
           <CardContent>
-             <p className="text-muted-foreground">The syllabus document will be made available here for direct viewing.</p>
-             <Button variant="outline" className="mt-4"><Download className="h-4 w-4 mr-2" /> Download Syllabus PDF</Button>
+             {subject.syllabusPdfUrl ? (
+               <div className="flex flex-col gap-4">
+                 <p className="text-muted-foreground">The official syllabus document is available for viewing or downloading below.</p>
+                 <div className="flex gap-4">
+                   <Link
+                     href={subject.syllabusPdfUrl}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className={cn(buttonVariants({ variant: "default" }), "gap-2")}
+                   >
+                     <FileText className="h-4 w-4" /> View PDF
+                   </Link>
+                   <a
+                     href={subject.syllabusPdfUrl}
+                     download
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
+                   >
+                     <Download className="h-4 w-4" /> Download
+                   </a>
+                 </div>
+               </div>
+             ) : (
+               <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
+                 <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+                 <h3 className="text-lg font-semibold text-foreground">Syllabus unavailable</h3>
+                 <p className="text-muted-foreground mt-2">The syllabus for this subject has not been uploaded yet.</p>
+               </div>
+             )}
           </CardContent>
         </Card>
       </TabsContent>
