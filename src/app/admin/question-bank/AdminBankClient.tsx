@@ -127,7 +127,7 @@ export default function AdminBankClient({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full sm:w-64"
           />
-          <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); setTopicFilter("all"); }}>
+          <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v || "all"); setTopicFilter("all"); }}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="All Subjects" />
             </SelectTrigger>
@@ -138,7 +138,7 @@ export default function AdminBankClient({
               ))}
             </SelectContent>
           </Select>
-          <Select value={topicFilter} onValueChange={setTopicFilter} disabled={subjectFilter === "all"}>
+          <Select value={topicFilter} onValueChange={(v) => setTopicFilter(v || "all")} disabled={subjectFilter === "all"}>
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="All Topics" />
             </SelectTrigger>
@@ -149,7 +149,7 @@ export default function AdminBankClient({
               ))}
             </SelectContent>
           </Select>
-          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+          <Select value={difficultyFilter} onValueChange={(v) => setDifficultyFilter(v || "all")}>
             <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="Difficulty" />
             </SelectTrigger>
@@ -237,7 +237,7 @@ export default function AdminBankClient({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Select value={importSubject} onValueChange={(v) => { setImportSubject(v); setImportTopic("none"); }}>
+              <Select value={importSubject} onValueChange={(v) => { setImportSubject(v || ""); setImportTopic("none"); }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
@@ -248,7 +248,7 @@ export default function AdminBankClient({
             </div>
             <div className="space-y-2">
               <Label>Topic (Optional)</Label>
-              <Select value={importTopic} onValueChange={setImportTopic} disabled={!importSubject}>
+              <Select value={importTopic} onValueChange={(v) => setImportTopic(v || "none")} disabled={!importSubject}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select topic" />
                 </SelectTrigger>
