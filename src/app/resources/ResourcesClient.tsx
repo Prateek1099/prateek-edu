@@ -23,7 +23,7 @@ export default function ResourcesClient({
       <div className="mb-10 text-center">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Choose Your Ecosystem</h1>
         <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-          Select your educational board to access tailored revision notes, topical questions, and past papers.
+          Select your educational board to access tailored revision notes, practice challenges, and past papers.
         </p>
       </div>
 

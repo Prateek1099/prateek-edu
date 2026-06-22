@@ -27,10 +27,11 @@ Context about the class:
 ${context}
 
 Rules:
-1. Keep the output extremely concise (max 4-5 short sentences).
-2. Do NOT output a full essay or chat response like "Hello! Here is your insight...". Just output the raw insight directly.
+1. Generate concisely. Maximum 5 bullet points.
+2. Use challenge analytics, mistake analytics, ask teacher requests, and revision planner progress to inform the bullets.
 3. Identify the major bottleneck or most requested topic across the class.
-4. Suggest a clear "Suggested next focus" for the teacher's next lesson based on this data.
+4. Suggest a clear "Recommendation" for the teacher's next lesson based on this data.
+5. Do NOT output a full essay or chat response like "Here is your insight...". Just output the bullet points directly.
 `;
 
     const response = await ai.models.generateContent({

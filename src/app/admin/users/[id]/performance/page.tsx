@@ -12,9 +12,9 @@ import {
   Trophy,
   BookOpen,
   AlertTriangle,
-  CheckCircle2,
   MessageSquare,
   User,
+  CalendarDays,
 } from "lucide-react";
 
 export default async function StudentPerformancePage({
@@ -46,6 +46,7 @@ export default async function StudentPerformancePage({
     topMistakeTopics,
     reflections,
     recentMistakes,
+    revisionPlan,
   ] = await Promise.all([
     prisma.challengeAttempt.findMany({
       where: { userId: studentId },
@@ -80,6 +81,10 @@ export default async function StudentPerformancePage({
       orderBy: { mistakeCount: "desc" },
       take: 20,
     }),
+    prisma.revisionPlan.findUnique({
+      where: { userId: studentId },
+      include: { tasks: { select: { status: true, dueDate: true, type: true } } },
+    }),
   ]);
 
   // Cross-reference Ask Teacher requests with mistake data
@@ -105,7 +110,15 @@ export default async function StudentPerformancePage({
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{student.name || "Student"}</h1>
-          <p className="text-muted-foreground">{student.email} · Joined {new Date(student.createdAt).toLocaleDateString()}</p>
+          <p className="text-muted-foreground">{student.email}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href={`/admin/worksheets/create?topic=${encodeURIComponent(topMistakeTopics[0]?.topicTag || "all")}`}>
+            <Button variant="outline">Generate Personalized Worksheet</Button>
+          </Link>
+          <div className="text-sm px-3 py-1 bg-muted rounded-full">
+            {student.isPremium ? "Premium User" : "Free User"}
+          </div>
         </div>
       </div>
 
@@ -137,7 +150,25 @@ export default async function StudentPerformancePage({
         </Card>
       </div>
 
-      {/* Revision Progress */}
+      {/* Revision Planner Progress */}
+      {revisionPlan && (
+        <Card className="shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="font-medium flex items-center gap-2"><CalendarDays className="w-4 h-4 text-primary" /> Revision Planner</span>
+              <span className="text-muted-foreground">
+                {revisionPlan.tasks.filter(t => t.status === "COMPLETED").length} / {revisionPlan.tasks.length} tasks completed ({revisionPlan.tasks.length > 0 ? Math.round((revisionPlan.tasks.filter(t => t.status === "COMPLETED").length / revisionPlan.tasks.length) * 100) : 0}%)
+              </span>
+            </div>
+            <Progress value={revisionPlan.tasks.length > 0 ? (revisionPlan.tasks.filter(t => t.status === "COMPLETED").length / revisionPlan.tasks.length) * 100 : 0} className="h-2 mb-2" />
+            <p className="text-xs text-muted-foreground text-right">
+              Exam: {new Date(revisionPlan.examDate).toLocaleDateString()}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Mistake Revision Progress */}
       {mistakeTotal > 0 && (
         <Card className="shadow-sm">
           <CardContent className="p-5">

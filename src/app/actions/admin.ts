@@ -343,3 +343,52 @@ export async function deleteQuestion(questionId: string) {
   }
 }
 
+export async function appendBankQuestions(subjectId: string, topicId: string | null, questions: {
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  explanation?: string;
+  topicTag?: string;
+  difficulty?: string;
+  marks?: number;
+}[]) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.bankQuestion.createMany({
+      data: questions.map((q) => ({
+        subjectId,
+        topicId: topicId || null,
+        questionText: q.questionText,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || null,
+        topicTag: q.topicTag || null,
+        difficulty: q.difficulty || "medium",
+        marks: q.marks || 1,
+      })),
+    });
+    revalidatePath("/admin/question-bank");
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function deleteBankQuestion(questionId: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    await prisma.bankQuestion.delete({ where: { id: questionId } });
+    revalidatePath("/admin/question-bank");
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}

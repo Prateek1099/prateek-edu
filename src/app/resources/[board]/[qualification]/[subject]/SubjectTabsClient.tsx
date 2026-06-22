@@ -37,13 +37,12 @@ export default function SubjectTabsClient({
 
   return (
     <Tabs defaultValue="past-papers" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 max-w-3xl mb-8 h-auto p-1">
+      <TabsList className="grid w-full grid-cols-4 max-w-3xl mb-8 h-auto p-1">
         <TabsTrigger value="past-papers" className="py-2">Past Papers</TabsTrigger>
-        <TabsTrigger value="topical" className="py-2">Topical</TabsTrigger>
-        <TabsTrigger value="notes" className="py-2">Notes</TabsTrigger>
-        <TabsTrigger value="challenges" className="py-2 flex items-center gap-1.5">
-          <Trophy className="h-3.5 w-3.5" />Challenges
+        <TabsTrigger value="practice" className="py-2 flex items-center gap-1.5">
+          <Zap className="h-3.5 w-3.5" />Quick Practice
         </TabsTrigger>
+        <TabsTrigger value="notes" className="py-2">Notes</TabsTrigger>
         <TabsTrigger value="syllabus" className="py-2">Syllabus</TabsTrigger>
       </TabsList>
       
@@ -132,31 +131,7 @@ export default function SubjectTabsClient({
         )}
       </TabsContent>
       
-      <TabsContent value="topical" className="mt-0">
-        {topics.length === 0 ? (
-          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
-            <Layers className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground">No topics found</h3>
-            <p className="text-muted-foreground">Topical questions for this subject are being prepared.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {topics.map((topic, i) => (
-               <Card key={topic.id} className="hover:border-primary/50 transition-colors cursor-pointer group shadow-sm bg-card">
-                 <CardContent className="p-4 flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                       {i + 1}
-                     </div>
-                     <span className="font-medium group-hover:text-primary transition-colors">{topic.topicName}</span>
-                   </div>
-                   <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">Practice</Button>
-                 </CardContent>
-               </Card>
-             ))}
-          </div>
-        )}
-      </TabsContent>
+      {/* Quick Practice Hub replaces Topical/Challenges */}
 
       <TabsContent value="notes" className="mt-0">
         {notes.length === 0 ? (
@@ -193,59 +168,127 @@ export default function SubjectTabsClient({
         )}
       </TabsContent>
 
-      {/* Challenges Tab */}
-      <TabsContent value="challenges" className="mt-0">
-        {challenges.length === 0 ? (
-          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
-            <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground">No challenges available</h3>
-            <p className="text-muted-foreground">Topic challenges for this subject will be added soon.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {challenges.map((challenge) => (
-              <Card key={challenge.id} className="hover:border-primary/50 transition-all shadow-sm bg-card group overflow-hidden relative">
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/80 to-primary/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="bg-primary/10 p-3 rounded-xl">
-                      <Trophy className="h-6 w-6 text-primary" />
-                    </div>
-                    <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
-                      {challenge.difficulty}
-                    </Badge>
-                  </div>
+      {/* Quick Practice Tab */}
+      <TabsContent value="practice" className="mt-0">
+        <div className="space-y-8">
+          
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="h-5 w-5 text-amber-500" />
+              <h2 className="text-xl font-bold">MCQ Challenges</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">Fast revision and topic mastery.</p>
+            {challenges.filter(c => c.type === "CHALLENGE" || !c.type).length === 0 ? (
+              <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
+                <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold text-foreground">No challenges available</h3>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {challenges.filter(c => c.type === "CHALLENGE" || !c.type).map((challenge) => (
+                  <Card key={challenge.id} className="hover:border-primary/50 transition-all shadow-sm bg-card group overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500/80 to-amber-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="bg-amber-500/10 p-3 rounded-xl">
+                          <Trophy className="h-6 w-6 text-amber-500" />
+                        </div>
+                        <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
+                          {challenge.difficulty}
+                        </Badge>
+                      </div>
 
-                  <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
-                    {challenge.title}
-                  </h3>
+                      <h3 className="text-lg font-bold text-foreground group-hover:text-amber-500 transition-colors">
+                        {challenge.title}
+                      </h3>
 
-                  {challenge.topic && (
-                    <p className="text-sm text-muted-foreground mt-1">{challenge.topic.topicName}</p>
-                  )}
+                      {challenge.topic && (
+                        <p className="text-sm text-muted-foreground mt-1">{challenge.topic.topicName}</p>
+                      )}
 
-                  <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1.5">
-                      <Zap className="h-3.5 w-3.5" />
-                      {challenge._count.questions} Questions
-                    </span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      {challenge.estimatedTime} min
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5" />
+                          {challenge._count.questions} Questions
+                        </span>
+                        <span>·</span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          {challenge.estimatedTime} min
+                        </span>
+                      </div>
 
-                  <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`}>
-                    <Button className="w-full mt-5 font-semibold" size="lg">
-                      Start Challenge
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`}>
+                        <Button className="w-full mt-5 font-semibold bg-amber-500 hover:bg-amber-600 text-white" size="lg">
+                          Start Challenge
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-blue-500" />
+              <h2 className="text-xl font-bold">Worksheets</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">Exam-style structured practice.</p>
+            {challenges.filter(c => c.type === "WORKSHEET").length === 0 ? (
+              <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
+                <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold text-foreground">No worksheets published yet</h3>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {challenges.filter(c => c.type === "WORKSHEET").map((worksheet) => (
+                  <Card key={worksheet.id} className="hover:border-blue-500/50 transition-all shadow-sm bg-card group overflow-hidden relative">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/80 to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="bg-blue-500/10 p-3 rounded-xl">
+                          <FileText className="h-6 w-6 text-blue-500" />
+                        </div>
+                        <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[worksheet.difficulty] || difficultyColor.medium)}>
+                          {worksheet.difficulty}
+                        </Badge>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-foreground group-hover:text-blue-500 transition-colors">
+                        {worksheet.title}
+                      </h3>
+
+                      {worksheet.topic && (
+                        <p className="text-sm text-muted-foreground mt-1">{worksheet.topic.topicName}</p>
+                      )}
+
+                      <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5" />
+                          {worksheet._count.questions} Questions
+                        </span>
+                        <span>·</span>
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" />
+                          {worksheet.estimatedTime} min
+                        </span>
+                      </div>
+
+                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${worksheet.id}`}>
+                        <Button className="w-full mt-5 font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
+                          Start Worksheet
+                        </Button>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </section>
+
+        </div>
       </TabsContent>
 
       <TabsContent value="syllabus" className="mt-0">

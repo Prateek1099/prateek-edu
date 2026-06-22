@@ -166,7 +166,7 @@ export default async function Home() {
             <div className="flex flex-col items-center text-center relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">2</div>
               <h3 className="text-xl font-bold mb-2">Choose Subjects</h3>
-              <p className="text-muted-foreground">Access perfectly organized notes, topicals, and past papers.</p>
+              <p className="text-muted-foreground">Access perfectly organized notes, practice challenges, and past papers.</p>
             </div>
             <div className="flex flex-col items-center text-center relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">3</div>
