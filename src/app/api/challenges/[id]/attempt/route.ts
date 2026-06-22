@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateRevisionTasks } from "@/lib/plan-engine";
 
 export async function POST(
   request: NextRequest,
@@ -93,6 +94,21 @@ export async function POST(
           })
         )
       );
+    }
+
+    // AUTO-REGENERATE REVISION PLAN: If the student has an active plan,
+    // refresh tasks based on the new challenge data.
+    try {
+      const plan = await prisma.revisionPlan.findUnique({ where: { userId } });
+      if (plan) {
+        await generateRevisionTasks(
+          userId, plan.id, plan.board, plan.qualification,
+          plan.examDate, plan.studyDaysPerWeek, plan.studyDuration
+        );
+      }
+    } catch (regenErr) {
+      // Non-blocking: don't fail the challenge attempt if regeneration fails
+      console.error("Revision plan auto-regeneration failed:", regenErr);
     }
 
     return Response.json({

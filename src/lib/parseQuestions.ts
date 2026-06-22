@@ -7,6 +7,8 @@ export type ParsedQuestion = {
   correctAnswer: string; // "A" | "B" | "C" | "D"
   explanation?: string;
   topicTag?: string;
+  difficulty?: string;
+  marks?: number;
 };
 
 export type ParseResult = {
@@ -27,6 +29,8 @@ export type ParseResult = {
  * ANSWER: B
  * EXPLANATION: A primary key uniquely identifies each record.
  * TOPIC: Primary Keys
+ * DIFFICULTY: Easy
+ * MARKS: 2
  * ---
  */
 export function parseQuestions(text: string): ParseResult {
@@ -67,6 +71,8 @@ export function parseQuestions(text: string): ParseResult {
     let correctAnswer = "";
     let explanation = "";
     let topicTag = "";
+    let difficulty = "";
+    let marks: number | undefined = undefined;
 
     let currentField = "";
 
@@ -86,6 +92,8 @@ export function parseQuestions(text: string): ParseResult {
       const answerMatch = trimmed.match(/^ANSWER:\s*(.*)/i);
       const explanationMatch = trimmed.match(/^EXPLANATION:\s*(.*)/i);
       const topicMatch = trimmed.match(/^TOPIC:\s*(.*)/i);
+      const difficultyMatch = trimmed.match(/^DIFFICULTY:\s*(.*)/i);
+      const marksMatch = trimmed.match(/^MARKS:\s*(.*)/i);
 
       if (questionMatch) {
         currentField = "question";
@@ -111,6 +119,15 @@ export function parseQuestions(text: string): ParseResult {
       } else if (topicMatch) {
         currentField = "topic";
         topicTag = topicMatch[1].trim();
+      } else if (difficultyMatch) {
+        currentField = "difficulty";
+        difficulty = difficultyMatch[1].trim().toLowerCase();
+      } else if (marksMatch) {
+        currentField = "marks";
+        const parsedMarks = parseInt(marksMatch[1].trim(), 10);
+        if (!isNaN(parsedMarks)) {
+          marks = parsedMarks;
+        }
       } else if (trimmed === "---") {
         // Separator, skip
         continue;
@@ -170,6 +187,8 @@ export function parseQuestions(text: string): ParseResult {
         correctAnswer,
         ...(explanation ? { explanation } : {}),
         ...(topicTag ? { topicTag } : {}),
+        ...(difficulty ? { difficulty } : {}),
+        ...(marks !== undefined ? { marks } : {}),
       });
     }
   }

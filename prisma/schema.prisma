@@ -69,6 +69,8 @@ model User {
   reflections         StudentReflection[]
   challengeAttempts   ChallengeAttempt[]
   mistakeEntries      MistakeEntry[]
+  revisionPlan        RevisionPlan?
+  worksheetAssignments WorksheetAssignment[]
 
   @@map("users")
 }
@@ -133,6 +135,7 @@ model Subject {
   topics        Topic[]
   courses       Course[] // Add course relation here to link courses to subjects properly
   challenges    Challenge[]
+  bankQuestions BankQuestion[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -221,6 +224,7 @@ model Topic {
   userProgress UserTopicProgress[]
   notes        Note[]
   challenges   Challenge[]
+  bankQuestions BankQuestion[]
 
   @@map("topics")
 }
@@ -309,6 +313,8 @@ model Challenge {
   questions Question[]
   attempts  ChallengeAttempt[]
   mistakes  MistakeEntry[]
+  type      String   @default("CHALLENGE") // CHALLENGE, WORKSHEET
+  assignments WorksheetAssignment[]
 
   @@map("challenges")
 }
@@ -325,9 +331,13 @@ model Question {
   explanation    String? @db.Text
   topicTag       String? @map("topic_tag")        // granular topic e.g. "Normalization"
   sortOrder      Int     @default(0) @map("sort_order")
+  bankQuestionId String? @map("bank_question_id")
+  difficulty     String  @default("medium")
+  marks          Int     @default(1)
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   mistakes  MistakeEntry[]
+  bankQuestion   BankQuestion? @relation(fields: [bankQuestionId], references: [id], onDelete: SetNull)
 
   @@map("questions")
 }
@@ -368,4 +378,82 @@ model MistakeEntry {
 
   @@unique([userId, questionId])
   @@map("mistake_entries")
+}
+
+model RevisionPlan {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  board            String
+  qualification    String
+  examDate         DateTime @map("exam_date")
+  studyDaysPerWeek Int      @default(5) @map("study_days_per_week")
+  studyDuration    Int      @default(45) @map("study_duration")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks RevisionTask[]
+
+  @@map("revision_plans")
+}
+
+model RevisionTask {
+  id             String    @id @default(cuid())
+  revisionPlanId String    @map("revision_plan_id")
+  title          String
+  subject        String
+  topic          String
+  type           String    // NOTE_REVISION, CHALLENGE, PAST_PAPER, TOPICAL, MISTAKE_REVIEW
+  status         String    @default("PENDING") // PENDING, COMPLETED, SKIPPED
+  dueDate        DateTime  @map("due_date")
+  priority       String    @default("MEDIUM") // HIGH, MEDIUM, LOW
+  source         String?   // e.g. "Mistake Book", "Challenge Score", "Topic Progress", "General Revision"
+  sourceDetail   String?   @map("source_detail") // e.g. "6 mistakes", "Score: 45%"
+  linkUrl        String?   @map("link_url")
+  linkLabel      String?   @map("link_label")
+  completedAt    DateTime? @map("completed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  revisionPlan RevisionPlan @relation(fields: [revisionPlanId], references: [id], onDelete: Cascade)
+
+  @@map("revision_tasks")
+}
+
+model WorksheetAssignment {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  worksheetId String    @map("worksheet_id")
+  assignedAt  DateTime  @default(now()) @map("assigned_at")
+  dueDate     DateTime? @map("due_date")
+  status      String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worksheet   Challenge @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, worksheetId])
+  @@map("worksheet_assignments")
+}
+
+model BankQuestion {
+  id             String  @id @default(cuid())
+  subjectId      String  @map("subject_id")
+  topicId        String? @map("topic_id")
+  questionText   String  @map("question_text") @db.Text
+  optionA        String  @map("option_a")
+  optionB        String  @map("option_b")
+  optionC        String  @map("option_c")
+  optionD        String  @map("option_d")
+  correctAnswer  String  @map("correct_answer")
+  explanation    String? @db.Text
+  topicTag       String? @map("topic_tag")
+  difficulty     String  @default("medium") // easy, medium, hard
+  marks          Int     @default(1)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  generatedQuestions Question[]
+
+  @@map("bank_questions")
 }

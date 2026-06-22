@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateRevisionTasks } from "@/lib/plan-engine";
 
 // GET: Fetch user's mistake entries
 export async function GET(request: NextRequest) {
@@ -75,6 +76,19 @@ export async function PATCH(request: NextRequest) {
       where: { id },
       data: { status },
     });
+
+    // AUTO-REGENERATE REVISION PLAN: Refresh tasks when mistake status changes
+    try {
+      const plan = await prisma.revisionPlan.findUnique({ where: { userId } });
+      if (plan) {
+        await generateRevisionTasks(
+          userId, plan.id, plan.board, plan.qualification,
+          plan.examDate, plan.studyDaysPerWeek, plan.studyDuration
+        );
+      }
+    } catch (regenErr) {
+      console.error("Revision plan auto-regeneration failed:", regenErr);
+    }
 
     return Response.json({ success: true });
   } catch {

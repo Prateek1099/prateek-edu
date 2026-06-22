@@ -11,6 +11,7 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   const origError = console.error;
   console.error = (...args: unknown[]) => {
     if (typeof args[0] === "string" && args[0].includes("Encountered a script tag")) return;
+    if (typeof args[0] === "string" && args[0].includes("SECURITY WARNING: The SSL modes")) return;
     origError.apply(console, args);
   };
 }

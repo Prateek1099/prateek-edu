@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles } from "lucide-react";
+import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Rocket } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -25,7 +25,12 @@ export default async function DashboardPage() {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  const [papersCompleted, papersInProgress, enrollments, recentPapers, topicProgress, recentActivityCount, recentChallenges, challengeAgg, mistakeTotal, mistakeNeedsRevision, mistakeRevised, topMistakeTopics] = await Promise.all([
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const [papersCompleted, papersInProgress, enrollments, recentPapers, topicProgress, recentActivityCount, recentChallenges, challengeAgg, mistakeTotal, mistakeNeedsRevision, mistakeRevised, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
     prisma.userProgress.count({ where: { userId, status: "completed" } }),
     prisma.userProgress.count({ where: { userId, status: "in_progress" } }),
     prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
@@ -64,7 +69,41 @@ export default async function DashboardPage() {
       orderBy: { _sum: { mistakeCount: "desc" } },
       take: 5,
     }),
+    prisma.revisionPlan.findUnique({
+      where: { userId },
+      include: {
+        tasks: {
+          where: { dueDate: { gte: todayStart, lte: todayEnd } },
+          orderBy: { createdAt: "asc" },
+          take: 5,
+        },
+        _count: {
+          select: {
+            tasks: { where: { status: { not: "PENDING" } } },
+          },
+        },
+      },
+    }),
+    prisma.worksheetAssignment.findMany({
+      where: { userId },
+      include: {
+        worksheet: {
+          include: {
+            subject: { include: { qualification: { include: { board: true } } } },
+            _count: { select: { questions: true } }
+          }
+        }
+      },
+      orderBy: { assignedAt: "desc" },
+      take: 3
+    })
   ]);
+
+  // Revision plan stats
+  const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id } }) : 0;
+  const planCompletedTasks = revisionPlan?._count?.tasks || 0;
+  const planCompletionPct = planTotalTasks > 0 ? Math.round((planCompletedTasks / planTotalTasks) * 100) : 0;
+  const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
 
   const allPapers = recentPapers; // Renamed for clarity since it fetches all now
   const recentPapersSliced = allPapers.slice(0, 6);
@@ -134,6 +173,155 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
           </Link>
         </div>
       </div>
+
+      {/* 0. Revision Planner Widget */}
+      <section>
+        {revisionPlan ? (
+          <Card className="bg-gradient-to-br from-primary/5 via-card to-card shadow-md border-primary/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 opacity-[0.04]">
+              <CalendarDays className="w-32 h-32 text-primary" />
+            </div>
+            <CardContent className="p-6 relative z-10">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <CalendarDays className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">My Revision Plan</h2>
+                    <p className="text-sm text-muted-foreground">
+                      {revisionPlan.qualification.toUpperCase()} · {daysUntilExam} days remaining
+                    </p>
+                  </div>
+                </div>
+                <Link 
+                  href="/dashboard/revision-planner"
+                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
+                >
+                  Open Full Planner <ArrowRight className="w-4 h-4 ml-1" />
+                </Link>
+              </div>
+
+              <div className="mb-4">
+                <div className="flex justify-between text-sm mb-1.5">
+                  <span className="text-muted-foreground">Completion</span>
+                  <span className="font-semibold">{planCompletionPct}%</span>
+                </div>
+                <Progress value={planCompletionPct} className="h-2" />
+              </div>
+
+              {revisionPlan.tasks.length > 0 ? (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Today&apos;s Tasks</p>
+                  <div className="space-y-2">
+                    {revisionPlan.tasks.map((task) => (
+                      <div key={task.id} className="flex items-center gap-3 text-sm">
+                        {task.status === "COMPLETED" ? (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                        )}
+                        <span className={task.status === "COMPLETED" ? "line-through text-muted-foreground" : "font-medium"}>
+                          {task.title}
+                        </span>
+                        {task.priority === "HIGH" && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-500">HIGH</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No tasks scheduled for today. Check your full planner for upcoming tasks.</p>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="bg-gradient-to-br from-primary/5 via-card to-card shadow-md border-primary/20 border-dashed relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-6 opacity-[0.04]">
+              <Rocket className="w-32 h-32 text-primary" />
+            </div>
+            <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold flex items-center gap-2">
+                  <CalendarDays className="w-5 h-5 text-primary" />
+                  What should you study today?
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Set up your personal Revision Planner to get daily study recommendations based on your mistakes, challenges, and progress.
+                </p>
+              </div>
+              <Link 
+                href="/dashboard/revision-planner"
+                className={cn(buttonVariants({ size: "lg" }), "shadow-md whitespace-nowrap")}
+              >
+                Set Up Planner
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {/* 0.5 Worksheet Assignments Widget */}
+      {worksheetAssignments.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" /> Assigned Worksheets
+            </h2>
+            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary")}>
+              View All <ArrowRight className="w-4 h-4 ml-1" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {worksheetAssignments.map(assignment => {
+              const ws = assignment.worksheet;
+              const isCompleted = assignment.status === "COMPLETED";
+              const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
+              const board = ws.subject.qualification.board.name;
+              const qual = ws.subject.qualification.name;
+              const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
+
+              return (
+                <Link key={assignment.id} href={isCompleted ? "#" : attemptLink} className="block group">
+                  <Card className={`h-full transition-all hover:shadow-md ${isOverdue ? 'border-destructive/50' : 'hover:border-primary/40'}`}>
+                    <CardContent className="p-5 flex flex-col h-full justify-between">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          {isCompleted ? (
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-600">
+                              <CheckCircle2 className="w-3 h-3" /> Completed
+                            </span>
+                          ) : isOverdue ? (
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-destructive/10 text-destructive">
+                              <AlertCircle className="w-3 h-3" /> Overdue
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-primary/10 text-primary">
+                              <FileText className="w-3 h-3" /> Pending
+                            </span>
+                          )}
+                          {assignment.dueDate && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {new Date(assignment.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-base group-hover:text-primary transition-colors line-clamp-2">{ws.title}</h3>
+                        <p className="text-sm text-muted-foreground mt-1">{ws.subject.name}</p>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
+                        <span>{ws._count.questions} Questions</span>
+                        {!isCompleted && <span className="text-primary font-medium group-hover:underline">Start →</span>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* 1. Progress Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -321,7 +509,7 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             <Card className="bg-card shadow-sm border-border">
               <CardContent className="p-6 space-y-6">
                 {subjectProgressList.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-4">No subject progress tracked yet. Complete topical notes to see progress!</div>
+                  <div className="text-center text-muted-foreground py-4">No subject progress tracked yet. Complete practice challenges to see progress!</div>
                 ) : subjectProgressList.map((sp, i) => {
                   const percentage = sp.total > 0 ? Math.round((sp.completed / sp.total) * 100) : 0;
                   return (
