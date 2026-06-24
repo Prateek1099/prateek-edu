@@ -31,7 +31,7 @@ export default async function StudentPerformancePage({
 
   const student = await prisma.user.findUnique({
     where: { id: studentId },
-    select: { id: true, name: true, email: true, createdAt: true },
+    select: { id: true, name: true, email: true, createdAt: true, isPremium: true },
   });
 
   if (!student) notFound();
