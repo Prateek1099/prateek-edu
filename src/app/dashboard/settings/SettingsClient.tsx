@@ -110,7 +110,7 @@ export default function SettingsClient({ user }: { user: any }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Preferred Board</Label>
-              <Select value={board} onValueChange={setBoard}>
+              <Select value={board} onValueChange={(v) => setBoard(v || "cambridge")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Board" />
                 </SelectTrigger>
@@ -122,7 +122,7 @@ export default function SettingsClient({ user }: { user: any }) {
             </div>
             <div className="space-y-2">
               <Label>Qualification</Label>
-              <Select value={qualification} onValueChange={setQualification}>
+              <Select value={qualification} onValueChange={(v) => setQualification(v || "")}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Qualification" />
                 </SelectTrigger>
