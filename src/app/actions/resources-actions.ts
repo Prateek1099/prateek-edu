@@ -41,37 +41,44 @@ export async function clearEcosystemPreference() {
 }
 
 export async function getEcosystemPreference() {
-  const cookieStore = await cookies();
-  const pref = cookieStore.get(PREFERENCE_COOKIE);
-  
-  if (pref) {
-    try {
-      return JSON.parse(pref.value) as { board: string; qualification: string };
-    } catch (e) {
-      // invalid cookie JSON
+  try {
+    const cookieStore = await cookies();
+    const pref = cookieStore.get(PREFERENCE_COOKIE);
+    
+    if (pref) {
+      try {
+        return JSON.parse(pref.value) as { board: string; qualification: string };
+      } catch (e) {
+        // invalid cookie JSON
+      }
     }
-  }
 
-  // If no cookie, check database for logged-in user
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
-  if (userId) {
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { preferredBoard: true, preferredQualification: true },
-    });
-    if (user?.preferredBoard && user?.preferredQualification) {
-      // Re-instate the cookie
-      cookieStore.set(PREFERENCE_COOKIE, JSON.stringify({ board: user.preferredBoard, qualification: user.preferredQualification }), {
-        maxAge: 60 * 60 * 24 * 365,
-        path: "/",
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+    // If no cookie, check database for logged-in user
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    if (userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferredBoard: true, preferredQualification: true },
       });
-      return { board: user.preferredBoard, qualification: user.preferredQualification };
+      if (user?.preferredBoard && user?.preferredQualification) {
+        // Re-instate the cookie
+        cookieStore.set(PREFERENCE_COOKIE, JSON.stringify({ board: user.preferredBoard, qualification: user.preferredQualification }), {
+          maxAge: 60 * 60 * 24 * 365,
+          path: "/",
+          sameSite: "lax",
+          secure: process.env.NODE_ENV === "production",
+        });
+        return { board: user.preferredBoard, qualification: user.preferredQualification };
+      }
     }
-  }
 
-  return null;
+    return null;
+  } catch (error) {
+    // If session resolution or DB lookup fails (corrupted cookie, DB issue),
+    // return null gracefully instead of crashing the page.
+    console.error("getEcosystemPreference: Failed, returning null:", error);
+    return null;
+  }
 }
 
