@@ -68,7 +68,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Subject</Label>
-              <Select value={subjectId} onValueChange={setSubjectId}>
+              <Select value={subjectId} onValueChange={(v) => setSubjectId(v || "")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {subjects.map((s) => (
@@ -79,7 +79,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
             </div>
             <div className="space-y-2">
               <Label>Topic</Label>
-              <Select value={topicId} onValueChange={setTopicId}>
+              <Select value={topicId} onValueChange={(v) => setTopicId(v || "all")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Mixed Topics (Revision)</SelectItem>
@@ -94,7 +94,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Difficulty</Label>
-              <Select value={difficulty} onValueChange={setDifficulty}>
+              <Select value={difficulty} onValueChange={(v) => setDifficulty(v || "mixed")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="easy">Easy</SelectItem>
@@ -106,7 +106,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
             </div>
             <div className="space-y-2">
               <Label>Number of Questions</Label>
-              <Select value={questionCount} onValueChange={setQuestionCount}>
+              <Select value={questionCount} onValueChange={(v) => setQuestionCount(v || "10")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="5">5 Questions</SelectItem>
@@ -121,7 +121,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
 
           <div className="space-y-2">
             <Label>Generation Source</Label>
-            <Select value={source} onValueChange={setSource}>
+            <Select value={source} onValueChange={(v) => setSource(v || "bank")}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="bank">Existing Question Bank (Recommended)</SelectItem>
