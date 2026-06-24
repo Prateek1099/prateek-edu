@@ -22,7 +22,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
   const [source, setSource] = useState("bank");
 
   const selectedSubject = subjects.find(s => s.id === subjectId);
-  const topics = selectedSubject?.topics || [];
+  const topics: { id: string; topicName: string }[] = selectedSubject?.topics || [];
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
