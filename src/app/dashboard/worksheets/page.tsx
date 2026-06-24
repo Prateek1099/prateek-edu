@@ -12,7 +12,7 @@ export default async function StudentWorksheetsPage() {
   if (!session || !session.user) redirect("/login");
 
   const assignments = await prisma.worksheetAssignment.findMany({
-    where: { userId: session.user.id },
+    where: { userId: (session.user as any).id },
     include: {
       worksheet: {
         include: {
