@@ -37,7 +37,7 @@ export default async function WorksheetPrintPage({ params }: { params: Promise<{
         {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight uppercase">ExamNest</h1>
+            <h1 className="text-3xl font-bold tracking-tight uppercase">Vexa</h1>
             <p className="text-sm font-semibold text-gray-600 mt-1">Intelligent Worksheet Generator</p>
           </div>
           <div className="text-right">

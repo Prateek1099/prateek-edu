@@ -6,7 +6,7 @@
  *
  * Env resolution (first non-empty wins):
  * 1. `PUBLIC_BLOB_READ_WRITE_TOKEN` — optional; use during migration if `BLOB_READ_WRITE_TOKEN` still points at an old private store.
- * 2. `BLOB_READ_WRITE_TOKEN` — usual Vercel default; must be the token from your **public** store (e.g. examnest-public-files).
+ * 2. `BLOB_READ_WRITE_TOKEN` — usual Vercel default; must be the token from your **public** store (e.g. vexa-public-files).
  * 3. `VERCEL_BLOB_READ_WRITE_TOKEN` — alternate name some setups use.
  */
 export function resolveBlobReadWriteToken(): string | null {

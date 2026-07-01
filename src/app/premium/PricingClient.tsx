@@ -48,7 +48,7 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: order.amount,
         currency: order.currency,
-        name: "ExamNest Premium",
+        name: "Vexa Premium",
         description: `${plan.name} Subscription`,
         order_id: order.id,
         handler: async function (response: any) {

@@ -63,7 +63,7 @@ export function PremiumViewer({ children, isPremiumContent = true }: PremiumView
           <Crown className="w-5 h-5 text-amber-500" />
         </h2>
         <p className="text-muted-foreground max-w-md mx-auto mb-8 relative z-10">
-          This content is exclusive to ExamNest Premium members. Upgrade to unlock all past papers, AI evaluations, and distraction-free viewing.
+          This content is exclusive to Vexa Premium members. Upgrade to unlock all past papers, AI evaluations, and distraction-free viewing.
         </p>
         <Button size="lg" className="relative z-10 font-semibold" onClick={() => router.push("/premium")}>
           Unlock Premium Now

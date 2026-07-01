@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const prompt = `
-You are ExamNest AI, assisting a teacher in analyzing recent student struggles.
+You are Vexa AI, assisting a teacher in analyzing recent student struggles.
 Generate a highly concise "AI Teaching Insight" based on the aggregated class data provided below.
 
 Context about the class:

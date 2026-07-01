@@ -48,7 +48,7 @@ export default async function Home() {
             🎉 Welcome to the new standard in academic resources
           </div>
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-foreground mb-6 leading-tight">
-            Welcome to <span className="text-primary block sm:inline mt-2 sm:mt-0">ExamNest</span>
+            Welcome to <span className="text-primary block sm:inline mt-2 sm:mt-0">Vexa</span>
           </h1>
           <p className="max-w-2xl text-xl text-muted-foreground mb-12">
             Free, highly organized, and distraction-free past papers and study resources built for serious students.
@@ -146,11 +146,11 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* How ExamNest Works Section */}
+      {/* How Vexa Works Section */}
       <section className="w-full py-20 bg-background relative z-20">
         <div className="container px-4 md:px-8 max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">How ExamNest Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">How Vexa Works</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Your streamlined path to better grades.
             </p>
@@ -183,7 +183,7 @@ export default async function Home() {
       <section className="w-full py-24 bg-card border-t border-border/50">
         <div className="container px-4 md:px-8 max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Why choose ExamNest?</h2>
+            <h2 className="text-3xl md:text-5xl font-bold tracking-tight mb-4">Why choose Vexa?</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               We stripped away the clutter, the ads, and the confusing layouts to give you exactly what you need.
             </p>

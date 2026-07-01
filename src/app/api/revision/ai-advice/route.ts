@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     const prompt = `
-You are ExamNest AI, a helpful, encouraging, and highly concise educational assistant specialising in exam revision planning.
+You are Vexa AI, a helpful, encouraging, and highly concise educational assistant specialising in exam revision planning.
 Based on the student's revision plan data, give 3-4 specific, actionable study recommendations.
 
 Student's revision context:

@@ -133,7 +133,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
             <GraduationCap className="h-6 w-6 text-primary" />
           </div>
           <span className="font-bold sm:inline-block hidden text-xl tracking-tight text-foreground">
-            ExamNest
+            Vexa
           </span>
         </Link>
         
@@ -151,7 +151,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
               <nav className="grid gap-6 text-lg font-medium">
                 <Link href="/" className="flex items-center gap-2 font-semibold">
                   <GraduationCap className="h-6 w-6 text-primary" />
-                  ExamNest
+                  Vexa
                 </Link>
                 {routes.map((route: any) => (
                   <Link

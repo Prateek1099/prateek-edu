@@ -47,7 +47,7 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Use public key here
         amount: data.amount,
         currency: "INR",
-        name: "ExamNest",
+        name: "Vexa",
         description: "Course Enrollment",
         order_id: data.id,
         handler: async function (response: any) {

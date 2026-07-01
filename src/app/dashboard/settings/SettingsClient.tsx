@@ -200,7 +200,7 @@ export default function SettingsClient({ user }: { user: any }) {
       <Card className="bg-card shadow-sm border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Moon className="w-5 h-5 text-primary" /> Appearance</CardTitle>
-          <CardDescription>Customize how ExamNest looks on your device.</CardDescription>
+          <CardDescription>Customize how Vexa looks on your device.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 max-w-lg">

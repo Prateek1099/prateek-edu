@@ -14,12 +14,12 @@ export async function sendVerificationEmail(email: string, token: string) {
   const verifyUrl = `${baseUrl}/api/verify?token=${token}&email=${encodeURIComponent(email)}`;
 
   const mailOptions = {
-    from: process.env.EMAIL_FROM || "noreply@examnest.com",
+    from: process.env.EMAIL_FROM || "noreply@vexaonline.in",
     to: email,
-    subject: "Verify your ExamNest Account",
+    subject: "Verify your Vexa Account",
     html: `
       <div style="font-family: Arial, sans-serif; max-w: 600px; margin: 0 auto;">
-        <h2>Welcome to ExamNest!</h2>
+        <h2>Welcome to Vexa!</h2>
         <p>Please verify your email address by clicking the link below:</p>
         <div style="margin: 30px 0;">
           <a href="${verifyUrl}" style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">

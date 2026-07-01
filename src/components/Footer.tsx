@@ -10,7 +10,7 @@ export default function Footer() {
             <Link href="/" className="flex items-center space-x-2">
               <GraduationCap className="h-6 w-6 text-primary" />
               <span className="font-bold text-lg text-foreground">
-                ExamNest
+                Vexa
               </span>
             </Link>
             <p className="text-sm max-w-sm">
@@ -38,7 +38,7 @@ export default function Footer() {
         </div>
         
         <div className="mt-16 pt-8 border-t flex flex-col md:flex-row items-center justify-between text-xs text-muted-foreground/80">
-          <p>&copy; {new Date().getFullYear()} ExamNest. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Vexa. All rights reserved.</p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link href="#" className="hover:text-primary transition-colors">Privacy Policy</Link>
             <Link href="#" className="hover:text-primary transition-colors">Terms of Service</Link>

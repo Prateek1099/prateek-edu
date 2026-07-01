@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const prompt = `
-You are ExamNest AI, a helpful, encouraging, and highly concise educational assistant.
+You are Vexa AI, a helpful, encouraging, and highly concise educational assistant.
 Generate a smart, personalized study insight based on the student's recent platform activity.
 
 Context about the student:

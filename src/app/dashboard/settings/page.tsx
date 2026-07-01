@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import SettingsClient from "./SettingsClient";
 
 export const metadata = {
-  title: "Settings | ExamNest",
-  description: "Manage your ExamNest profile, preferences, and account settings.",
+  title: "Settings | Vexa",
+  description: "Manage your Vexa profile, preferences, and account settings.",
 };
 
 export default async function SettingsPage() {

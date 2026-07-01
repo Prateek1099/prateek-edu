@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ExamNest | Cambridge & CBSE Hub",
-  description: "Free, organized, ad-free past papers, syllabus tracker, and study resources for serious students.",
+  title: "Vexa | Cambridge & CBSE Hub",
+  description: "Vexa is an intelligent learning platform designed for students and teachers featuring Question Banks, Quick Practice, Worksheets, Revision Planning, Teaching Intelligence, AI Insights and more.",
 };
 
 export default function RootLayout({
