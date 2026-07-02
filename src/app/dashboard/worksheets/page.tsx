@@ -88,8 +88,25 @@ export default async function StudentWorksheetsPage() {
                     </div>
                   </div>
                   
-                  <div className="w-full sm:w-auto shrink-0">
-                    {isCompleted ? (
+                  <div className="w-full sm:w-auto shrink-0 flex flex-col sm:flex-row gap-2">
+                    {ws.type === "PDF_WORKSHEET" ? (
+                      <>
+                        {ws.pdfUrl && (
+                          <a href={ws.pdfUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="default" className="w-full sm:w-auto gap-2">
+                              <FileText className="w-4 h-4" /> View Questions
+                            </Button>
+                          </a>
+                        )}
+                        {ws.pdfAnswerUrl && (
+                          <a href={ws.pdfAnswerUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" className="w-full sm:w-auto gap-2">
+                              <FileText className="w-4 h-4" /> View Answers
+                            </Button>
+                          </a>
+                        )}
+                      </>
+                    ) : isCompleted ? (
                       <Button variant="outline" className="w-full sm:w-auto" disabled>Already Completed</Button>
                     ) : (
                       <Link href={attemptLink} className="block">

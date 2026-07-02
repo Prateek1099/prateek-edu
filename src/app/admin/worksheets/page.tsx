@@ -12,7 +12,7 @@ export default async function AdminWorksheetsPage() {
   if (!session || !session.user || (session.user as any).role !== "admin") redirect("/dashboard");
 
   const worksheets = await prisma.challenge.findMany({
-    where: { type: "WORKSHEET" },
+    where: { type: { in: ["WORKSHEET", "PDF_WORKSHEET"] } },
     orderBy: { createdAt: "desc" },
     include: {
       subject: true,
@@ -72,20 +72,41 @@ export default async function AdminWorksheetsPage() {
                 <tbody className="divide-y">
                   {worksheets.map(ws => (
                     <tr key={ws.id} className="hover:bg-muted/50">
-                      <td className="px-4 py-3 font-medium">{ws.title}</td>
+                      <td className="px-4 py-3 font-medium">
+                        <div className="flex items-center gap-2">
+                          {ws.title}
+                          {ws.type === "PDF_WORKSHEET" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 font-semibold uppercase">PDF</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {ws.subject.name} {ws.topic ? `• ${ws.topic.topicName}` : ''}
                       </td>
-                      <td className="px-4 py-3">{ws._count.questions}</td>
+                      <td className="px-4 py-3">
+                        {ws.type === "PDF_WORKSHEET" ? (
+                          <span className="text-muted-foreground text-xs">PDF</span>
+                        ) : ws._count.questions}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1"><Users className="w-3 h-3" /> {ws._count.assignments} students</span>
                       </td>
                       <td className="px-4 py-3 text-right space-x-2">
-                        {/* Print PDF Button */}
-                        <Link href={`/admin/worksheets/${ws.id}/print`}>
-                          <Button variant="outline" size="sm" className="gap-2"><Printer className="w-3 h-3" /> Print PDF</Button>
-                        </Link>
-                        {/* Note: The user said we should have a 'Publish to Students' button. It could open a modal, but for now we just prepare the architecture. */}
+                        {ws.type === "PDF_WORKSHEET" && ws.pdfUrl && (
+                          <a href={ws.pdfUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-2"><FileText className="w-3 h-3" /> Questions</Button>
+                          </a>
+                        )}
+                        {ws.type === "PDF_WORKSHEET" && ws.pdfAnswerUrl && (
+                          <a href={ws.pdfAnswerUrl} target="_blank" rel="noopener noreferrer">
+                            <Button variant="outline" size="sm" className="gap-2"><FileText className="w-3 h-3" /> Answers</Button>
+                          </a>
+                        )}
+                        {ws.type === "WORKSHEET" && (
+                          <Link href={`/admin/worksheets/${ws.id}/print`}>
+                            <Button variant="outline" size="sm" className="gap-2"><Printer className="w-3 h-3" /> Print PDF</Button>
+                          </Link>
+                        )}
                         <Button variant="secondary" size="sm">Publish</Button>
                       </td>
                     </tr>

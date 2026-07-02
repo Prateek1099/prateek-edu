@@ -313,7 +313,9 @@ model Challenge {
   questions Question[]
   attempts  ChallengeAttempt[]
   mistakes  MistakeEntry[]
-  type      String   @default("CHALLENGE") // CHALLENGE, WORKSHEET
+  type      String   @default("CHALLENGE") // CHALLENGE, WORKSHEET, PDF_WORKSHEET
+  pdfUrl       String? @map("pdf_url")        // Questions-only PDF
+  pdfAnswerUrl String? @map("pdf_answer_url") // Questions + Answers PDF
   assignments WorksheetAssignment[]
 
   @@map("challenges")
