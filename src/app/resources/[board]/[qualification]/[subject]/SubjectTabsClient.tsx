@@ -236,14 +236,14 @@ export default function SubjectTabsClient({
               <h2 className="text-xl font-bold">Worksheets</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">Exam-style structured practice.</p>
-            {challenges.filter(c => c.type === "WORKSHEET").length === 0 ? (
+            {challenges.filter(c => c.type === "WORKSHEET" || c.type === "PDF_WORKSHEET").length === 0 ? (
               <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
                 <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-semibold text-foreground">No worksheets published yet</h3>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {challenges.filter(c => c.type === "WORKSHEET").map((worksheet) => (
+                {challenges.filter(c => c.type === "WORKSHEET" || c.type === "PDF_WORKSHEET").map((worksheet: any) => (
                   <Card key={worksheet.id} className="hover:border-blue-500/50 transition-all shadow-sm bg-card group overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/80 to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <CardContent className="p-6">
@@ -267,7 +267,7 @@ export default function SubjectTabsClient({
                       <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1.5">
                           <Zap className="h-3.5 w-3.5" />
-                          {worksheet._count.questions} Questions
+                          {worksheet.type === "PDF_WORKSHEET" ? "PDF format" : `${worksheet._count.questions} Questions`}
                         </span>
                         <span>·</span>
                         <span className="flex items-center gap-1.5">
@@ -276,11 +276,30 @@ export default function SubjectTabsClient({
                         </span>
                       </div>
 
-                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${worksheet.id}`}>
-                        <Button className="w-full mt-5 font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
-                          Start Worksheet
-                        </Button>
-                      </Link>
+                      {worksheet.type === "PDF_WORKSHEET" ? (
+                        <div className="flex flex-col sm:flex-row gap-2 mt-5">
+                          {worksheet.pdfUrl && (
+                            <a href={worksheet.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
+                              <Button className="w-full font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
+                                View Questions
+                              </Button>
+                            </a>
+                          )}
+                          {worksheet.pdfAnswerUrl && (
+                            <a href={worksheet.pdfAnswerUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
+                              <Button variant="outline" className="w-full font-semibold" size="lg">
+                                View Answers
+                              </Button>
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${worksheet.id}`}>
+                          <Button className="w-full mt-5 font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
+                            Start Worksheet
+                          </Button>
+                        </Link>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
