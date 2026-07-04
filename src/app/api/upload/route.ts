@@ -26,25 +26,29 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const filename = searchParams.get('filename') || 'file.pdf';
 
-  let file: File;
-  try {
-    const formData = await request.formData();
-    const uploadedFile = formData.get('file');
-    if (!uploadedFile || !(uploadedFile as File).name) {
-      return NextResponse.json({ error: 'No file provided in form data' }, { status: 400 });
-    }
-    file = uploadedFile as File;
-  } catch (err) {
-    return NextResponse.json({ error: 'Failed to parse form data' }, { status: 400 });
+  if (!request.body) {
+    return NextResponse.json({ error: 'No body provided' }, { status: 400 });
   }
 
+  // Determine content type from filename extension
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const contentTypeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    gif: 'image/gif',
+  };
+  const contentType = contentTypeMap[ext || ''] || 'application/octet-stream';
+
   try {
-    const blob = await put(filename, file, {
+    const blob = await put(filename, request.body, {
       access: 'public',
       token,
       addRandomSuffix: false,
       allowOverwrite: true,
-      contentType: file.type || 'application/pdf',
+      contentType,
     });
 
     return NextResponse.json(blob);
