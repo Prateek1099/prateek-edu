@@ -51,8 +51,9 @@ export async function GET(req: Request) {
       targetUrl = `${protocol}://${host}${targetUrl}`;
     }
 
-    // Ensure the URL is properly encoded (searchParams.get decodes it, which breaks fetch for paths with spaces)
-    targetUrl = encodeURI(targetUrl);
+    // Fix spaces in the URL without double-encoding existing %XX sequences.
+    // searchParams.get() auto-decodes, so we just need to re-encode spaces.
+    targetUrl = targetUrl.replace(/ /g, '%20');
 
     // Fetch the PDF from the original source
     const response = await fetch(targetUrl);
