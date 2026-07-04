@@ -39,6 +39,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     jpeg: 'image/jpeg',
     webp: 'image/webp',
     gif: 'image/gif',
+    zip: 'application/zip',
   };
   const contentType = contentTypeMap[ext || ''] || 'application/octet-stream';
 

@@ -62,10 +62,14 @@ export async function GET(req: Request) {
       return new NextResponse("Failed to fetch PDF", { status: response.status });
     }
 
-    const contentType = response.headers.get("content-type") || "application/pdf";
-    const arrayBuffer = await response.arrayBuffer();
-
     const filename = url.split("/").pop() || "document.pdf";
+
+    let contentType = response.headers.get("content-type") || "application/pdf";
+    // Force correct content type for PDFs — some old Blob uploads may have wrong content-type
+    if (url.toLowerCase().endsWith('.pdf') || filename.toLowerCase().endsWith('.pdf')) {
+      contentType = 'application/pdf';
+    }
+    const arrayBuffer = await response.arrayBuffer();
 
     return new NextResponse(arrayBuffer, {
       headers: {
