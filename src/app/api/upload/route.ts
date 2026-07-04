@@ -26,16 +26,25 @@ export async function POST(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const filename = searchParams.get('filename') || 'file.pdf';
 
-  if (!request.body) {
-    return NextResponse.json({ error: 'No body provided' }, { status: 400 });
+  let file: File;
+  try {
+    const formData = await request.formData();
+    const uploadedFile = formData.get('file');
+    if (!uploadedFile || !(uploadedFile as File).name) {
+      return NextResponse.json({ error: 'No file provided in form data' }, { status: 400 });
+    }
+    file = uploadedFile as File;
+  } catch (err) {
+    return NextResponse.json({ error: 'Failed to parse form data' }, { status: 400 });
   }
 
   try {
-    const blob = await put(filename, request.body, {
+    const blob = await put(filename, file, {
       access: 'public',
       token,
       addRandomSuffix: false,
       allowOverwrite: true,
+      contentType: file.type || 'application/pdf',
     });
 
     return NextResponse.json(blob);

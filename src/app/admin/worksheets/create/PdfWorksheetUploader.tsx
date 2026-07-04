@@ -28,9 +28,12 @@ export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
     const filename = `worksheets/${folder}/${Date.now()}-${file.name}`;
+    const formData = new FormData();
+    formData.append("file", file);
+    
     const res = await fetch(`/api/upload?filename=${encodeURIComponent(filename)}`, {
       method: "POST",
-      body: file,
+      body: formData,
     });
     if (!res.ok) {
       const data = await res.json();
