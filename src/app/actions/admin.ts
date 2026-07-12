@@ -140,6 +140,23 @@ export async function deletePaper(id: string) {
   }
 }
 
+export async function togglePaperPublished(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    const paper = await prisma.paper.findUnique({ where: { id } });
+    if (!paper) return { success: false as const, error: "Paper not found" };
+    await prisma.paper.update({
+      where: { id },
+      data: { isPublished: !paper.isPublished },
+    });
+    revalidatePaperRelated();
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
 // --- NOTES ---
 
 export async function createNote(data: {
@@ -185,6 +202,24 @@ export async function deleteNote(id: string) {
   if (denied) return { success: false as const, error: denied };
   try {
     await prisma.note.delete({ where: { id } });
+    revalidateNoteRelated();
+    revalidatePath("/board", "layout");
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function toggleNotePublished(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    const note = await prisma.note.findUnique({ where: { id } });
+    if (!note) return { success: false as const, error: "Note not found" };
+    await prisma.note.update({
+      where: { id },
+      data: { isPublished: !note.isPublished },
+    });
     revalidateNoteRelated();
     revalidatePath("/board", "layout");
     return { success: true as const };

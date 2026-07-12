@@ -32,6 +32,7 @@ export default async function AdminNotesPage() {
   const subjectRows = subjects.map((s) => ({
     id: s.id,
     label: `${s.name}${s.code ? ` (${s.code})` : ""} · ${s.qualification.title} · ${s.qualification.board.title}`,
+    board: s.qualification.board.name,
     topics: s.topics.map((t) => ({ id: t.id, topicName: t.topicName })),
   }));
 

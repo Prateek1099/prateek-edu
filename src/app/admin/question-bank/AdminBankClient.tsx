@@ -16,7 +16,9 @@ import { appendBankQuestions, deleteBankQuestion } from "@/app/actions/admin";
 import { Database, Plus, Trash2, Upload, AlertCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type SubjectOption = { id: string; label: string };
+import { useAdminBoard } from "@/components/AdminBoardContext";
+
+type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
 
 const difficultyColor: Record<string, string> = {
@@ -34,7 +36,13 @@ export default function AdminBankClient({
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
 }) {
+  const { selectedBoard } = useAdminBoard();
   const [questions, setQuestions] = useState(initialQuestions);
+  
+  const filteredSubjectOptions = useMemo(() => {
+    if (selectedBoard === "all") return subjectOptions;
+    return subjectOptions.filter(s => s.board === selectedBoard);
+  }, [subjectOptions, selectedBoard]);
   
   // Filters
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
@@ -64,6 +72,7 @@ export default function AdminBankClient({
   // Derived questions
   const filteredQuestions = useMemo(() => {
     return questions.filter(q => {
+      if (selectedBoard !== "all" && q.subject.qualification.board.name !== selectedBoard) return false;
       if (subjectFilter !== "all" && q.subjectId !== subjectFilter) return false;
       if (topicFilter !== "all" && q.topicId !== topicFilter) return false;
       if (difficultyFilter !== "all" && q.difficulty !== difficultyFilter) return false;
@@ -75,7 +84,7 @@ export default function AdminBankClient({
       }
       return true;
     });
-  }, [questions, subjectFilter, topicFilter, difficultyFilter, searchQuery]);
+  }, [questions, subjectFilter, topicFilter, difficultyFilter, searchQuery, selectedBoard]);
 
   const handleParse = () => {
     setParseResult(parseQuestions(importText));
@@ -133,7 +142,7 @@ export default function AdminBankClient({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjectOptions.map(s => (
+              {filteredSubjectOptions.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
               ))}
             </SelectContent>
@@ -242,7 +251,7 @@ export default function AdminBankClient({
                   <SelectValue placeholder="Select subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjectOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                  {filteredSubjectOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

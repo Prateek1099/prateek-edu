@@ -33,6 +33,7 @@ export default async function AdminPapersPage() {
   const subjectOptions = subjects.map((s) => ({
     id: s.id,
     label: `${s.name}${s.code ? ` (${s.code})` : ""} · ${s.qualification.title} · ${s.qualification.board.title}`,
+    board: s.qualification.board.name,
   }));
 
   return <AdminPapersClient papers={papers} subjectOptions={subjectOptions} />;

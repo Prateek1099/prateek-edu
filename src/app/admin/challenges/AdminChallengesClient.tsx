@@ -33,7 +33,9 @@ import {
   Upload,
 } from "lucide-react";
 
-type SubjectOption = { id: string; label: string };
+import { useAdminBoard } from "@/components/AdminBoardContext";
+
+type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
 
 const DIFFICULTY_OPTIONS = [
@@ -68,6 +70,17 @@ interface Props {
 
 export default function AdminChallengesClient({ challenges, subjectOptions, topicOptions }: Props) {
   const router = useRouter();
+  const { selectedBoard } = useAdminBoard();
+
+  const filteredSubjectOptions = useMemo(() => {
+    if (selectedBoard === "all") return subjectOptions;
+    return subjectOptions.filter(s => s.board === selectedBoard);
+  }, [subjectOptions, selectedBoard]);
+  
+  const filteredChallenges = useMemo(() => {
+    if (selectedBoard === "all") return challenges;
+    return challenges.filter(c => c.subject.qualification.board.name === selectedBoard);
+  }, [challenges, selectedBoard]);
 
   // Dialog states
   const [showCreate, setShowCreate] = useState(false);
@@ -234,7 +247,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
       {/* Top bar */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {challenges.length} challenge{challenges.length !== 1 ? "s" : ""}
+          {filteredChallenges.length} challenge{filteredChallenges.length !== 1 ? "s" : ""}
         </p>
         <Button onClick={() => { resetForm(); setShowCreate(true); }}>
           <Plus className="h-4 w-4 mr-2" /> Create Challenge
@@ -242,7 +255,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
       </div>
 
       {/* Table */}
-      {challenges.length === 0 ? (
+      {filteredChallenges.length === 0 ? (
         <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
           <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-semibold">No challenges yet</h3>
@@ -268,7 +281,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {challenges.map((c) => (
+                {filteredChallenges.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/30">
                     <TableCell className="font-medium">{c.title}</TableCell>
                     <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">
@@ -332,7 +345,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
                                 <Select value={subjectId} onValueChange={(v: string | null) => { setSubjectId(v || ""); setTopicId(""); }}>
                   <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {subjectOptions.map((s) => (
+                    {filteredSubjectOptions.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>
@@ -458,7 +471,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
                                 <Select value={subjectId} onValueChange={(v: string | null) => { setSubjectId(v || ""); setTopicId(""); }}>
                   <SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger>
                   <SelectContent>
-                    {subjectOptions.map((s) => (
+                    {filteredSubjectOptions.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
                     ))}
                   </SelectContent>

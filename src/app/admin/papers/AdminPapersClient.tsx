@@ -13,7 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Pencil, Trash2, Rows3, Layers } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Pencil, Trash2, Rows3, Layers, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { createPaper, updatePaper, deletePaper } from "@/app/actions/admin";
+import { createPaper, updatePaper, deletePaper, togglePaperPublished } from "@/app/actions/admin";
 import { toast } from "sonner";
 import {
   Select,
@@ -34,7 +35,9 @@ import {
 import { CAMBRIDGE_EXAM_SESSIONS } from "@/lib/exam-seasons";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-type SubjectOption = { id: string; label: string };
+import { useAdminBoard } from "@/components/AdminBoardContext";
+
+type SubjectOption = { id: string; label: string; board: string };
 
 type PaperWithSubject = {
   id: string;
@@ -46,10 +49,11 @@ type PaperWithSubject = {
   questionPdfUrl: string | null;
   msPdfUrl: string | null;
   sourceFilesUrl: string | null;
+  isPublished?: boolean;
   subject: {
     name: string;
     code: string | null;
-    qualification: { title: string };
+    qualification: { title: string; board: { name: string } };
   };
 };
 
@@ -100,6 +104,13 @@ export default function AdminPapersClient({
   subjectOptions: SubjectOption[];
 }) {
   const router = useRouter();
+  const { selectedBoard } = useAdminBoard();
+  
+  const filteredSubjectOptions = useMemo(() => {
+    if (selectedBoard === "all") return subjectOptions;
+    return subjectOptions.filter(s => s.board === selectedBoard);
+  }, [subjectOptions, selectedBoard]);
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -135,7 +146,7 @@ export default function AdminPapersClient({
   ]);
 
   const resetForm = () => {
-    setSubjectId(subjectOptions[0]?.id ?? "");
+    setSubjectId(filteredSubjectOptions[0]?.id ?? "");
     setYear("");
     setPaperNumber("");
     setVariant("");
@@ -206,6 +217,10 @@ export default function AdminPapersClient({
   const filteredPapers = useMemo(() => {
     let result = papers;
 
+    if (selectedBoard !== "all") {
+      result = result.filter((p) => p.subject.qualification.board.name === selectedBoard);
+    }
+
     if (filterSubjectId !== "all") {
       result = result.filter((p) => p.subjectId === filterSubjectId);
     }
@@ -234,7 +249,7 @@ export default function AdminPapersClient({
     }
 
     return result;
-  }, [papers, tableSearch, filterSubjectId, filterYear, filterSession]);
+  }, [papers, tableSearch, filterSubjectId, filterYear, filterSession, selectedBoard]);
 
   const refresh = () => router.refresh();
 
@@ -360,10 +375,20 @@ export default function AdminPapersClient({
     }
   };
 
+  const handleTogglePublish = async (id: string) => {
+    const res = await togglePaperPublished(id);
+    if (res.success) {
+      toast.success("Status updated");
+      refresh();
+    } else {
+      toast.error(res.error || "Failed");
+    }
+  };
+
   const bulkSessionResolved = resolveSession(bulkSessionSelect, bulkSessionCustom);
 
   const openBulk = () => {
-    setBulkSubjectId(subjectId || subjectOptions[0]?.id || "");
+    setBulkSubjectId(subjectId || filteredSubjectOptions[0]?.id || "");
     setBulkYear(year || "");
     setBulkSessionSelect(sessionSelect);
     setBulkSessionCustom(sessionCustom);
@@ -490,7 +515,7 @@ export default function AdminPapersClient({
     onChange: (id: string) => void;
     id: string;
   }) => {
-    const selectedLabel = subjectOptions.find((s) => s.id === value)?.label || "Choose subject";
+    const selectedLabel = filteredSubjectOptions.find((s) => s.id === value)?.label || "Choose subject";
     return (
       <div className="space-y-2">
         <Label htmlFor={id}>Subject</Label>
@@ -499,7 +524,7 @@ export default function AdminPapersClient({
             <SelectValue placeholder="Choose subject">{selectedLabel}</SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-72 overflow-y-auto">
-            {subjectOptions.map((s) => (
+            {filteredSubjectOptions.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.label}
               </SelectItem>
@@ -602,12 +627,12 @@ export default function AdminPapersClient({
               <Select value={filterSubjectId} onValueChange={(v) => setFilterSubjectId(v || "all")}>
                 <SelectTrigger className="w-[220px]">
                   <SelectValue placeholder="All Subjects">
-                    {filterSubjectId === "all" ? "All Subjects" : subjectOptions.find(s => s.id === filterSubjectId)?.label}
+                    {filterSubjectId === "all" ? "All Subjects" : filteredSubjectOptions.find(s => s.id === filterSubjectId)?.label}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Subjects</SelectItem>
-                  {subjectOptions.map((s) => (
+                  {filteredSubjectOptions.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.label}
                     </SelectItem>
@@ -654,6 +679,7 @@ export default function AdminPapersClient({
                 <TableHead className="w-24">Year</TableHead>
                 <TableHead className="w-28">Paper</TableHead>
                 <TableHead>Files</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right w-52">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -722,7 +748,15 @@ export default function AdminPapersClient({
                         )}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={paper.isPublished ? "default" : "secondary"} className={paper.isPublished ? "bg-emerald-600 hover:bg-emerald-700" : ""}>
+                        {paper.isPublished ? "Published" : "Draft"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleTogglePublish(paper.id)} title={paper.isPublished ? "Unpublish" : "Publish"}>
+                        {paper.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openEdit(paper)}>
                         <Pencil className="size-4" /> Edit
                       </Button>

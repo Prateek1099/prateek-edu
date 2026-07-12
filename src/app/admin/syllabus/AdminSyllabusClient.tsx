@@ -27,6 +27,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { useAdminBoard } from "@/components/AdminBoardContext";
+
 type SubjectRow = {
   id: string;
   name: string;
@@ -34,12 +36,13 @@ type SubjectRow = {
   syllabusPdfUrl: string | null;
   qualification: {
     title: string;
-    board: { title: string };
+    board: { title: string; name: string };
   };
 };
 
 export default function AdminSyllabusClient({ subjects }: { subjects: SubjectRow[] }) {
   const router = useRouter();
+  const { selectedBoard } = useAdminBoard();
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -71,13 +74,17 @@ export default function AdminSyllabusClient({ subjects }: { subjects: SubjectRow
   };
 
   const filtered = useMemo(() => {
+    let result = subjects;
+    if (selectedBoard !== "all") {
+      result = result.filter(s => s.qualification.board.name === selectedBoard);
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return subjects;
-    return subjects.filter((s) => {
+    if (!q) return result;
+    return result.filter((s) => {
       const hay = `${s.name} ${s.code ?? ""} ${s.qualification.title} ${s.qualification.board.title}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [subjects, search]);
+  }, [subjects, search, selectedBoard]);
 
   const handleEdit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -35,6 +35,7 @@ export default async function AdminChallengesPage() {
     label: s.code
       ? `${s.name} (${s.code}) · ${s.qualification.title} · ${s.qualification.board.title}`
       : `${s.name} · ${s.qualification.title} · ${s.qualification.board.title}`,
+    board: s.qualification.board.name,
   }));
 
   const topicOptions = topics.map((t) => ({

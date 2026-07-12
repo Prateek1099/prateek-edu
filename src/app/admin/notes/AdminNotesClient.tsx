@@ -14,7 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Pencil, Trash2, StickyNote } from "lucide-react";
+import { Plus, Pencil, Trash2, StickyNote, Eye, EyeOff } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { createNote, updateNote, deleteNote } from "@/app/actions/admin";
+import { createNote, updateNote, deleteNote, toggleNotePublished } from "@/app/actions/admin";
 import { toast } from "sonner";
 import Link from "next/link";
 import {
@@ -35,25 +36,40 @@ import {
 } from "@/components/ui/select";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
+import { useAdminBoard } from "@/components/AdminBoardContext";
+
 type SubjectRow = {
   id: string;
   label: string;
+  board: string;
   topics: { id: string; topicName: string }[];
 };
 
 type NoteWithRelations = {
   id: string;
-  subjectId: string;
   title: string;
   content: string | null;
   pdfUrl: string | null;
+  subjectId: string;
   topicId: string | null;
+  isPublished: boolean;
   subject: {
+    id: string;
     name: string;
     code: string | null;
-    qualification: { title: string };
+    qualification: {
+      id: string;
+      title: string;
+      board: {
+        id: string;
+        name: string;
+      };
+    };
   };
-  topic: { topicName: string } | null;
+  topic: {
+    id: string;
+    topicName: string;
+  } | null;
 };
 
 const TOPIC_NONE = "__none__";
@@ -66,12 +82,18 @@ export default function AdminNotesClient({
   subjectRows: SubjectRow[];
 }) {
   const router = useRouter();
+  const { selectedBoard } = useAdminBoard();
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<NoteWithRelations | null>(null);
+
+  const filteredSubjectRows = useMemo(() => {
+    if (selectedBoard === "all") return subjectRows;
+    return subjectRows.filter((s) => s.board === selectedBoard);
+  }, [subjectRows, selectedBoard]);
 
   const [subjectId, setSubjectId] = useState(subjectRows[0]?.id ?? "");
   const [topicId, setTopicId] = useState(TOPIC_NONE);
@@ -93,7 +115,7 @@ export default function AdminNotesClient({
   }, [topicsForSubject, topicId]);
 
   const resetForm = () => {
-    setSubjectId(subjectRows[0]?.id ?? "");
+    setSubjectId(filteredSubjectRows[0]?.id ?? "");
     setTopicId(TOPIC_NONE);
     setTitle("");
     setContent("");
@@ -139,15 +161,19 @@ export default function AdminNotesClient({
   };
 
   const filtered = useMemo(() => {
+    let result = notes;
+    if (selectedBoard !== "all") {
+      result = result.filter((n) => n.subject.qualification.board.name === selectedBoard);
+    }
     const q = search.trim().toLowerCase();
-    if (!q) return notes;
-    return notes.filter((n) => {
+    if (!q) return result;
+    return result.filter((n) => {
       const hay = `${n.title} ${n.subject.name} ${n.topic?.topicName ?? ""} ${
         n.content ?? ""
       }`.toLowerCase();
       return hay.includes(q);
     });
-  }, [notes, search]);
+  }, [notes, search, selectedBoard]);
 
   const resolvedTopicId = (): string | null =>
     topicId === TOPIC_NONE ? null : topicId;
@@ -225,11 +251,23 @@ export default function AdminNotesClient({
     const res = await deleteNote(selected.id);
     setLoading(false);
     if (res.success) {
-      toast.success("Deleted");
+      toast.success("Note deleted");
       setIsDeleteOpen(false);
       resetForm();
       refresh();
-    } else toast.error(res.error || "Failed");
+    } else {
+      toast.error(res.error || "Failed");
+    }
+  };
+
+  const handleTogglePublish = async (id: string) => {
+    const res = await toggleNotePublished(id);
+    if (res.success) {
+      toast.success("Status updated");
+      refresh();
+    } else {
+      toast.error(res.error || "Failed");
+    }
   };
 
   const formFields = (idPrefix: "add-note" | "edit-note") => (
@@ -241,7 +279,7 @@ export default function AdminNotesClient({
             <SelectValue placeholder="Choose subject" />
           </SelectTrigger>
           <SelectContent className="max-h-72 overflow-y-auto">
-            {subjectRows.map((s) => (
+            {filteredSubjectRows.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.label}
               </SelectItem>
@@ -333,6 +371,7 @@ export default function AdminNotesClient({
                 <TableHead>Topic</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>PDF</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right w-52">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -366,7 +405,15 @@ export default function AdminNotesClient({
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={n.isPublished ? "default" : "secondary"} className={n.isPublished ? "bg-emerald-600 hover:bg-emerald-700" : ""}>
+                        {n.isPublished ? "Published" : "Draft"}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleTogglePublish(n.id)} title={n.isPublished ? "Unpublish" : "Publish"}>
+                        {n.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openEdit(n)}>
                         <Pencil className="size-4" /> Edit
                       </Button>

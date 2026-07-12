@@ -178,6 +178,7 @@ model Paper {
   questionPdfUrl   String?  @map("question_pdf_url")
   msPdfUrl         String?  @map("ms_pdf_url")
   sourceFilesUrl   String?  @map("source_files_url")
+  isPublished      Boolean  @default(true) @map("is_published")
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   progress UserProgress[]
@@ -230,12 +231,13 @@ model Topic {
 }
 
 model Note {
-  id        String   @id @default(cuid())
-  subjectId String   @map("subject_id")
-  title     String
-  content   String?  @db.Text
-  pdfUrl    String?  @map("pdf_url")
-  topicId   String?  @map("topic_id")
+  id          String   @id @default(cuid())
+  subjectId   String   @map("subject_id")
+  title       String
+  content     String?  @db.Text
+  pdfUrl      String?  @map("pdf_url")
+  topicId     String?  @map("topic_id")
+  isPublished Boolean  @default(true) @map("is_published")
   
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
