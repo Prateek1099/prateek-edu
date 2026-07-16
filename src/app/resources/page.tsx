@@ -16,9 +16,11 @@ export default async function ResourcesRootPage() {
   }
 
   const boards = await prisma.board.findMany({
+    where: { status: "PUBLISHED" },
     include: {
       qualifications: {
-        orderBy: { name: "asc" },
+        where: { status: "PUBLISHED" },
+        orderBy: { sortOrder: "asc" },
       },
     },
     orderBy: { title: "asc" },

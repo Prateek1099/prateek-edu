@@ -9,6 +9,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  SUPER_ADMIN
+  TEACHER
+  STUDENT
+}
+
 model Account {
   id                 String  @id @default(cuid())
   userId             String  @map("user_id")
@@ -46,7 +52,7 @@ model User {
   emailVerified DateTime? @map("email_verified")
   password      String?
   image         String?
-  role          String    @default("student") // student or admin
+  role          UserRole  @default(STUDENT)
   createdAt     DateTime  @default(now()) @map("created_at")
 
   isPremium          Boolean   @default(false) @map("is_premium")
@@ -57,6 +63,7 @@ model User {
   planId             String?   @map("plan_id")
   preferredBoard         String?
   preferredQualification String?
+  workspaceId            String?   @map("workspace_id")
 
   accounts            Account[]
   sessions            Session[]
@@ -71,6 +78,9 @@ model User {
   mistakeEntries      MistakeEntry[]
   revisionPlan        RevisionPlan?
   worksheetAssignments WorksheetAssignment[]
+  workspace           Workspace?  @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+  ownedWorkspace      Workspace?  @relation("WorkspaceOwner")
+  classEnrollments    ClassStudent[]
 
   @@map("users")
 }
@@ -99,9 +109,10 @@ model VerificationToken {
 }
 
 model Board {
-  id    String @id @default(cuid())
-  name  String @unique // e.g. "cambridge", "cbse"
-  title String // e.g. "Cambridge International", "CBSE Board"
+  id     String @id @default(cuid())
+  name   String @unique // e.g. "cambridge", "cbse"
+  title  String // e.g. "Cambridge International", "CBSE Board"
+  status String @default("PUBLISHED")
 
   qualifications Qualification[]
 
@@ -113,9 +124,12 @@ model Qualification {
   boardId String @map("board_id")
   name    String // e.g. "igcse", "class-12"
   title   String // e.g. "IGCSE", "Class 12"
+  status  String @default("PUBLISHED")
+  sortOrder Int @default(0) @map("sort_order")
 
   board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
   subjects Subject[]
+  classes  Class[]
 
   @@unique([boardId, name])
   @@map("qualifications")
@@ -128,6 +142,10 @@ model Subject {
   name            String  // e.g. "Computer Science"
   slug            String  // e.g. "computer-science-0478"
   syllabusPdfUrl  String? @map("syllabus_pdf_url")
+  status          String  @default("PUBLISHED")
+  sortOrder       Int     @default(0) @map("sort_order")
+  iconType        String? @map("icon_type") // e.g. "emoji", "image"
+  iconValue       String? @map("icon_value")
 
   qualification Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
   papers        Paper[]
@@ -136,6 +154,8 @@ model Subject {
   courses       Course[] // Add course relation here to link courses to subjects properly
   challenges    Challenge[]
   bankQuestions BankQuestion[]
+  classes          Class[]
+  workspaceContent WorkspaceContent[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -220,12 +240,15 @@ model Topic {
   subjectId String @map("subject_id")
   topicName String @map("topic_name")
   sortOrder Int @default(0) @map("sort_order") // syllabus sequence; seeded for ICT (0417)
+  status    String @default("PUBLISHED")
+  description String? @db.Text
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress UserTopicProgress[]
   notes        Note[]
   challenges   Challenge[]
   bankQuestions BankQuestion[]
+  workspaceContent WorkspaceContent[]
 
   @@map("topics")
 }
@@ -460,4 +483,80 @@ model BankQuestion {
   generatedQuestions Question[]
 
   @@map("bank_questions")
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  ownerId    String   @unique @map("owner_id")
+  status     String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, ACTIVE, SUSPENDED, ARCHIVED
+  // Future settings (not implemented in Phase 1)
+  logo       String?
+  primaryBoard String? @map("primary_board")
+  brandColor   String? @map("brand_color")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  owner    User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members  User[]            @relation("WorkspaceMembers")
+  classes  Class[]
+  content  WorkspaceContent[]
+
+  @@map("workspaces")
+}
+
+model Class {
+  id              String   @id @default(cuid())
+  name            String
+  workspaceId     String   @map("workspace_id")
+  subjectId       String?  @map("subject_id")
+  qualificationId String?  @map("qualification_id")
+  academicYear    String   @map("academic_year")
+  joinCode        String   @unique @map("join_code")
+  joinCodeActive  Boolean  @default(true) @map("join_code_active")
+  maxStudents     Int?     @map("max_students")
+  status          String   @default("ACTIVE") // ACTIVE, ARCHIVED
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subject       Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  qualification Qualification? @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
+  students      ClassStudent[]
+
+  @@map("classes")
+}
+
+model ClassStudent {
+  id         String   @id @default(cuid())
+  classId    String   @map("class_id")
+  studentId  String   @map("student_id")
+  enrolledAt DateTime @default(now()) @map("enrolled_at")
+  status     String   @default("ACTIVE") // ACTIVE, REMOVED
+
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@map("class_students")
+}
+
+model WorkspaceContent {
+  id          String   @id @default(cuid())
+  workspaceId String   @map("workspace_id")
+  type        String   // NOTE, PAPER, CHALLENGE, WORKSHEET
+  title       String
+  description String?  @db.Text
+  pdfUrl      String?  @map("pdf_url")
+  subjectId   String?  @map("subject_id")
+  topicId     String?  @map("topic_id")
+  status      String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subject   Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topic     Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@map("workspace_content")
 }
