@@ -161,12 +161,21 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
           <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
           <p className="text-muted-foreground mt-1 text-lg">Welcome back, {session.user.name || "Student"}. Here is your learning progress.</p>
         </div>
-        <div className="md:self-start pt-1 w-full md:w-auto">
+        <div className="md:self-start pt-1 w-full md:w-auto flex flex-col md:flex-row gap-3">
+          <Link 
+            href="/dashboard/join"
+            className={cn(
+              buttonVariants({ size: "lg", variant: "outline" }), 
+              "w-full md:w-auto px-6 py-6 shadow-sm hover:shadow-md transition-all text-base font-semibold"
+            )}
+          >
+            <Users className="w-5 h-5 mr-2" /> Join a Class
+          </Link>
           <Link 
             href="/dashboard/ask-teacher"
             className={cn(
               buttonVariants({ size: "lg" }), 
-              "w-full md:w-auto px-10 py-6 shadow-md hover:shadow-lg transition-all text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+              "w-full md:w-auto px-6 py-6 shadow-md hover:shadow-lg transition-all text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >
             Ask Teacher
