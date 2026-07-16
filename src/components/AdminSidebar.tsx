@@ -16,15 +16,14 @@ import {
   Database,
   GraduationCap,
   ChevronDown,
+  Layers,
+  ListTree,
+  Briefcase
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminBoard } from "./AdminBoardContext";
 
-const BOARD_OPTIONS = [
-  { value: "all", label: "All Boards" },
-  { value: "cambridge", label: "Cambridge" },
-  { value: "cbse", label: "CBSE" },
-];
+
 
 type NavItem = { href: string; label: string; icon: any; match: "exact" | "prefix" };
 
@@ -38,11 +37,19 @@ const contentNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
+  { href: "/admin/workspaces", label: "Workspaces", icon: Briefcase, match: "prefix" },
   { href: "/admin/users", label: "Users", icon: Users, match: "prefix" },
   { href: "/admin/payments", label: "Payments", icon: CreditCard, match: "prefix" },
   { href: "/admin/insights", label: "Insights", icon: MessageSquare, match: "prefix" },
   { href: "/admin/queries", label: "Queries", icon: MessageSquare, match: "prefix" },
   { href: "/admin/courses", label: "Courses", icon: BookOpen, match: "prefix" },
+];
+
+const structureNav: NavItem[] = [
+  { href: "/admin/academic-structure/boards", label: "Boards", icon: Layers, match: "prefix" },
+  { href: "/admin/academic-structure/qualifications", label: "Qualifications", icon: GraduationCap, match: "prefix" },
+  { href: "/admin/academic-structure/subjects", label: "Subjects", icon: BookOpen, match: "prefix" },
+  { href: "/admin/academic-structure/topics", label: "Topics", icon: ListTree, match: "prefix" },
 ];
 
 function linkActive(pathname: string, href: string, match: "exact" | "prefix") {
@@ -76,7 +83,7 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-export function AdminSidebar() {
+export function AdminSidebar({ boards }: { boards: { value: string, label: string }[] }) {
   const pathname = usePathname() || "";
   const { selectedBoard, setSelectedBoard } = useAdminBoard();
 
@@ -105,7 +112,7 @@ export function AdminSidebar() {
             onChange={(e) => setSelectedBoard(e.target.value)}
             className="w-full appearance-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 cursor-pointer"
           >
-            {BOARD_OPTIONS.map((opt) => (
+            {boards.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -143,6 +150,14 @@ export function AdminSidebar() {
         <SectionLabel label="Administration" />
         <div className="flex flex-col gap-0.5">
           {adminNav.map((item) => (
+            <NavLink key={item.href} item={item} pathname={pathname} />
+          ))}
+        </div>
+
+        {/* Academic Structure */}
+        <SectionLabel label="Academic Structure" />
+        <div className="flex flex-col gap-0.5">
+          {structureNav.map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
         </div>

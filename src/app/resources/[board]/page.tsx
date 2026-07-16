@@ -13,10 +13,11 @@ export default async function BoardQualificationSelection({
   const { board } = await params;
 
   const boardData = await prisma.board.findUnique({
-    where: { name: board },
+    where: { name: board, status: "PUBLISHED" },
     include: {
       qualifications: {
-        orderBy: { name: "asc" },
+        where: { status: "PUBLISHED" },
+        orderBy: { sortOrder: "asc" },
       },
     },
   });

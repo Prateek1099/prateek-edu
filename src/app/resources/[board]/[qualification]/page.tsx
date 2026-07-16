@@ -12,12 +12,14 @@ export default async function QualificationPage({ params }: { params: Promise<{ 
   const qualificationData = await prisma.qualification.findFirst({
     where: { 
       name: qualification,
-      board: { name: board }
+      status: "PUBLISHED",
+      board: { name: board, status: "PUBLISHED" }
     },
     include: {
       board: true,
       subjects: {
-        orderBy: { name: 'asc' }
+        where: { status: "PUBLISHED" },
+        orderBy: { sortOrder: "asc" }
       }
     },
   });

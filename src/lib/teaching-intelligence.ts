@@ -24,7 +24,7 @@ export interface TopicIntelligence {
 
 export async function getTeachingIntelligenceData() {
   const students = await prisma.user.findMany({
-    where: { role: "student" },
+    where: { role: "STUDENT" },
     select: { id: true, name: true, email: true },
   });
 

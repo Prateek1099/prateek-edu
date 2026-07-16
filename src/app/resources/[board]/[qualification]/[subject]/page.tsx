@@ -11,9 +11,11 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
   const subjectData = await prisma.subject.findFirst({
     where: { 
       slug: subject,
+      status: "PUBLISHED",
       qualification: {
         name: qualification,
-        board: { name: board }
+        status: "PUBLISHED",
+        board: { name: board, status: "PUBLISHED" }
       }
     },
     include: {
@@ -27,6 +29,7 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
         ]
       },
       topics: {
+        where: { status: "PUBLISHED" },
         orderBy: { sortOrder: 'asc' }
       },
       notes: true,

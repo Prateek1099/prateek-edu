@@ -20,7 +20,7 @@ export function AdminBoardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && ["all", "cambridge", "cbse"].includes(stored)) {
+    if (stored) {
       setSelectedBoardState(stored);
     }
     setHydrated(true);

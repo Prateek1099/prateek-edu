@@ -70,27 +70,45 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).isPremium = token.isPremium as boolean;
         (session.user as any).subscriptionExpiry = token.subscriptionExpiry as string | null;
         (session.user as any).planId = token.planId as string | null;
+        (session.user as any).workspaceId = token.workspaceId as string | null;
+        (session.user as any).workspaceStatus = token.workspaceStatus as string | null;
       }
       return session;
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
-        const r = (user as { role?: string }).role;
-        token.role = typeof r === "string" ? r.toLowerCase() : r;
+        token.role = (user as { role?: string }).role;
       }
       
-      // Fetch latest premium status to enable instant Netflix-style unlock
+      // Fetch latest user status on every JWT refresh
       if (token.id) {
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id as string },
-            select: { isPremium: true, subscriptionExpiry: true, planId: true }
+            select: {
+              role: true,
+              isPremium: true,
+              subscriptionExpiry: true,
+              planId: true,
+              workspaceId: true,
+              ownedWorkspace: { select: { id: true, status: true } },
+            }
           });
           if (dbUser) {
+            token.role = dbUser.role;
             token.isPremium = dbUser.isPremium;
             token.subscriptionExpiry = dbUser.subscriptionExpiry?.toISOString() || null;
             token.planId = dbUser.planId;
+            
+            // Workspace info for teachers
+            if (dbUser.ownedWorkspace) {
+              token.workspaceId = dbUser.ownedWorkspace.id;
+              token.workspaceStatus = dbUser.ownedWorkspace.status;
+            } else {
+              token.workspaceId = dbUser.workspaceId;
+              token.workspaceStatus = null;
+            }
             
             // Auto-revoke if expired
             if (dbUser.isPremium && dbUser.subscriptionExpiry && new Date() > dbUser.subscriptionExpiry) {
