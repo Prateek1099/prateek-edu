@@ -16,7 +16,8 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) redirect("/login");
 
   // Fetch the full user record
   const user = await prisma.user.findUnique({

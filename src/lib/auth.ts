@@ -16,6 +16,7 @@ type AppToken = JWT & {
   planId?: string | null;
   workspaceId?: string | null;
   workspaceStatus?: string | null;
+  picture?: string | null;
 };
 
 type AppSessionUser = {
@@ -112,6 +113,7 @@ export const authOptions: NextAuthOptions = {
         sessionUser.planId = appToken.planId;
         sessionUser.workspaceId = appToken.workspaceId;
         sessionUser.workspaceStatus = appToken.workspaceStatus;
+        sessionUser.image = appToken.picture || undefined;
       }
       return session;
     },
@@ -138,6 +140,7 @@ export const authOptions: NextAuthOptions = {
               subscriptionExpiry: true,
               planId: true,
               workspaceId: true,
+              image: true,
               ownedWorkspace: { select: { id: true, status: true } },
             }
           });
@@ -146,6 +149,7 @@ export const authOptions: NextAuthOptions = {
             appToken.isPremium = dbUser.isPremium;
             appToken.subscriptionExpiry = dbUser.subscriptionExpiry?.toISOString() || null;
             appToken.planId = dbUser.planId;
+            appToken.picture = dbUser.image;
             
             // Workspace info for teachers
             if (dbUser.ownedWorkspace) {
