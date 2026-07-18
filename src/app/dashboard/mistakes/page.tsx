@@ -12,7 +12,11 @@ export default async function MistakeBookPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const userId = (session.user as any).id;
+  const userId = (session.user as any).id as string;
+  if (!userId) {
+    console.error("MistakeBook error: session missing userId");
+    redirect("/login");
+  }
 
   const [total, needsRevision, revised, topMistakes, mistakes] = await Promise.all([
     prisma.mistakeEntry.count({ where: { userId } }),

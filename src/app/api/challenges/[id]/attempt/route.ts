@@ -13,7 +13,10 @@ export async function POST(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session.user as any).id as string;
+  if (!userId) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { id: challengeId } = await params;
 
   try {
@@ -35,6 +38,24 @@ export async function POST(
 
     if (!challenge) {
       return Response.json({ error: "Challenge not found" }, { status: 404 });
+    }
+
+    // Strict Authorization Guard for Workspace Challenges
+    if (challenge.workspaceId) {
+      const isOwner = (session.user as any).workspaceId === challenge.workspaceId;
+      if (!isOwner) {
+        const assignment = await prisma.worksheetAssignment.findUnique({
+          where: {
+            userId_worksheetId: {
+              userId,
+              worksheetId: challengeId
+            }
+          }
+        });
+        if (!assignment) {
+          return Response.json({ error: "Unauthorized" }, { status: 403 });
+        }
+      }
     }
 
     // Score calculation
@@ -61,6 +82,19 @@ export async function POST(
         timeTaken: timeTaken || null,
       },
     });
+
+    // Update WorksheetAssignment status to COMPLETED if applicable
+    if (challenge.workspaceId) {
+      await prisma.worksheetAssignment.updateMany({
+        where: {
+          userId,
+          worksheetId: challengeId,
+        },
+        data: {
+          status: "COMPLETED"
+        }
+      });
+    }
 
     // AUTO-CAPTURE MISTAKES: Upsert a MistakeEntry for every wrong answer.
     // @@unique([userId, questionId]) prevents duplicates — repeated mistakes

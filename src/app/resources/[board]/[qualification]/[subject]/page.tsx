@@ -34,7 +34,10 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
       },
       notes: true,
       challenges: {
-        where: { isPublished: true },
+        where: { 
+          isPublished: true,
+          workspaceId: null // Critical: Only fetch global Vexa challenges
+        },
         include: {
           topic: true,
           _count: { select: { questions: true } },

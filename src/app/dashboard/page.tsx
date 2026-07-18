@@ -19,7 +19,11 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session.user as any).id as string;
+  if (!userId) {
+    console.error("Dashboard error: session missing userId");
+    redirect("/login");
+  }
 
   // 1. Fetch Overview Data
   const sevenDaysAgo = new Date();
@@ -30,26 +34,48 @@ export default async function DashboardPage() {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [papersCompleted, papersInProgress, enrollments, recentPapers, topicProgress, recentActivityCount, recentChallenges, challengeAgg, mistakeTotal, mistakeNeedsRevision, mistakeRevised, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
-    prisma.userProgress.count({ where: { userId, status: "completed" } }),
-    prisma.userProgress.count({ where: { userId, status: "in_progress" } }),
+  const [enrollments, allPapers, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
     prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
     prisma.userProgress.findMany({
       where: { userId },
-      include: { paper: { include: { subject: { include: { qualification: true } } } } },
+      select: {
+        id: true,
+        status: true,
+        lastViewed: true,
+        paper: {
+          select: {
+            id: true,
+            paperNumber: true,
+            variant: true,
+            year: true,
+            season: true,
+            questionPdfUrl: true,
+            msPdfUrl: true,
+            subject: {
+              select: { name: true, code: true }
+            }
+          }
+        }
+      },
       orderBy: { lastViewed: "desc" },
     }),
     prisma.userTopicProgress.findMany({
       where: { userId },
-      include: { topic: { include: { subject: true } } },
+      select: {
+        id: true,
+        completed: true,
+        topic: { select: { topicName: true, subjectId: true, subject: { select: { id: true, name: true } } } }
+      },
       orderBy: { id: "desc" }
-    }),
-    prisma.userProgress.count({
-      where: { userId, lastViewed: { gte: sevenDaysAgo } }
     }),
     prisma.challengeAttempt.findMany({
       where: { userId },
-      include: { challenge: { include: { subject: true } } },
+      select: {
+        id: true,
+        percentage: true,
+        completedAt: true,
+        challenge: { select: { title: true, subject: { select: { name: true } } } }
+      },
       orderBy: { completedAt: "desc" },
       take: 5,
     }),
@@ -59,9 +85,11 @@ export default async function DashboardPage() {
       _max: { percentage: true },
       _count: true,
     }),
-    prisma.mistakeEntry.count({ where: { userId } }),
-    prisma.mistakeEntry.count({ where: { userId, status: "needs_revision" } }),
-    prisma.mistakeEntry.count({ where: { userId, status: "revised" } }),
+    prisma.mistakeEntry.groupBy({
+      by: ["status"],
+      where: { userId },
+      _count: { id: true }
+    }),
     prisma.mistakeEntry.groupBy({
       by: ["topicTag"],
       where: { userId, topicTag: { not: null } },
@@ -78,18 +106,21 @@ export default async function DashboardPage() {
           take: 5,
         },
         _count: {
-          select: {
-            tasks: { where: { status: { not: "PENDING" } } },
-          },
+          select: { tasks: { where: { status: { not: "PENDING" } } } },
         },
       },
     }),
     prisma.worksheetAssignment.findMany({
       where: { userId },
-      include: {
+      select: {
+        id: true,
+        dueDate: true,
+        status: true,
         worksheet: {
-          include: {
-            subject: { include: { qualification: { include: { board: true } } } },
+          select: {
+            id: true,
+            title: true,
+            subject: { select: { name: true, slug: true, qualification: { select: { name: true, board: { select: { name: true } } } } } },
             _count: { select: { questions: true } }
           }
         }
@@ -98,6 +129,14 @@ export default async function DashboardPage() {
       take: 3
     })
   ]);
+
+  const papersCompleted = allPapers.filter(p => p.status === "completed").length;
+  const papersInProgress = allPapers.filter(p => p.status === "in_progress").length;
+  const recentActivityCount = allPapers.filter(p => new Date(p.lastViewed) >= sevenDaysAgo).length;
+
+  const mistakeNeedsRevision = mistakeStats.find(s => s.status === "needs_revision")?._count.id || 0;
+  const mistakeRevised = mistakeStats.find(s => s.status === "revised")?._count.id || 0;
+  const mistakeTotal = mistakeNeedsRevision + mistakeRevised;
 
   // Revision plan stats
   const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id } }) : 0;

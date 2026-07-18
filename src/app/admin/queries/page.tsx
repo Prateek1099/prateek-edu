@@ -22,7 +22,7 @@ export default async function AdminQueriesPage() {
         <h1 className="text-3xl font-bold tracking-tight">Contact Queries</h1>
       </div>
       
-      <div className="border rounded-md bg-white">
+      <div className="border rounded-md bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

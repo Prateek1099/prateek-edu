@@ -65,8 +65,8 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async session({ session, token }) {
       if (token) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as string;
+        (session.user as any).id = (token.id || token.sub) as string;
+        (session.user as any).role = token.role as string || "STUDENT";
         (session.user as any).isPremium = token.isPremium as boolean;
         (session.user as any).subscriptionExpiry = token.subscriptionExpiry as string | null;
         (session.user as any).planId = token.planId as string | null;
@@ -79,6 +79,11 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
+      }
+      
+      // Fallback to sub if id is missing (e.g., standard NextAuth behavior)
+      if (!token.id && token.sub) {
+        token.id = token.sub;
       }
       
       // Fetch latest user status on every JWT refresh

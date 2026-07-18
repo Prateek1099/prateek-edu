@@ -36,6 +36,25 @@ export default async function ChallengeAttemptPage({
     notFound();
   }
 
+  // Strict Authorization Guard for Workspace Challenges
+  if (challenge.workspaceId) {
+    const userId = (session.user as any).id as string;
+    if (!userId) redirect("/login");
+    const isOwner = (session.user as any).workspaceId === challenge.workspaceId;
+    
+    if (!isOwner) {
+      const assignment = await prisma.worksheetAssignment.findUnique({
+        where: {
+          userId_worksheetId: {
+            userId,
+            worksheetId: id
+          }
+        }
+      });
+      if (!assignment) notFound();
+    }
+  }
+
   return (
     <ChallengeEngine
       challenge={{

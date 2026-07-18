@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ import { User, ShieldCheck, Sun, Moon, Laptop, Mail, CreditCard, Sparkles, Loade
 export default function SettingsClient({ user }: { user: any }) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+
+  const [mounted, setMounted] = useState(false);
 
   // Profile State
   const [name, setName] = useState(user.name || "");
@@ -57,6 +59,11 @@ export default function SettingsClient({ user }: { user: any }) {
       setIsSavingPrefs(false);
     }
   };
+
+  // Mount effect to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="space-y-8 pb-12">
@@ -203,7 +210,8 @@ export default function SettingsClient({ user }: { user: any }) {
           <CardDescription>Customize how Vexa looks on your device.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4 max-w-lg">
+          {mounted ? (
+            <div className="grid grid-cols-3 gap-4 max-w-lg">
             <button
               onClick={() => setTheme("light")}
               className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${theme === "light" ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50 text-muted-foreground"}`}
@@ -226,6 +234,13 @@ export default function SettingsClient({ user }: { user: any }) {
               <span className="text-sm font-medium">System</span>
             </button>
           </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4 max-w-lg">
+              <div className="h-24 rounded-xl border-2 border-border bg-muted/50 animate-pulse" />
+              <div className="h-24 rounded-xl border-2 border-border bg-muted/50 animate-pulse" />
+              <div className="h-24 rounded-xl border-2 border-border bg-muted/50 animate-pulse" />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -253,7 +268,7 @@ export default function SettingsClient({ user }: { user: any }) {
             </div>
             <div className="space-y-1 sm:col-span-2">
               <p className="text-sm font-medium text-muted-foreground">Member Since</p>
-              <p className="font-medium">{new Date(user.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+              <p className="font-medium">{new Date(user.createdAt).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>
           

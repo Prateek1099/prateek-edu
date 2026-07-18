@@ -73,6 +73,25 @@ export async function getWorkspaceDetail(workspaceId: string) {
   });
 }
 
+export async function deleteWorkspace(workspaceId: string) {
+  const admin = await requireSuperAdmin();
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { id: true, name: true, ownerId: true, owner: { select: { email: true } } }
+  });
+  
+  if (!workspace) throw new Error("Workspace not found");
+
+  await prisma.$transaction(async (tx) => {
+    // Deleting the owner (User) cascades to Workspace, Classes, ClassStudents, WorkspaceContent
+    await tx.user.delete({ where: { id: workspace.ownerId } });
+  });
+
+  console.log(`[AUDIT LOG] Workspace Deleted - Name: ${workspace.name}, Teacher Email: ${workspace.owner.email}, Deleted By: ${admin.email}, Timestamp: ${new Date().toISOString()}`);
+
+  revalidatePath("/admin/workspaces");
+}
+
 // === TEACHER ACTIONS ===
 
 export async function getMyWorkspace() {

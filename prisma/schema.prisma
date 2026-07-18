@@ -16,22 +16,23 @@ enum UserRole {
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String? @db.Text
-  access_token       String? @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String? @db.Text
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
   @@map("accounts")
 }
 
@@ -42,6 +43,7 @@ model Session {
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("sessions")
 }
 
@@ -55,46 +57,48 @@ model User {
   role          UserRole  @default(STUDENT)
   createdAt     DateTime  @default(now()) @map("created_at")
 
-  isPremium          Boolean   @default(false) @map("is_premium")
-  subscriptionStart  DateTime? @map("subscription_start")
-  subscriptionExpiry DateTime? @map("subscription_expiry")
-  monthlyAIQuota     Int       @default(10) @map("monthly_ai_quota")
-  usageConsumed      Int       @default(0) @map("usage_consumed")
-  planId             String?   @map("plan_id")
+  isPremium              Boolean   @default(false) @map("is_premium")
+  subscriptionStart      DateTime? @map("subscription_start")
+  subscriptionExpiry     DateTime? @map("subscription_expiry")
+  monthlyAIQuota         Int       @default(10) @map("monthly_ai_quota")
+  usageConsumed          Int       @default(0) @map("usage_consumed")
+  planId                 String?   @map("plan_id")
   preferredBoard         String?
   preferredQualification String?
   workspaceId            String?   @map("workspace_id")
 
-  accounts            Account[]
-  sessions            Session[]
-  plan                SubscriptionPlan? @relation(fields: [planId], references: [id])
-  enrollments         Enrollment[]
-  progress            UserProgress[]
-  topicProgress       UserTopicProgress[]
-  payments            Payment[]
-  savedPapers         SavedPaper[]
-  reflections         StudentReflection[]
-  challengeAttempts   ChallengeAttempt[]
-  mistakeEntries      MistakeEntry[]
-  revisionPlan        RevisionPlan?
+  accounts             Account[]
+  sessions             Session[]
+  plan                 SubscriptionPlan?     @relation(fields: [planId], references: [id])
+  enrollments          Enrollment[]
+  progress             UserProgress[]
+  topicProgress        UserTopicProgress[]
+  payments             Payment[]
+  savedPapers          SavedPaper[]
+  reflections          StudentReflection[]
+  challengeAttempts    ChallengeAttempt[]
+  mistakeEntries       MistakeEntry[]
+  revisionPlan         RevisionPlan?
   worksheetAssignments WorksheetAssignment[]
-  workspace           Workspace?  @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
-  ownedWorkspace      Workspace?  @relation("WorkspaceOwner")
-  classEnrollments    ClassStudent[]
+  workspace            Workspace?            @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+  ownedWorkspace       Workspace?            @relation("WorkspaceOwner")
+  classEnrollments     ClassStudent[]
 
+  @@index([workspaceId])
+  @@index([planId])
   @@map("users")
 }
 
 model SubscriptionPlan {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g. "free", "monthly", "yearly"
-  price       Float
-  features    String?  @db.Text
-  aiQuota     Int      @default(10) @map("ai_quota")
-  isActive    Boolean  @default(true) @map("is_active")
+  id       String  @id @default(cuid())
+  name     String  @unique // e.g. "free", "monthly", "yearly"
+  price    Float
+  features String? @db.Text
+  aiQuota  Int     @default(10) @map("ai_quota")
+  isActive Boolean @default(true) @map("is_active")
 
-  users       User[]
-  payments    Payment[]
+  users    User[]
+  payments Payment[]
 
   @@map("subscription_plans")
 }
@@ -120,12 +124,12 @@ model Board {
 }
 
 model Qualification {
-  id      String @id @default(cuid())
-  boardId String @map("board_id")
-  name    String // e.g. "igcse", "class-12"
-  title   String // e.g. "IGCSE", "Class 12"
-  status  String @default("PUBLISHED")
-  sortOrder Int @default(0) @map("sort_order")
+  id        String @id @default(cuid())
+  boardId   String @map("board_id")
+  name      String // e.g. "igcse", "class-12"
+  title     String // e.g. "IGCSE", "Class 12"
+  status    String @default("PUBLISHED")
+  sortOrder Int    @default(0) @map("sort_order")
 
   board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
   subjects Subject[]
@@ -139,21 +143,21 @@ model Subject {
   id              String  @id @default(cuid())
   qualificationId String  @map("qualification_id")
   code            String? // e.g. "0478"
-  name            String  // e.g. "Computer Science"
-  slug            String  // e.g. "computer-science-0478"
+  name            String // e.g. "Computer Science"
+  slug            String // e.g. "computer-science-0478"
   syllabusPdfUrl  String? @map("syllabus_pdf_url")
   status          String  @default("PUBLISHED")
   sortOrder       Int     @default(0) @map("sort_order")
   iconType        String? @map("icon_type") // e.g. "emoji", "image"
   iconValue       String? @map("icon_value")
 
-  qualification Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
-  papers        Paper[]
-  notes         Note[]
-  topics        Topic[]
-  courses       Course[] // Add course relation here to link courses to subjects properly
-  challenges    Challenge[]
-  bankQuestions BankQuestion[]
+  qualification    Qualification      @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+  papers           Paper[]
+  notes            Note[]
+  topics           Topic[]
+  courses          Course[] // Add course relation here to link courses to subjects properly
+  challenges       Challenge[]
+  bankQuestions    BankQuestion[]
   classes          Class[]
   workspaceContent WorkspaceContent[]
 
@@ -169,9 +173,10 @@ model Course {
   subjectId   String   @map("subject_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
 
+  @@index([subjectId])
   @@map("courses")
 }
 
@@ -185,38 +190,42 @@ model Enrollment {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([courseId])
   @@map("enrollments")
 }
 
 model Paper {
-  id               String   @id @default(cuid())
-  subjectId        String   @map("subject_id")
-  year             Int
-  paperNumber      Int      @map("paper_number")
-  variant          Int?
-  season           String?  // e.g. "May/June", "Oct/Nov"
-  questionPdfUrl   String?  @map("question_pdf_url")
-  msPdfUrl         String?  @map("ms_pdf_url")
-  sourceFilesUrl   String?  @map("source_files_url")
-  isPublished      Boolean  @default(true) @map("is_published")
+  id             String  @id @default(cuid())
+  subjectId      String  @map("subject_id")
+  year           Int
+  paperNumber    Int     @map("paper_number")
+  variant        Int?
+  season         String? // e.g. "May/June", "Oct/Nov"
+  questionPdfUrl String? @map("question_pdf_url")
+  msPdfUrl       String? @map("ms_pdf_url")
+  sourceFilesUrl String? @map("source_files_url")
+  isPublished    Boolean @default(true) @map("is_published")
 
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject  Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   progress UserProgress[]
   savedBy  SavedPaper[]
 
+  @@index([subjectId])
   @@map("papers")
 }
 
 model SavedPaper {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  paperId   String   @map("paper_id")
-  savedAt   DateTime @default(now()) @map("saved_at")
+  id      String   @id @default(cuid())
+  userId  String   @map("user_id")
+  paperId String   @map("paper_id")
+  savedAt DateTime @default(now()) @map("saved_at")
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 
   @@unique([userId, paperId])
+  @@index([paperId])
   @@map("saved_papers")
 }
 
@@ -232,39 +241,43 @@ model UserProgress {
   paper Paper @relation(fields: [paperId], references: [id], onDelete: Cascade)
 
   @@unique([userId, paperId])
+  @@index([paperId])
   @@map("user_progress")
 }
 
 model Topic {
-  id        String @id @default(cuid())
-  subjectId String @map("subject_id")
-  topicName String @map("topic_name")
-  sortOrder Int @default(0) @map("sort_order") // syllabus sequence; seeded for ICT (0417)
-  status    String @default("PUBLISHED")
+  id          String  @id @default(cuid())
+  subjectId   String  @map("subject_id")
+  topicName   String  @map("topic_name")
+  sortOrder   Int     @default(0) @map("sort_order") // syllabus sequence; seeded for ICT (0417)
+  status      String  @default("PUBLISHED")
   description String? @db.Text
 
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  userProgress UserTopicProgress[]
-  notes        Note[]
-  challenges   Challenge[]
-  bankQuestions BankQuestion[]
+  subject          Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userProgress     UserTopicProgress[]
+  notes            Note[]
+  challenges       Challenge[]
+  bankQuestions    BankQuestion[]
   workspaceContent WorkspaceContent[]
 
+  @@index([subjectId])
   @@map("topics")
 }
 
 model Note {
-  id          String   @id @default(cuid())
-  subjectId   String   @map("subject_id")
+  id          String  @id @default(cuid())
+  subjectId   String  @map("subject_id")
   title       String
-  content     String?  @db.Text
-  pdfUrl      String?  @map("pdf_url")
-  topicId     String?  @map("topic_id")
-  isPublished Boolean  @default(true) @map("is_published")
-  
+  content     String? @db.Text
+  pdfUrl      String? @map("pdf_url")
+  topicId     String? @map("topic_id")
+  isPublished Boolean @default(true) @map("is_published")
+
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
+  @@index([subjectId])
+  @@index([topicId])
   @@map("notes")
 }
 
@@ -278,23 +291,26 @@ model UserTopicProgress {
   topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@unique([userId, topicId])
+  @@index([topicId])
   @@map("user_topic_progress")
 }
 
 model Payment {
-  id                  String   @id @default(cuid())
-  userId              String   @map("user_id")
-  razorpayPaymentId   String?  @map("razorpay_payment_id")
-  razorpayOrderId     String?  @map("razorpay_order_id")
-  razorpaySignature   String?  @map("razorpay_signature")
-  amount              Float
-  status              String   @default("pending") // pending, successful, failed
-  planId              String?  @map("plan_id")
-  createdAt           DateTime @default(now()) @map("created_at")
+  id                String   @id @default(cuid())
+  userId            String   @map("user_id")
+  razorpayPaymentId String?  @map("razorpay_payment_id")
+  razorpayOrderId   String?  @map("razorpay_order_id")
+  razorpaySignature String?  @map("razorpay_signature")
+  amount            Float
+  status            String   @default("pending") // pending, successful, failed
+  planId            String?  @map("plan_id")
+  createdAt         DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan SubscriptionPlan? @relation(fields: [planId], references: [id])
 
+  @@index([userId])
+  @@index([planId])
   @@map("payments")
 }
 
@@ -319,6 +335,7 @@ model StudentReflection {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("student_reflections")
 }
 
@@ -327,22 +344,28 @@ model Challenge {
   title         String
   subjectId     String   @map("subject_id")
   topicId       String?  @map("topic_id")
-  difficulty    String   @default("medium")    // easy, medium, hard, mixed
-  estimatedTime Int      @default(15)          @map("estimated_time") // minutes
-  isPublished   Boolean  @default(false)       @map("is_published")
-  createdAt     DateTime @default(now())       @map("created_at")
-  updatedAt     DateTime @updatedAt            @map("updated_at")
+  difficulty    String   @default("medium") // easy, medium, hard, mixed
+  estimatedTime Int      @default(15) @map("estimated_time") // minutes
+  isPublished   Boolean  @default(false) @map("is_published")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  subject   Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic     Topic?             @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  questions Question[]
-  attempts  ChallengeAttempt[]
-  mistakes  MistakeEntry[]
-  type      String   @default("CHALLENGE") // CHALLENGE, WORKSHEET, PDF_WORKSHEET
-  pdfUrl       String? @map("pdf_url")        // Questions-only PDF
-  pdfAnswerUrl String? @map("pdf_answer_url") // Questions + Answers PDF
-  assignments WorksheetAssignment[]
+  subject      Subject               @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic        Topic?                @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  questions    Question[]
+  attempts     ChallengeAttempt[]
+  mistakes     MistakeEntry[]
+  type         String                @default("CHALLENGE") // CHALLENGE, WORKSHEET, PDF_WORKSHEET
+  pdfUrl       String?               @map("pdf_url") // Questions-only PDF
+  pdfAnswerUrl String?               @map("pdf_answer_url") // Questions + Answers PDF
+  assignments  WorksheetAssignment[]
+  workspaceId  String?               @map("workspace_id")
 
+  workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([subjectId])
+  @@index([topicId])
   @@map("challenges")
 }
 
@@ -354,18 +377,20 @@ model Question {
   optionB        String  @map("option_b")
   optionC        String  @map("option_c")
   optionD        String  @map("option_d")
-  correctAnswer  String  @map("correct_answer")  // A, B, C, or D
+  correctAnswer  String  @map("correct_answer") // A, B, C, or D
   explanation    String? @db.Text
-  topicTag       String? @map("topic_tag")        // granular topic e.g. "Normalization"
+  topicTag       String? @map("topic_tag") // granular topic e.g. "Normalization"
   sortOrder      Int     @default(0) @map("sort_order")
   bankQuestionId String? @map("bank_question_id")
   difficulty     String  @default("medium")
   marks          Int     @default(1)
 
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  mistakes  MistakeEntry[]
-  bankQuestion   BankQuestion? @relation(fields: [bankQuestionId], references: [id], onDelete: SetNull)
+  challenge    Challenge      @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  mistakes     MistakeEntry[]
+  bankQuestion BankQuestion?  @relation(fields: [bankQuestionId], references: [id], onDelete: SetNull)
 
+  @@index([bankQuestionId])
+  @@index([challengeId])
   @@map("questions")
 }
 
@@ -376,34 +401,38 @@ model ChallengeAttempt {
   score          Int
   totalQuestions Int      @map("total_questions")
   percentage     Float
-  answers        String   @db.Text               // JSON: {questionId: selectedAnswer}
-  timeTaken      Int?     @map("time_taken")      // seconds elapsed
-  completedAt    DateTime @default(now())         @map("completed_at")
+  answers        String   @db.Text // JSON: {questionId: selectedAnswer}
+  timeTaken      Int?     @map("time_taken") // seconds elapsed
+  completedAt    DateTime @default(now()) @map("completed_at")
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
+  @@index([challengeId])
   @@map("challenge_attempts")
 }
 
 model MistakeEntry {
-  id             String   @id @default(cuid())
-  userId         String   @map("user_id")
-  questionId     String   @map("question_id")
-  challengeId    String   @map("challenge_id")
-  topicTag       String?  @map("topic_tag")
-  studentAnswer  String   @map("student_answer")
-  correctAnswer  String   @map("correct_answer")
-  mistakeCount   Int      @default(1) @map("mistake_count")
-  status         String   @default("needs_revision") // needs_revision | revised
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  questionId    String   @map("question_id")
+  challengeId   String   @map("challenge_id")
+  topicTag      String?  @map("topic_tag")
+  studentAnswer String   @map("student_answer")
+  correctAnswer String   @map("correct_answer")
+  mistakeCount  Int      @default(1) @map("mistake_count")
+  status        String   @default("needs_revision") // needs_revision | revised
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   question  Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questionId])
+  @@index([questionId])
+  @@index([challengeId])
   @@map("mistake_entries")
 }
 
@@ -430,11 +459,11 @@ model RevisionTask {
   title          String
   subject        String
   topic          String
-  type           String    // NOTE_REVISION, CHALLENGE, PAST_PAPER, TOPICAL, MISTAKE_REVIEW
+  type           String // NOTE_REVISION, CHALLENGE, PAST_PAPER, TOPICAL, MISTAKE_REVIEW
   status         String    @default("PENDING") // PENDING, COMPLETED, SKIPPED
   dueDate        DateTime  @map("due_date")
   priority       String    @default("MEDIUM") // HIGH, MEDIUM, LOW
-  source         String?   // e.g. "Mistake Book", "Challenge Score", "Topic Progress", "General Revision"
+  source         String? // e.g. "Mistake Book", "Challenge Score", "Topic Progress", "General Revision"
   sourceDetail   String?   @map("source_detail") // e.g. "6 mistakes", "Score: 45%"
   linkUrl        String?   @map("link_url")
   linkLabel      String?   @map("link_label")
@@ -443,6 +472,7 @@ model RevisionTask {
 
   revisionPlan RevisionPlan @relation(fields: [revisionPlanId], references: [id], onDelete: Cascade)
 
+  @@index([revisionPlanId])
   @@map("revision_tasks")
 }
 
@@ -453,55 +483,63 @@ model WorksheetAssignment {
   assignedAt  DateTime  @default(now()) @map("assigned_at")
   dueDate     DateTime? @map("due_date")
   status      String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
-  
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  worksheet   Challenge @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  worksheet Challenge @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
 
   @@unique([userId, worksheetId])
+  @@index([worksheetId])
   @@map("worksheet_assignments")
 }
 
 model BankQuestion {
-  id             String  @id @default(cuid())
-  subjectId      String  @map("subject_id")
-  topicId        String? @map("topic_id")
-  questionText   String  @map("question_text") @db.Text
-  optionA        String  @map("option_a")
-  optionB        String  @map("option_b")
-  optionC        String  @map("option_c")
-  optionD        String  @map("option_d")
-  correctAnswer  String  @map("correct_answer")
-  explanation    String? @db.Text
-  topicTag       String? @map("topic_tag")
-  difficulty     String  @default("medium") // easy, medium, hard
-  marks          Int     @default(1)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id            String   @id @default(cuid())
+  subjectId     String   @map("subject_id")
+  topicId       String?  @map("topic_id")
+  questionText  String   @map("question_text") @db.Text
+  optionA       String   @map("option_a")
+  optionB       String   @map("option_b")
+  optionC       String   @map("option_c")
+  optionD       String   @map("option_d")
+  correctAnswer String   @map("correct_answer")
+  explanation   String?  @db.Text
+  topicTag      String?  @map("topic_tag")
+  difficulty    String   @default("medium") // easy, medium, hard
+  marks         Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  workspaceId   String?  @map("workspace_id")
 
-  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  subject            Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic              Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  workspace          Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   generatedQuestions Question[]
 
+  @@index([workspaceId])
+  @@index([subjectId])
+  @@index([topicId])
   @@map("bank_questions")
 }
 
 model Workspace {
-  id         String   @id @default(cuid())
-  name       String
-  slug       String   @unique
-  ownerId    String   @unique @map("owner_id")
-  status     String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, ACTIVE, SUSPENDED, ARCHIVED
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  ownerId      String   @unique @map("owner_id")
+  status       String   @default("PENDING_APPROVAL") // PENDING_APPROVAL, ACTIVE, SUSPENDED, ARCHIVED
   // Future settings (not implemented in Phase 1)
-  logo       String?
-  primaryBoard String? @map("primary_board")
-  brandColor   String? @map("brand_color")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  logo         String?
+  primaryBoard String?  @map("primary_board")
+  brandColor   String?  @map("brand_color")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  owner    User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members  User[]            @relation("WorkspaceMembers")
-  classes  Class[]
-  content  WorkspaceContent[]
+  owner         User               @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       User[]             @relation("WorkspaceMembers")
+  classes       Class[]
+  content       WorkspaceContent[]
+  bankQuestions BankQuestion[]
+  challenges    Challenge[]
 
   @@map("workspaces")
 }
@@ -524,6 +562,9 @@ model Class {
   qualification Qualification? @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
   students      ClassStudent[]
 
+  @@index([workspaceId])
+  @@index([qualificationId])
+  @@index([subjectId])
   @@map("classes")
 }
 
@@ -538,13 +579,14 @@ model ClassStudent {
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([classId, studentId])
+  @@index([studentId])
   @@map("class_students")
 }
 
 model WorkspaceContent {
   id          String   @id @default(cuid())
   workspaceId String   @map("workspace_id")
-  type        String   // NOTE, PAPER, CHALLENGE, WORKSHEET
+  type        String // NOTE, PAPER, CHALLENGE, WORKSHEET
   title       String
   description String?  @db.Text
   pdfUrl      String?  @map("pdf_url")
@@ -558,5 +600,8 @@ model WorkspaceContent {
   subject   Subject?  @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   topic     Topic?    @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
+  @@index([workspaceId])
+  @@index([subjectId])
+  @@index([topicId])
   @@map("workspace_content")
 }

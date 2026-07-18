@@ -62,13 +62,8 @@ export async function getEcosystemPreference() {
         select: { preferredBoard: true, preferredQualification: true },
       });
       if (user?.preferredBoard && user?.preferredQualification) {
-        // Re-instate the cookie
-        cookieStore.set(PREFERENCE_COOKIE, JSON.stringify({ board: user.preferredBoard, qualification: user.preferredQualification }), {
-          maxAge: 60 * 60 * 24 * 365,
-          path: "/",
-          sameSite: "lax",
-          secure: process.env.NODE_ENV === "production",
-        });
+        // We cannot set the cookie during a Server Component render.
+        // Return the values from the database. The client or a Server Action can set the cookie later if needed.
         return { board: user.preferredBoard, qualification: user.preferredQualification };
       }
     }

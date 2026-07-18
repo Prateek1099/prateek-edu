@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Briefcase, Users, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
+import DeleteWorkspaceButton from "./DeleteWorkspaceButton";
 
 export default async function AdminWorkspaceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -56,9 +57,12 @@ export default async function AdminWorkspaceDetailPage({ params }: { params: Pro
             </h1>
             <p className="text-muted-foreground mt-1">Owned by {workspace.owner.name} ({workspace.owner.email})</p>
           </div>
-          <Badge className={statusColor(workspace.status)}>
-            {workspace.status === "PENDING_APPROVAL" ? "Pending" : workspace.status}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Badge className={statusColor(workspace.status)}>
+              {workspace.status === "PENDING_APPROVAL" ? "Pending" : workspace.status}
+            </Badge>
+            <DeleteWorkspaceButton workspaceId={workspace.id} workspaceName={workspace.name} />
+          </div>
         </div>
       </div>
 

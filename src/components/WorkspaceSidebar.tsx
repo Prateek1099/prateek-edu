@@ -9,6 +9,9 @@ import {
   Settings,
   LogOut,
   Briefcase,
+  UserCircle,
+  Database,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +20,10 @@ type NavItem = { href: string; label: string; icon: React.ElementType; match: "e
 const navItems: NavItem[] = [
   { href: "/workspace", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
   { href: "/workspace/classes", label: "Classes", icon: Users, match: "prefix" },
-  { href: "/workspace/content", label: "Content", icon: FileText, match: "prefix" },
+  { href: "/workspace/students", label: "Students", icon: UserCircle, match: "prefix" },
+  { href: "/workspace/question-bank", label: "Question Bank", icon: Database, match: "prefix" },
+  { href: "/workspace/worksheets", label: "Worksheets", icon: FileText, match: "prefix" },
+  { href: "/workspace/quick-practice", label: "Quick Practice", icon: Zap, match: "prefix" },
   { href: "/workspace/settings", label: "Settings", icon: Settings, match: "prefix" },
 ];
 
