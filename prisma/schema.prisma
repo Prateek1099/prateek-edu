@@ -15,6 +15,11 @@ enum UserRole {
   STUDENT
 }
 
+enum AccountActionTokenPurpose {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -110,6 +115,18 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model AccountActionToken {
+  id         String                    @id @default(cuid())
+  identifier String
+  tokenHash  String                    @unique @map("token_hash")
+  purpose    AccountActionTokenPurpose
+  expires    DateTime
+  createdAt  DateTime                  @default(now()) @map("created_at")
+
+  @@index([identifier, purpose])
+  @@map("account_action_tokens")
 }
 
 model Board {

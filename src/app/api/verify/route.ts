@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { AccountActionTokenPurpose } from "@prisma/client";
+import { consumeAccountActionToken, normalizeEmail } from "@/lib/account-action-tokens";
 
 export async function GET(req: Request) {
   try {
@@ -11,42 +13,22 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing token or email" }, { status: 400 });
     }
 
-    const verificationToken = await prisma.verificationToken.findUnique({
-      where: {
-        identifier_token: {
-          identifier: email,
-          token,
-        },
-      },
-    });
+    const normalizedEmail = normalizeEmail(email);
+    const consumed = await consumeAccountActionToken(
+      normalizedEmail,
+      token,
+      AccountActionTokenPurpose.EMAIL_VERIFICATION,
+    );
 
-    if (!verificationToken) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 400 });
+    if (!consumed) {
+      return NextResponse.redirect(new URL("/login?verification=invalid", req.url));
     }
 
-    if (new Date() > verificationToken.expires) {
-      return NextResponse.json({ error: "Token expired" }, { status: 400 });
-    }
-
-    await prisma.user.update({
-      where: { email },
-      data: {
-        emailVerified: new Date(),
-      },
-    });
-
-    await prisma.verificationToken.delete({
-      where: {
-        identifier_token: {
-          identifier: email,
-          token,
-        },
-      },
-    });
+    await prisma.user.update({ where: { email: normalizedEmail }, data: { emailVerified: new Date() } });
 
     // Redirect to a success page or login
     return NextResponse.redirect(new URL("/login?verified=true", req.url));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Verification Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

@@ -23,6 +23,8 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [resendStatus, setResendStatus] = useState("");
+  const [isResending, setIsResending] = useState(false);
   
   const isVerified = searchParams.get("verified") === "true";
 
@@ -38,7 +40,11 @@ function LoginForm() {
     });
 
     if (res?.error) {
-      setError(res.error);
+      setError(
+        res.error === "EMAIL_NOT_VERIFIED"
+          ? "Verify your email before logging in. You can request a new link below."
+          : "Incorrect email or password.",
+      );
       setLoading(false);
     } else {
       const callback = readInternalCallbackPath(searchParams.get("callbackUrl"));
@@ -47,8 +53,30 @@ function LoginForm() {
       if (callback) {
         window.location.assign(callback);
       } else {
-        window.location.assign("/admin");
+        window.location.assign("/dashboard");
       }
+    }
+  };
+
+  const resendVerification = async () => {
+    if (!email) {
+      setResendStatus("Enter your email address first.");
+      return;
+    }
+    setIsResending(true);
+    setResendStatus("");
+    try {
+      const response = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const body = await response.json();
+      setResendStatus(body.message || "If eligible, a verification link has been sent.");
+    } catch {
+      setResendStatus("We could not request a new link. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -103,6 +131,7 @@ function LoginForm() {
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             {isVerified && <div className="text-green-600 bg-green-500/10 p-3 rounded-md text-sm text-center font-medium">Email successfully verified! You can now log in.</div>}
+            {searchParams.get("verification") === "invalid" && <div className="text-destructive bg-destructive/10 p-3 rounded-md text-sm text-center font-medium">That verification link is invalid or has expired. Request a new one below.</div>}
             {error && <div className="text-red-500 text-sm text-center font-medium">{error}</div>}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -128,11 +157,18 @@ function LoginForm() {
             <Button className="w-full shadow-sm" type="submit" disabled={loading}>
               {loading ? "Logging in..." : "Login"}
             </Button>
+            <div className="flex justify-between gap-3 text-sm">
+              <Link href="/forgot-password" className="text-primary hover:underline font-medium">Forgot password?</Link>
+              <button type="button" onClick={resendVerification} disabled={isResending} className="text-primary hover:underline font-medium disabled:opacity-60">
+                {isResending ? "Sending..." : "Resend verification"}
+              </button>
+            </div>
+            {resendStatus && <p className="text-xs text-muted-foreground text-center">{resendStatus}</p>}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col text-sm text-muted-foreground text-center space-y-2">
           <div>
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link href="/register" className="text-primary hover:underline font-semibold">
               Sign up
             </Link>

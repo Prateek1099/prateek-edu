@@ -8,9 +8,8 @@ import { GraduationCap, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -49,27 +48,12 @@ export default function RegisterPage() {
         return;
       }
 
-      // Automatically log in the user after successful registration
-      const loginRes = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (loginRes?.error) {
-        setError("Account created, but automatic login failed. Please log in manually.");
-        setLoading(false);
-      } else {
-        toast.success(
-          registerAs === "teacher" 
-            ? "Teacher account created! Your workspace is pending admin approval."
-            : "Account created! Please check your email to verify your account.", 
-          { duration: 5000 }
-        );
-        router.push(registerAs === "teacher" ? "/workspace" : "/dashboard");
-        router.refresh();
-      }
-    } catch (err) {
+      toast.success(
+        "Account created. Check your email to verify it before logging in.",
+        { duration: 5000 },
+      );
+      router.push(`/login?registered=true&email=${encodeURIComponent(email)}`);
+    } catch {
       setError("An unexpected error occurred.");
       setLoading(false);
     }
@@ -151,8 +135,9 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required 
-                  minLength={6}
+                  minLength={10}
                 />
+                <p className="text-xs text-muted-foreground">Use at least 10 characters, including uppercase, lowercase, and a number.</p>
               </div>
               <Button className="w-full shadow-sm mt-2" type="submit" disabled={loading}>
                 {loading ? "Creating Account..." : "Sign Up"}

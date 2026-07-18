@@ -19,6 +19,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const role = (session.user as { role?: string }).role;
+  if (role === "SUPER_ADMIN") redirect("/admin");
+  if (role === "TEACHER") redirect("/workspace");
+
   const userId = (session.user as any).id as string;
   if (!userId) {
     console.error("Dashboard error: session missing userId");

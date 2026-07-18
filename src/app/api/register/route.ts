@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
 import { sendVerificationEmail } from "@/lib/email";
+import { AccountActionTokenPurpose } from "@prisma/client";
+import { isValidEmail, issueAccountActionToken, normalizeEmail } from "@/lib/account-action-tokens";
+import { validatePassword } from "@/lib/passwords";
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -11,27 +13,37 @@ function slugify(text: string): string {
 export async function POST(req: Request) {
   try {
     const { name, email, password, registerAs, workspaceName } = await req.json();
+    const normalizedEmail = typeof email === "string" ? normalizeEmail(email) : "";
 
-    if (!name || !email || !password) {
+    if (!name || !normalizedEmail || !password) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
+    }
+
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
       return NextResponse.json({ error: "User with this email already exists" }, { status: 400 });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 12);
     const isTeacherReg = registerAs === "teacher";
     const role = isTeacherReg ? "TEACHER" : "STUDENT";
 
     const user = await prisma.$transaction(async (tx) => {
       const newUser = await tx.user.create({
-        data: { name, email, password: hashedPassword, role },
+        data: { name: name.trim(), email: normalizedEmail, password: hashedPassword, role },
       });
 
       // Teachers get an auto-created workspace (pending admin approval)
@@ -47,17 +59,11 @@ export async function POST(req: Request) {
       return newUser;
     });
 
-    const token = crypto.randomUUID();
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
-    await prisma.verificationToken.create({
-      data: { identifier: email, token, expires },
-    });
-
-    await sendVerificationEmail(email, token);
+    const { token } = await issueAccountActionToken(normalizedEmail, AccountActionTokenPurpose.EMAIL_VERIFICATION);
+    await sendVerificationEmail(normalizedEmail, token);
 
     return NextResponse.json({ message: "User registered successfully", userId: user.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Registration Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
