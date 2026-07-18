@@ -177,6 +177,7 @@ model Subject {
   bankQuestions    BankQuestion[]
   classes          Class[]
   workspaceContent WorkspaceContent[]
+  studentReflections StudentReflection[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -275,6 +276,7 @@ model Topic {
   notes            Note[]
   challenges       Challenge[]
   bankQuestions    BankQuestion[]
+  studentReflections StudentReflection[]
   workspaceContent WorkspaceContent[]
 
   @@index([subjectId])
@@ -345,14 +347,20 @@ model ContactQuery {
 model StudentReflection {
   id                String   @id @default(cuid())
   userId            String   @map("user_id")
+  subjectId         String?  @map("subject_id")
+  topicId           String?  @map("topic_id")
   challengingTopics String[] @map("challenging_topics") // PostgreSQL handles String[] natively
   message           String?  @db.Text
   context           Json?
   createdAt         DateTime @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject Subject? @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  topic   Topic?   @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([subjectId])
+  @@index([topicId])
   @@map("student_reflections")
 }
 
