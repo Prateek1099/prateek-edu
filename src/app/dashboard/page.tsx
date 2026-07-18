@@ -143,8 +143,6 @@ export default async function DashboardPage() {
   const planCompletedTasks = revisionPlan?._count?.tasks || 0;
   const planCompletionPct = planTotalTasks > 0 ? Math.round((planCompletedTasks / planTotalTasks) * 100) : 0;
   const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
-
-  const allPapers = recentPapers; // Renamed for clarity since it fetches all now
   const recentPapersSliced = allPapers.slice(0, 6);
   const completedList = allPapers.filter((p: any) => p.status === 'completed');
   const inProgressList = allPapers.filter((p: any) => p.status === 'in_progress');
