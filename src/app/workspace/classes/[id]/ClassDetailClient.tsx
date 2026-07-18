@@ -37,7 +37,7 @@ type ClassData = {
 
 export default function ClassDetailClient({ 
   classData,
-  availableChallenges,
+  unassignedChallenges,
   assignedChallenges
 }: { 
   classData: ClassData;
