@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, Menu, Search, User as UserIcon, BookOpen, Clock, Settings, LogOut, ChevronDown, Repeat } from 'lucide-react';
+import { GraduationCap, Menu, User as UserIcon, BookOpen, Settings, LogOut, ChevronDown, Repeat } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -11,13 +11,16 @@ import {
 } from '@/components/ui/sheet';
 import { ThemeToggle } from './ThemeToggle';
 import { useSession, signOut } from 'next-auth/react';
+import type { Session } from "next-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
 import { GlobalSearch } from "./GlobalSearch";
 import { clearEcosystemPreference } from "@/app/actions/resources-actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-function UserDropdown({ session }: { session: any }) {
+type EcosystemPreference = { board: string; boardTitle: string; qualTitle?: string | null };
+
+function UserDropdown({ session }: { session: Session }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -79,7 +82,7 @@ function UserDropdown({ session }: { session: any }) {
   );
 }
 
-function EcosystemSwitcher({ preference }: { preference: any }) {
+function EcosystemSwitcher({ preference }: { preference: EcosystemPreference }) {
   const router = useRouter();
 
   if (!preference) return null;
@@ -111,7 +114,7 @@ function EcosystemSwitcher({ preference }: { preference: any }) {
   );
 }
 
-export default function NavbarClient({ preference }: { preference: any }) {
+export default function NavbarClient({ preference }: { preference: EcosystemPreference | null }) {
   const { data: session, status } = useSession();
 
   const routes = [
@@ -153,7 +156,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
                   <GraduationCap className="h-6 w-6 text-primary" />
                   Vexa
                 </Link>
-                {routes.map((route: any) => (
+                {routes.map((route) => (
                   <Link
                     key={route.href}
                     href={route.href}
@@ -173,7 +176,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
                   </>
                 ) : (
                   <Link href="/login" className="w-full mt-4">
-                    <Button className="w-full">Student Login</Button>
+                    <Button className="w-full">Login</Button>
                   </Link>
                 )}
               </nav>
@@ -183,7 +186,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
 
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {routes.map((route: any) => (
+          {routes.map((route) => (
             <Link
               key={route.href}
               href={route.href}
@@ -205,7 +208,7 @@ export default function NavbarClient({ preference }: { preference: any }) {
           ) : (
             <Link href="/login">
               <Button variant="default" className="rounded-full px-6 transition-transform hover:scale-105 active:scale-95 shadow-md">
-                Student Login
+                Login
               </Button>
             </Link>
           )}

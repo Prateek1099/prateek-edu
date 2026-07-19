@@ -33,7 +33,7 @@ export default async function BoardQualificationSelection({
           variant="ghost" 
           className="mb-6 -ml-2 text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Ecosystems
+          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Ecosystem
         </Button>
       </Link>
 

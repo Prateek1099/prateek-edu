@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, BookOpen, Layers, ScrollText, Download, Trophy, Clock, Zap } from "lucide-react";
+import { FileText, BookOpen, ScrollText, Download, Trophy, Clock, Zap, ClipboardCheck, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,22 @@ const difficultyColor: Record<string, string> = {
   medium: "border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-500/10",
   hard: "border-red-500/50 text-red-600 dark:text-red-400 bg-red-500/10",
   mixed: "border-primary/50 text-primary bg-primary/10",
+};
+
+type Paper = { id: string; paperNumber: number; variant: number | null; questionPdfUrl: string | null; msPdfUrl: string | null; sourceFilesUrl: string | null };
+type Note = { id: string; title: string; pdfUrl: string | null };
+type Topic = { id: string; topicName: string };
+type Subject = { slug: string; name: string; syllabusPdfUrl: string | null };
+type Challenge = {
+  id: string;
+  title: string;
+  type: string;
+  difficulty: string;
+  estimatedTime: number;
+  pdfUrl: string | null;
+  pdfAnswerUrl: string | null;
+  topic: Topic | null;
+  _count: { questions: number };
 };
 
 export default function SubjectTabsClient({
@@ -25,25 +41,29 @@ export default function SubjectTabsClient({
   board = "",
   qualification = "",
 }: {
-  papersByYear: Record<number, Record<string, any[]>>;
-  topics: any[];
-  notes: any[];
-  subject: any;
-  challenges?: any[];
+  papersByYear: Record<number, Record<string, Paper[]>>;
+  topics: Topic[];
+  notes: Note[];
+  subject: Subject;
+  challenges?: Challenge[];
   board?: string;
   qualification?: string;
 }) {
   const years = Object.keys(papersByYear).map(Number).sort((a, b) => b - a);
+  void topics;
+  const quickPractices = challenges.filter((challenge) => challenge.type === "QUICK_PRACTICE");
+  const standardChallenges = challenges.filter((challenge) => challenge.type === "CHALLENGE" || !challenge.type);
+  const worksheets = challenges.filter((challenge) => challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET");
 
   return (
     <Tabs defaultValue="past-papers" className="w-full">
-      <TabsList className="grid w-full grid-cols-4 max-w-3xl mb-8 h-auto p-1">
-        <TabsTrigger value="past-papers" className="py-2">Past Papers</TabsTrigger>
-        <TabsTrigger value="practice" className="py-2 flex items-center gap-1.5">
-          <Zap className="h-3.5 w-3.5" />Quick Practice
+      <TabsList className="mb-8 flex h-auto w-full max-w-4xl flex-wrap justify-start gap-1 rounded-xl border bg-muted/30 p-1.5">
+        <TabsTrigger value="past-papers" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><FileText className="h-4 w-4" /> Past Papers</TabsTrigger>
+        <TabsTrigger value="practice" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm">
+          <Zap className="h-4 w-4" /> Quick Practice
         </TabsTrigger>
-        <TabsTrigger value="notes" className="py-2">Notes</TabsTrigger>
-        <TabsTrigger value="syllabus" className="py-2">Syllabus</TabsTrigger>
+        <TabsTrigger value="notes" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
+        <TabsTrigger value="syllabus" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
       </TabsList>
       
       <TabsContent value="past-papers" className="mt-0">
@@ -171,21 +191,27 @@ export default function SubjectTabsClient({
       {/* Quick Practice Tab */}
       <TabsContent value="practice" className="mt-0">
         <div className="space-y-8">
-          
+          <section>
+            <div className="mb-4 flex items-center gap-2"><Zap className="h-5 w-5 text-primary" /><h2 className="text-xl font-bold">Quick Practice</h2></div>
+            <p className="mb-4 text-sm text-muted-foreground">Start with a short, focused set before moving into full challenges.</p>
+            {quickPractices.length === 0 ? (
+              <div className="rounded-xl border border-dashed bg-primary/5 p-6 text-center"><ClipboardCheck className="mx-auto mb-3 h-8 w-8 text-primary/70" /><h3 className="font-semibold">No quick practices yet</h3><p className="mt-1 text-sm text-muted-foreground">Try a challenge below, or check back when your teacher publishes a short practice.</p></div>
+            ) : <div className="grid gap-4 md:grid-cols-2">{quickPractices.map((practice) => <Card key={practice.id} className="border-primary/25 bg-primary/5 shadow-sm transition-colors hover:border-primary/50"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{practice.title}</h3>{practice.topic && <p className="mt-1 text-sm text-muted-foreground">{practice.topic.topicName}</p>}</div><Badge variant="outline" className={cn("capitalize", difficultyColor[practice.difficulty] || difficultyColor.medium)}>{practice.difficulty}</Badge></div><div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground"><span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5" /> {practice._count.questions} questions</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {practice.estimatedTime} min</span></div><Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${practice.id}`}><Button className="mt-5 w-full">Start quick practice</Button></Link></CardContent></Card>)}</div>}
+          </section>
           <section>
             <div className="flex items-center gap-2 mb-4">
               <Zap className="h-5 w-5 text-amber-500" />
               <h2 className="text-xl font-bold">MCQ Challenges</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">Fast revision and topic mastery.</p>
-            {challenges.filter(c => c.type === "CHALLENGE" || !c.type).length === 0 ? (
+            {standardChallenges.length === 0 ? (
               <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
                 <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-semibold text-foreground">No challenges available</h3>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {challenges.filter(c => c.type === "CHALLENGE" || !c.type).map((challenge) => (
+                {standardChallenges.map((challenge) => (
                   <Card key={challenge.id} className="hover:border-primary/50 transition-all shadow-sm bg-card group overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500/80 to-amber-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <CardContent className="p-6">
@@ -236,14 +262,14 @@ export default function SubjectTabsClient({
               <h2 className="text-xl font-bold">Worksheets</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">Exam-style structured practice.</p>
-            {challenges.filter(c => c.type === "WORKSHEET" || c.type === "PDF_WORKSHEET").length === 0 ? (
+            {worksheets.length === 0 ? (
               <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
                 <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
                 <h3 className="text-lg font-semibold text-foreground">No worksheets published yet</h3>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {challenges.filter(c => c.type === "WORKSHEET" || c.type === "PDF_WORKSHEET").map((worksheet: any) => (
+                {worksheets.map((worksheet) => (
                   <Card key={worksheet.id} className="hover:border-blue-500/50 transition-all shadow-sm bg-card group overflow-hidden relative">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/80 to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <CardContent className="p-6">
