@@ -29,7 +29,10 @@ export function CourseCatalog({ areas, enrolledCourseIds }: { areas: CourseArea[
     startTransition(async () => {
       const result = await enrollInFreeCourse(course.id);
       setPendingCourseId(null);
-      if (!result.success) return toast.error(result.error || "Unable to start this course.");
+      if (!result.success) {
+        toast.error(result.error || "Unable to start this course.");
+        return;
+      }
       toast.success("Course added to your learning journey.");
       router.push(course.resourceUrl);
       router.refresh();
