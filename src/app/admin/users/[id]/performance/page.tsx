@@ -16,6 +16,7 @@ import {
   User,
   CalendarDays,
 } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function StudentPerformancePage({
   params,
@@ -23,7 +24,7 @@ export default async function StudentPerformancePage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "admin") {
+  if (!session || !isAdminRole((session.user as { role?: string }).role)) {
     redirect("/dashboard");
   }
 

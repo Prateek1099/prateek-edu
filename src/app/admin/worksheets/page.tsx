@@ -6,10 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import AdminWorksheetsClient from "./AdminWorksheetsClient";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function AdminWorksheetsPage() {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || (session.user as any).role !== "admin") redirect("/dashboard");
+  if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) redirect("/dashboard");
 
   const worksheets = await prisma.challenge.findMany({
     where: { type: { in: ["WORKSHEET", "PDF_WORKSHEET"] } },

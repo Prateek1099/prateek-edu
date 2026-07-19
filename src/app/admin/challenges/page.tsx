@@ -3,12 +3,13 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import AdminChallengesClient from "./AdminChallengesClient";
+import { isAdminRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminChallengesPage() {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || (session.user as any).role !== "admin") {
+  if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) {
     redirect("/dashboard");
   }
 

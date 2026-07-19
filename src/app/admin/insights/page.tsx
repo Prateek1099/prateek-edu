@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { TeacherAiInsight } from "./TeacherAiInsight";
 import { PrintButton } from "@/components/PrintButton";
 import { getTeachingIntelligenceData } from "@/lib/teaching-intelligence";
+import { isAdminRole } from "@/lib/roles";
 import {
   Users,
   Trophy,
@@ -22,7 +23,7 @@ import {
 export default async function TeachingIntelligencePage() {
   const session = await getServerSession(authOptions);
 
-  if (!session || !session.user || (session.user as any).role !== "admin") {
+  if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) {
     redirect("/dashboard");
   }
 

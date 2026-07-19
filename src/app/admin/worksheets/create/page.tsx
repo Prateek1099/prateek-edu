@@ -6,10 +6,11 @@ import { WorksheetBuilder } from "./WorksheetBuilder";
 import { PdfWorksheetUploader } from "./PdfWorksheetUploader";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { isAdminRole } from "@/lib/roles";
 
 export default async function WorksheetCreatePage() {
   const session = await getServerSession(authOptions);
-  if (!session || !session.user || (session.user as any).role !== "admin") redirect("/dashboard");
+  if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) redirect("/dashboard");
 
   const subjects = await prisma.subject.findMany({
     include: { topics: { orderBy: { sortOrder: 'asc' } } }

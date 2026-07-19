@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { GoogleGenAI } from "@google/genai";
+import { isAdminRole } from "@/lib/roles";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user || (session.user as any).role !== "admin") {
+    if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
