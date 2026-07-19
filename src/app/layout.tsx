@@ -6,7 +6,6 @@ import Footer from "@/components/Footer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/Providers";
-import Script from "next/script";
 import { Analytics } from "@vercel/analytics/react";
 
 const geistSans = Geist({
@@ -46,7 +45,6 @@ export default function RootLayout({
             <Toaster />
           </TooltipProvider>
         </Providers>
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
         <Analytics />
       </body>
     </html>

@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
 import { ArrowLeft } from "lucide-react";
-import { PremiumViewer } from "@/components/PremiumViewer";
 
 const NotePdfViewer = dynamic(() => import("@/components/NotePdfViewer"), {
   ssr: false,
@@ -51,11 +50,9 @@ function NotesViewerInner() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <PremiumViewer isPremiumContent={true}>
-          <div className="h-[calc(100vh-130px)]">
-            <NotePdfViewer url={proxiedPdfUrl} />
-          </div>
-        </PremiumViewer>
+        <div className="h-[calc(100vh-130px)]">
+          <NotePdfViewer url={proxiedPdfUrl} />
+        </div>
       </div>
     </div>
   );
@@ -68,5 +65,4 @@ export default function NotesViewerPage() {
     </Suspense>
   );
 }
-
 

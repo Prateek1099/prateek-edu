@@ -26,16 +26,11 @@ export async function GET(req: Request) {
       }
     }
 
-    // Notes require session and premium status
+    // Notes remain account-only, but are currently free for every verified student.
     if (isNote) {
       const session = await getServerSession(authOptions);
       if (!session || !session.user) {
         return new NextResponse("Unauthorized", { status: 401 });
-      }
-
-      const isPremium = (session.user as any).isPremium;
-      if (!isPremium) {
-        return new NextResponse("Premium Required", { status: 403 });
       }
     }
 
@@ -86,4 +81,3 @@ export async function GET(req: Request) {
     return new NextResponse("Internal Server Error", { status: 500 });
   }
 }
-

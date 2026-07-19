@@ -187,10 +187,10 @@ function PaperViewerInner() {
       </div>
 
       {/* Viewer Area */}
-      <PremiumViewer isPremiumContent={false}>
+      <PremiumViewer>
         <div className={`flex-1 overflow-hidden p-2 md:p-4 pb-0 md:pb-4 ${isFullscreen ? 'h-[calc(100vh-60px)]' : 'h-[calc(100vh-130px)]'}`}>
         {viewMode === "dual" && qp && ms ? (
-          /* @ts-ignore - Prop compatibility with latest react-resizable-panels */
+          /* @ts-expect-error - Prop compatibility with latest react-resizable-panels */
           <ResizablePanelGroup direction="horizontal" className="h-full rounded-lg border bg-background shadow-sm overflow-hidden">
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full flex flex-col relative group bg-muted/10">
