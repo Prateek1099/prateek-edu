@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Upload, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
-export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
+interface WorksheetSubject {
+  id: string;
+  name: string;
+  topics?: { id: string; topicName: string }[];
+}
+
+export function PdfWorksheetUploader({ subjects }: { subjects: WorksheetSubject[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +29,7 @@ export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
   const [questionsPdf, setQuestionsPdf] = useState<File | null>(null);
   const [answersPdf, setAnswersPdf] = useState<File | null>(null);
 
-  const selectedSubject = subjects.find((s: any) => s.id === subjectId);
+  const selectedSubject = subjects.find((s) => s.id === subjectId);
   const topics: { id: string; topicName: string }[] = selectedSubject?.topics || [];
 
   const uploadFile = async (file: File, folder: string): Promise<string> => {
@@ -76,9 +82,10 @@ export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
       toast.success("PDF Worksheet created!");
       router.push("/admin/worksheets");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to create worksheet";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -104,7 +111,7 @@ export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
               <Select value={subjectId} onValueChange={(v) => setSubjectId(v || "")}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {subjects.map((s: any) => (
+                  {subjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>

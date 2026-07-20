@@ -1,18 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { setEcosystemPreference, clearEcosystemPreference } from "@/app/actions/resources-actions";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ChevronRight, LayoutDashboard, Settings2, BookOpen } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { BookOpen } from "lucide-react";
 
 type Preference = { board: string; qualification: string } | null;
 type Qualification = { id: string; name: string; title: string };
 type Board = { id: string; name: string; title: string; qualifications: Qualification[] };
 
 export default function ResourcesClient({
-  initialPreference,
   boards,
 }: {
   initialPreference: Preference;

@@ -61,7 +61,7 @@ export default function TopicalQuestionsPage() {
             <div className="space-y-2">
               <Label>Education Board</Label>
               <div className="flex flex-col gap-2">
-                {boards.map((b: any) => (
+                {boards.map((b) => (
                   <Button 
                     key={b.id} 
                     variant={selectedBoard === b.id ? "default" : "outline"}
@@ -81,7 +81,7 @@ export default function TopicalQuestionsPage() {
             <div className="space-y-2">
               <Label>Level</Label>
               <div className="grid grid-cols-2 gap-2">
-                {filteredLevels.map((l: any) => (
+                {filteredLevels.map((l) => (
                   <Button 
                     key={l.id} 
                     size="sm"
@@ -102,7 +102,7 @@ export default function TopicalQuestionsPage() {
             <div className="space-y-2">
               <Label>Subject</Label>
               <div className="flex flex-col gap-2">
-                {filteredSubjects.map((s: any) => (
+                {filteredSubjects.map((s) => (
                   <Button 
                     key={s.id} 
                     size="sm"
@@ -140,21 +140,20 @@ export default function TopicalQuestionsPage() {
         ) : (
           <Card className="border bg-card">
             <CardContent className="p-0">
-              {/* @ts-ignore */}
-              <Accordion type="single" collapsible="true" className="w-full">
-                {filteredTopics.map((topic: any, i: number) => (
+              <Accordion className="w-full">
+                {filteredTopics.map((topic, i) => (
                   <AccordionItem value={`item-${i}`} key={topic.id} className="last:border-0 px-6">
                     <AccordionTrigger className="hover:no-underline py-4">
                       <div className="flex text-left items-center justify-between w-full pr-4">
                         <span className="font-semibold text-base">{topic.chapterName}</span>
                         <Badge variant="secondary" className="font-normal shrink-0 ml-2">
-                          {topic.questions.reduce((acc: number, q: any) => acc + q.count, 0)} Questions
+                          {topic.questions.reduce((acc, q) => acc + q.count, 0)} Questions
                         </Badge>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4">
                       <div className="space-y-3 pt-2">
-                        {topic.questions.map((q: any, j: number) => (
+                        {topic.questions.map((q, j) => (
                           <div key={j} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg border bg-muted/20">
                             <div className="flex items-center gap-3 mb-3 sm:mb-0">
                               <Badge variant={q.difficulty === "Hard" ? "destructive" : q.difficulty === "Medium" ? "default" : "secondary"}>

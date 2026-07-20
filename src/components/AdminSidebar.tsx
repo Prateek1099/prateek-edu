@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
-  FileText,
   Users,
   CreditCard,
   MessageSquare,
@@ -18,17 +17,17 @@ import {
   ChevronDown,
   Layers,
   ListTree,
-  Briefcase
+  Briefcase,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminBoard } from "./AdminBoardContext";
 
 
 
-type NavItem = { href: string; label: string; icon: any; match: "exact" | "prefix" };
+type NavItem = { href: string; label: string; icon: LucideIcon; match: "exact" | "prefix" };
 
 const contentNav: NavItem[] = [
-  { href: "/admin/papers", label: "Past Papers", icon: FileText, match: "prefix" },
   { href: "/admin/notes", label: "Revision Notes", icon: StickyNote, match: "prefix" },
   { href: "/admin/syllabus", label: "Syllabus", icon: GraduationCap, match: "prefix" },
   { href: "/admin/question-bank", label: "Question Bank", icon: Database, match: "prefix" },

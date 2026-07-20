@@ -55,7 +55,7 @@ export default function ContactPage() {
           Get in <span className="text-primary">Touch</span>
         </h1>
         <p className="text-xl text-muted-foreground">
-          Have a question about our courses, past papers, or need technical support? We're here to help!
+          Have a question about our courses, learning resources, or need technical support? We&apos;re here to help!
         </p>
       </div>
 
