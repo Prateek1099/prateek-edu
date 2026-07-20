@@ -34,7 +34,6 @@ import {
   FileText,
   Trophy,
   AlertTriangle,
-  File,
   ClipboardList,
   Calendar,
   Flame,
@@ -93,7 +92,6 @@ const TASK_TYPE_ICONS: Record<string, React.ReactNode> = {
   NOTE_REVISION: <FileText className="w-4 h-4" />,
   CHALLENGE: <Trophy className="w-4 h-4" />,
   MISTAKE_REVIEW: <AlertTriangle className="w-4 h-4" />,
-  PAST_PAPER: <File className="w-4 h-4" />,
   TOPICAL: <ClipboardList className="w-4 h-4" />,
 };
 
@@ -101,7 +99,6 @@ const TASK_TYPE_LABELS: Record<string, string> = {
   NOTE_REVISION: "📝 Notes",
   CHALLENGE: "⚡ Challenge",
   MISTAKE_REVIEW: "🔖 Mistake Review",
-  PAST_PAPER: "📄 Past Paper",
   TOPICAL: "📋 Topical",
 };
 

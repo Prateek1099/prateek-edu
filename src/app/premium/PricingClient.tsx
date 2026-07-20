@@ -121,7 +121,7 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
               <ul className="space-y-4">
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />
-                  <span>Access to all Past Papers</span>
+                  <span>Access to all learning resources</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />

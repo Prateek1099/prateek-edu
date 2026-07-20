@@ -1,9 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { BookOpen, Bookmark, Clock, Trophy, Target, PlayCircle, FolderOpen, Flame, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Rocket, Users } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Rocket, Users } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -30,39 +29,13 @@ export default async function DashboardPage() {
   }
 
   // 1. Fetch Overview Data
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [enrollments, allPapers, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
+  const [enrollments, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
     prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
-    prisma.userProgress.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        status: true,
-        lastViewed: true,
-        paper: {
-          select: {
-            id: true,
-            paperNumber: true,
-            variant: true,
-            year: true,
-            season: true,
-            questionPdfUrl: true,
-            msPdfUrl: true,
-            subject: {
-              select: { name: true, code: true }
-            }
-          }
-        }
-      },
-      orderBy: { lastViewed: "desc" },
-    }),
     prisma.userTopicProgress.findMany({
       where: { userId },
       select: {
@@ -105,12 +78,12 @@ export default async function DashboardPage() {
       where: { userId },
       include: {
         tasks: {
-          where: { dueDate: { gte: todayStart, lte: todayEnd } },
+          where: { type: { not: "PAST_PAPER" }, dueDate: { gte: todayStart, lte: todayEnd } },
           orderBy: { createdAt: "asc" },
           take: 5,
         },
         _count: {
-          select: { tasks: { where: { status: { not: "PENDING" } } } },
+          select: { tasks: { where: { type: { not: "PAST_PAPER" }, status: { not: "PENDING" } } } },
         },
       },
     }),
@@ -134,22 +107,15 @@ export default async function DashboardPage() {
     })
   ]);
 
-  const papersCompleted = allPapers.filter(p => p.status === "completed").length;
-  const papersInProgress = allPapers.filter(p => p.status === "in_progress").length;
-  const recentActivityCount = allPapers.filter(p => new Date(p.lastViewed) >= sevenDaysAgo).length;
-
   const mistakeNeedsRevision = mistakeStats.find(s => s.status === "needs_revision")?._count.id || 0;
   const mistakeRevised = mistakeStats.find(s => s.status === "revised")?._count.id || 0;
   const mistakeTotal = mistakeNeedsRevision + mistakeRevised;
 
   // Revision plan stats
-  const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id } }) : 0;
+  const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id, type: { not: "PAST_PAPER" } } }) : 0;
   const planCompletedTasks = revisionPlan?._count?.tasks || 0;
   const planCompletionPct = planTotalTasks > 0 ? Math.round((planCompletedTasks / planTotalTasks) * 100) : 0;
   const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
-  const recentPapersSliced = allPapers.slice(0, 6);
-  const completedList = allPapers.filter((p: any) => p.status === 'completed');
-  const inProgressList = allPapers.filter((p: any) => p.status === 'in_progress');
 
   // 2. Process Subject Progress accurately
   const subjectIds = Array.from(new Set(topicProgress.map(tp => tp.topic.subjectId)));
@@ -181,20 +147,12 @@ export default async function DashboardPage() {
   // 4. Generate Context & Lists for AI & Reflections
   const mistakeTopicsList = topMistakeTopics.map((t: any) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
   const contextData = `
-Completed Papers: ${papersCompleted}
-Papers In Progress: ${papersInProgress}
-Recent Papers Viewed (Last 7 days): ${recentActivityCount}
 Strong Topics: ${strongTopics.join(", ") || "None yet"}
 Needs Revision: ${weakTopics.join(", ") || "None yet"}
 Mistake Book: ${mistakeTotal} total, ${mistakeNeedsRevision} needs revision, ${mistakeRevised} revised
 Most Repeated Mistakes: ${mistakeTopicsList || "None yet"}
 Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}% average
   `.trim();
-  const recentTopicsList = Array.from(new Set(topicProgress.map(tp => tp.topic.topicName))).slice(0, 6);
-  
-  // 5. Smart Recommendation (Rule-based)
-  const recommendedPaper = allPapers.find((p: any) => p.status !== 'completed') || allPapers[0];
-
   return (
     <div className="container px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-10">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
@@ -375,101 +333,6 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
 
       {/* 1. Progress Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <Dialog>
-          <DialogTrigger render={
-            <button type="button" className="text-left w-full focus:outline-none rounded-xl">
-              <Card className="bg-card shadow-sm border-border hover:border-primary/40 transition-colors cursor-pointer group">
-                <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                   <CardTitle className="text-sm font-medium group-hover:text-primary transition-colors">Papers Completed</CardTitle>
-                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                </CardHeader>
-                <CardContent>
-                   <div className="text-2xl font-bold">{papersCompleted}</div>
-                </CardContent>
-              </Card>
-            </button>
-          } />
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Completed Papers</DialogTitle>
-              <DialogDescription>A complete list of papers you have successfully finished.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 mt-2">
-               {completedList.length === 0 ? (
-                 <p className="text-sm text-muted-foreground">No completed papers yet.</p>
-               ) : (
-                 completedList.map((rp: any) => (
-                    <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
-                      <div>
-                        <h4 className="font-semibold text-sm">Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''} • {rp.paper.year} {rp.paper.season}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5">{rp.paper.subject.name} ({rp.paper.subject.code})</p>
-                      </div>
-                      <Link 
-                        href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`}
-                        className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "mt-3 sm:mt-0")}
-                      >
-                        Review
-                      </Link>
-                    </div>
-                 ))
-               )}
-            </div>
-          </DialogContent>
-        </Dialog>
-        
-        <Dialog>
-          <DialogTrigger render={
-            <button type="button" className="text-left w-full focus:outline-none rounded-xl">
-              <Card className="bg-card shadow-sm border-border hover:border-primary/40 transition-colors cursor-pointer group">
-                <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-                   <CardTitle className="text-sm font-medium group-hover:text-primary transition-colors">In Progress</CardTitle>
-                   <Clock className="h-4 w-4 text-amber-500" />
-                </CardHeader>
-                <CardContent>
-                   <div className="text-2xl font-bold">{papersInProgress}</div>
-                </CardContent>
-              </Card>
-            </button>
-          } />
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>In Progress</DialogTitle>
-              <DialogDescription>Papers you've started but haven't marked as completed yet.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 mt-2">
-               {inProgressList.length === 0 ? (
-                 <p className="text-sm text-muted-foreground">No papers in progress.</p>
-               ) : (
-                 inProgressList.map((rp: any) => (
-                    <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
-                      <div>
-                        <h4 className="font-semibold text-sm">Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''} • {rp.paper.year} {rp.paper.season}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5">{rp.paper.subject.name} ({rp.paper.subject.code})</p>
-                      </div>
-                      <Link 
-                        href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`}
-                        className={cn(buttonVariants({ size: "sm", variant: "default" }), "mt-3 sm:mt-0")}
-                      >
-                        Resume
-                      </Link>
-                    </div>
-                 ))
-               )}
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Active Streak</CardTitle>
-             <Flame className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{recentActivityCount} <span className="text-sm font-normal text-muted-foreground">recent actions</span></div>
-          </CardContent>
-        </Card>
-
         <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
           <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
              <CardTitle className="text-sm font-medium">Courses Enrolled</CardTitle>
@@ -479,79 +342,42 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
              <div className="text-2xl font-bold">{enrollments}</div>
           </CardContent>
         </Card>
+
+        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
+             <CardTitle className="text-sm font-medium">Practice Attempts</CardTitle>
+             <Trophy className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+             <div className="text-2xl font-bold">{challengeAgg._count}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
+             <CardTitle className="text-sm font-medium">Average Accuracy</CardTitle>
+             <Target className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+             <div className="text-2xl font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
+             <CardTitle className="text-sm font-medium">Topics Completed</CardTitle>
+             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+          </CardHeader>
+          <CardContent>
+             <div className="text-2xl font-bold">{topicProgress.filter((topic) => topic.completed).length}</div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <div className="lg:col-span-2 space-y-10">
-          {/* 2. Continue Learning Section */}
-          {recentPapersSliced.length > 0 && (
-            <section>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <PlayCircle className="w-5 h-5 text-primary" /> Continue Learning
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {recentPapersSliced.slice(0, 2).map((rp: any) => (
-                  <Link key={rp.id} href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`} className="block h-full">
-                    <Card className="hover:border-primary/50 transition-colors shadow-sm bg-card group cursor-pointer h-full">
-                      <CardHeader className="pb-2">
-                        <CardDescription className="text-xs font-semibold text-primary/80 uppercase tracking-wider">{rp.paper.subject.code || rp.paper.subject.name}</CardDescription>
-                        <CardTitle className="text-lg group-hover:text-primary transition-colors">{rp.paper.year} • {rp.paper.season}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex justify-between items-center text-sm text-muted-foreground">
-                          <span>Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''}</span>
-                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${rp.status === 'completed' ? 'text-emerald-600 bg-emerald-500/10 dark:text-emerald-500' : 'text-yellow-600 bg-yellow-500/10 dark:text-yellow-500'}`}>
-                            {rp.status === 'completed' ? <CheckCircle2 className="w-3 h-3"/> : <Clock className="w-3 h-3"/>} 
-                            {rp.status === 'completed' ? 'Completed' : 'In Progress'}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 3. Paper Tracker */}
-          <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <FolderOpen className="w-5 h-5 text-primary" /> Recent Paper Activity
-            </h2>
-            <Card className="bg-card shadow-sm border-border overflow-hidden">
-              <div className="divide-y divide-border">
-                {recentPapersSliced.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">
-                    No recent papers found. <Link href="/resources" className="text-primary hover:underline">Start practicing</Link>
-                  </div>
-                ) : recentPapersSliced.map((rp: any) => (
-                  <div key={rp.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-                    <div className="flex items-center gap-4 mb-3 sm:mb-0">
-                      <div>
-                        <h4 className="font-semibold text-foreground">Paper {rp.paper.paperNumber} {rp.paper.variant ? `V${rp.paper.variant}` : ''} • {rp.paper.year} {rp.paper.season}</h4>
-                        <p className="text-sm text-muted-foreground">{rp.paper.subject.name} ({rp.paper.subject.code})</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0">
-                       <span className="text-xs text-muted-foreground hidden md:block">Last viewed: {new Date(rp.lastViewed).toLocaleDateString()}</span>
-                       <Badge variant="outline" className={`${rp.status === 'completed' ? 'border-emerald-500 text-emerald-500' : 'border-amber-500 text-amber-500'}`}>
-                         {rp.status === 'completed' ? 'Completed' : 'In Progress'}
-                       </Badge>
-                       <Link 
-                         href={`/papers/viewer?qp=${encodeURIComponent(rp.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(rp.paper.msPdfUrl || '')}&id=${rp.paper.id}`}
-                         className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "w-full sm:w-auto hover:bg-primary/10 hover:text-primary")}
-                       >
-                         Resume
-                       </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </section>
-
-          {/* 4. Subject Progress */}
+          {/* 2. Subject Progress */}
           <section>
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-primary" /> Subject Progress
@@ -718,32 +544,6 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         <div className="space-y-10 relative">
           
           <AiInsightCard contextData={contextData} />
-
-          {/* Smart Recommendation */}
-          {recommendedPaper && (
-            <section>
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" /> Recommended Next Step
-              </h2>
-              <Card className="bg-primary/5 border-primary/20 shadow-sm hover:border-primary/40 transition-colors">
-                <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <h4 className="font-semibold text-foreground">
-                      Practice Paper {recommendedPaper.paper.paperNumber} {recommendedPaper.paper.variant ? `V${recommendedPaper.paper.variant}` : ''} • {recommendedPaper.paper.year}
-                    </h4>
-                    <p className="text-sm text-muted-foreground mt-1">Based on your recent activity.</p>
-                  </div>
-                  <Link 
-                    href={`/papers/viewer?qp=${encodeURIComponent(recommendedPaper.paper.questionPdfUrl || '')}&ms=${encodeURIComponent(recommendedPaper.paper.msPdfUrl || '')}&id=${recommendedPaper.paper.id}`}
-                    className={buttonVariants({ size: "sm" })}
-                  >
-                    Start Paper
-                  </Link>
-                </CardContent>
-              </Card>
-            </section>
-          )}
-
         </div>
       </div>
     </div>

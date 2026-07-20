@@ -2,7 +2,6 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, BookOpen, ScrollText, Download, Trophy, Clock, Zap, ClipboardCheck, ListChecks } from "lucide-react";
@@ -16,7 +15,6 @@ const difficultyColor: Record<string, string> = {
   mixed: "border-primary/50 text-primary bg-primary/10",
 };
 
-type Paper = { id: string; paperNumber: number; variant: number | null; questionPdfUrl: string | null; msPdfUrl: string | null; sourceFilesUrl: string | null };
 type Note = { id: string; title: string; pdfUrl: string | null };
 type Topic = { id: string; topicName: string };
 type Subject = { slug: string; name: string; syllabusPdfUrl: string | null };
@@ -33,7 +31,6 @@ type Challenge = {
 };
 
 export default function SubjectTabsClient({
-  papersByYear,
   topics,
   notes,
   subject,
@@ -41,7 +38,6 @@ export default function SubjectTabsClient({
   board = "",
   qualification = "",
 }: {
-  papersByYear: Record<number, Record<string, Paper[]>>;
   topics: Topic[];
   notes: Note[];
   subject: Subject;
@@ -49,107 +45,20 @@ export default function SubjectTabsClient({
   board?: string;
   qualification?: string;
 }) {
-  const years = Object.keys(papersByYear).map(Number).sort((a, b) => b - a);
   void topics;
   const quickPractices = challenges.filter((challenge) => challenge.type === "QUICK_PRACTICE");
   const standardChallenges = challenges.filter((challenge) => challenge.type === "CHALLENGE" || !challenge.type);
   const worksheets = challenges.filter((challenge) => challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET");
 
   return (
-    <Tabs defaultValue="past-papers" className="w-full">
+    <Tabs defaultValue="practice" className="w-full">
       <TabsList className="mb-8 flex h-auto w-full max-w-4xl flex-wrap justify-start gap-1 rounded-xl border bg-muted/30 p-1.5">
-        <TabsTrigger value="past-papers" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><FileText className="h-4 w-4" /> Past Papers</TabsTrigger>
         <TabsTrigger value="practice" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm">
           <Zap className="h-4 w-4" /> Quick Practice
         </TabsTrigger>
         <TabsTrigger value="notes" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
         <TabsTrigger value="syllabus" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
       </TabsList>
-      
-      <TabsContent value="past-papers" className="mt-0">
-        {years.length === 0 ? (
-          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
-            <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground">No past papers found</h3>
-            <p className="text-muted-foreground">Papers for this subject will be uploaded soon.</p>
-          </div>
-        ) : (
-          <Accordion className="w-full space-y-4" defaultValue={[years[0].toString()]}>
-            {years.map((year) => (
-              <AccordionItem value={year.toString()} key={year} className="border rounded-xl bg-card overflow-hidden shadow-sm">
-                <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 px-3 py-1 rounded-lg text-primary font-bold">
-                      {year}
-                    </div>
-                    <span className="text-lg font-semibold text-foreground">Series</span>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pb-6 pt-2">
-                  <Accordion className="w-full space-y-4 mt-4">
-                    {Object.entries(papersByYear[year]).sort(([a], [b]) => a.localeCompare(b)).map(([season, papers]) => (
-                      <AccordionItem value={season} key={season} className="border rounded-lg bg-muted/10 overflow-hidden">
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 transition-colors">
-                          <h4 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{season}</h4>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-4 pb-4 pt-2">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                            {papers.map((paper) => (
-                              <Card key={paper.id} className="hover:border-primary/50 transition-colors shadow-sm group">
-                                <CardContent className="p-4 flex flex-col justify-between h-full gap-4">
-                                  <div>
-                                    <div className="font-semibold text-foreground mb-1 group-hover:text-primary transition-colors">
-                                      Paper {paper.paperNumber} {paper.variant ? `(Variant ${paper.variant})` : ''}
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2 w-full mt-auto">
-                                    <Link 
-                                      href={paper.questionPdfUrl ? `/papers/viewer?qp=${encodeURIComponent(paper.questionPdfUrl)}&ms=${encodeURIComponent(paper.msPdfUrl || '')}&id=${paper.id}` : '#'}
-                                      className={cn(buttonVariants({ size: "sm", variant: paper.questionPdfUrl ? "default" : "secondary" }), "flex-1 font-medium", !paper.questionPdfUrl && "pointer-events-none opacity-50")}
-                                    >
-                                      {paper.questionPdfUrl ? "Open Viewer" : "Coming Soon"}
-                                    </Link>
-                                    
-                                    {paper.questionPdfUrl && (
-                                      <a
-                                        href={`/api/protected/pdf?url=${encodeURIComponent(paper.questionPdfUrl)}&download=true`}
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
-                                        title="Download QP"
-                                      >
-                                        <Download className="w-4 h-4 mr-1" /> QP
-                                      </a>
-                                    )}
-
-                                    {paper.sourceFilesUrl && (
-                                      <a
-                                        href={paper.sourceFilesUrl}
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={cn(buttonVariants({ size: "sm", variant: "outline" }), "flex-1 font-medium")}
-                                        title="Download SF"
-                                      >
-                                        <Download className="w-4 h-4 mr-1" /> SF
-                                      </a>
-                                    )}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        )}
-      </TabsContent>
       
       {/* Quick Practice Hub replaces Topical/Challenges */}
 

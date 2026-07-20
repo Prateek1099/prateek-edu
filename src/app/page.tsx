@@ -1,41 +1,17 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Globe2, ShieldCheck, ArrowRight, Layers, SplitSquareHorizontal, FolderTree, Clock, FileText, Sparkles, GraduationCap, Target, LineChart } from "lucide-react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { Card, CardContent } from "@/components/ui/card";
+import { Globe2, ShieldCheck, ArrowRight, FolderTree, GraduationCap, Target, LineChart } from "lucide-react";
 import { getEcosystemPreference } from "@/app/actions/resources-actions";
 
-async function getDashboardData(userId?: string) {
-  if (!userId) return { recentProgress: [], newPapers: [] };
-  
-  const recentProgress = await prisma.userProgress.findMany({
-    where: { userId, status: 'in_progress' },
-    include: {
-      paper: {
-        include: { subject: { include: { qualification: true } } }
-      }
-    },
-    orderBy: { lastViewed: 'desc' },
-    take: 3
-  });
-
-  return { recentProgress };
-}
-
 export default async function Home() {
-  const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id;
   const prefRaw = await getEcosystemPreference();
   let ecosystemPref: { board: string, qualification: string, boardTitle: string, qualTitle: string } | null = null;
   if (prefRaw) {
-    let boardTitle = prefRaw.board === 'cambridge' ? 'Cambridge International' : prefRaw.board === 'cbse' ? 'CBSE' : prefRaw.board;
-    let qualTitle = prefRaw.qualification === 'igcse' ? 'IGCSE' : prefRaw.qualification === 'as-a-level' ? 'AS & A Level' : prefRaw.qualification === 'o-level' ? 'O Level' : prefRaw.qualification?.toUpperCase() || "";
+    const boardTitle = prefRaw.board === 'cambridge' ? 'Cambridge International' : prefRaw.board === 'cbse' ? 'CBSE' : prefRaw.board;
+    const qualTitle = prefRaw.qualification === 'igcse' ? 'IGCSE' : prefRaw.qualification === 'as-a-level' ? 'AS & A Level' : prefRaw.qualification === 'o-level' ? 'O Level' : prefRaw.qualification?.toUpperCase() || "";
     ecosystemPref = { ...prefRaw, boardTitle, qualTitle };
   }
-  const { recentProgress } = await getDashboardData(userId);
-
   return (
     <div className="flex flex-col w-full bg-background font-sans items-center justify-center overflow-hidden">
       <section className="w-full flex flex-col items-center justify-center bg-gradient-to-b from-primary/5 to-background relative pt-12 pb-8">
@@ -51,7 +27,7 @@ export default async function Home() {
             Welcome to <span className="text-primary block sm:inline mt-2 sm:mt-0">Vexa</span>
           </h1>
           <p className="max-w-2xl text-xl text-muted-foreground mb-12">
-            Free, highly organized, and distraction-free past papers and study resources built for serious students.
+            Free, organized, and distraction-free revision resources built for serious students.
           </p>
           
           {!ecosystemPref ? (
@@ -166,12 +142,12 @@ export default async function Home() {
             <div className="flex flex-col items-center text-center relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">2</div>
               <h3 className="text-xl font-bold mb-2">Choose Subjects</h3>
-              <p className="text-muted-foreground">Access perfectly organized notes, practice challenges, and past papers.</p>
+              <p className="text-muted-foreground">Access organized notes, topical questions, worksheets, and practice challenges.</p>
             </div>
             <div className="flex flex-col items-center text-center relative z-10">
               <div className="w-16 h-16 rounded-2xl bg-card border-2 border-muted shadow-sm flex items-center justify-center mb-6 font-bold text-xl text-primary">3</div>
               <h3 className="text-xl font-bold mb-2">Study Smarter</h3>
-              <p className="text-muted-foreground">Track completed papers and manage your revision effectively.</p>
+              <p className="text-muted-foreground">Track your practice, identify weak topics, and manage revision effectively.</p>
             </div>
           </div>
         </div>
@@ -206,7 +182,7 @@ export default async function Home() {
                   <FolderTree className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-3">Organized Resources</h3>
-                <p className="text-muted-foreground leading-relaxed">Past papers, notes, and topic resources structured by board, qualification, and subject.</p>
+                <p className="text-muted-foreground leading-relaxed">Notes, topical questions, worksheets, and practice resources structured by board, qualification, and subject.</p>
               </CardContent>
             </Card>
 
@@ -216,7 +192,7 @@ export default async function Home() {
                   <LineChart className="h-7 w-7 text-primary" />
                 </div>
                 <h3 className="text-xl font-bold mb-3">Track Your Progress</h3>
-                <p className="text-muted-foreground leading-relaxed">Track completed papers, continue studying, and manage revision more effectively.</p>
+                <p className="text-muted-foreground leading-relaxed">Track practice accuracy, continue studying, and manage revision more effectively.</p>
               </CardContent>
             </Card>
           </div>
