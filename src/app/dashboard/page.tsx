@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   if (role === "SUPER_ADMIN") redirect("/admin");
   if (role === "TEACHER") redirect("/workspace");
 
-  const userId = (session.user as any).id as string;
+  const userId = (session.user as { id?: string }).id;
   if (!userId) {
     console.error("Dashboard error: session missing userId");
     redirect("/login");
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
   const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id, type: { not: "PAST_PAPER" } } }) : 0;
   const planCompletedTasks = revisionPlan?._count?.tasks || 0;
   const planCompletionPct = planTotalTasks > 0 ? Math.round((planCompletedTasks / planTotalTasks) * 100) : 0;
-  const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+  const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
   // 2. Process Subject Progress accurately
   const subjectIds = Array.from(new Set(topicProgress.map(tp => tp.topic.subjectId)));
@@ -145,7 +145,7 @@ export default async function DashboardPage() {
   const weakTopics = topicProgress.filter(tp => !tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
   
   // 4. Generate Context & Lists for AI & Reflections
-  const mistakeTopicsList = topMistakeTopics.map((t: any) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
+  const mistakeTopicsList = topMistakeTopics.map((t) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
   const contextData = `
 Strong Topics: ${strongTopics.join(", ") || "None yet"}
 Needs Revision: ${weakTopics.join(", ") || "None yet"}
@@ -448,11 +448,11 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                       <AlertTriangle className="h-4 w-4 text-amber-500" /> Most Repeated Mistakes
                     </h3>
                     <div className="space-y-2.5">
-                      {topMistakeTopics.map((t: any, i: number) => (
-                        <div key={t.topicTag} className="flex items-center justify-between">
+                      {topMistakeTopics.map((t, i) => (
+                        <div key={t.topicTag ?? i} className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}.</span>
-                            <span className="text-sm font-medium">{t.topicTag}</span>
+                            <span className="text-sm font-medium">{t.topicTag ?? "Uncategorised"}</span>
                           </div>
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
                             {t._sum.mistakeCount}×
@@ -493,7 +493,7 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             {recentChallenges.length > 0 && (
               <Card className="bg-card shadow-sm border-border overflow-hidden">
                 <div className="divide-y divide-border">
-                  {recentChallenges.map((ca: any) => (
+                  {recentChallenges.map((ca) => (
                     <div key={ca.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                       <div>
                         <h4 className="font-semibold text-sm">{ca.challenge.title}</h4>
@@ -516,9 +516,9 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                     <Sparkles className="h-4 w-4" /> Recommended Revision
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {topMistakeTopics.slice(0, 3).map((t: any) => (
-                      <Badge key={t.topicTag} variant="outline" className="py-1.5 px-3 text-sm border-primary/30 text-primary">
-                        Review: {t.topicTag}
+                    {topMistakeTopics.slice(0, 3).map((t, index) => (
+                      <Badge key={t.topicTag ?? index} variant="outline" className="py-1.5 px-3 text-sm border-primary/30 text-primary">
+                        Review: {t.topicTag ?? "Uncategorised"}
                       </Badge>
                     ))}
                   </div>

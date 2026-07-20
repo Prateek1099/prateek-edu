@@ -12,9 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogTrigger,
   DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Accordion,
@@ -27,7 +25,6 @@ import { cn } from "@/lib/utils";
 import {
   CalendarDays,
   CheckCircle2,
-  Clock,
   Settings,
   RefreshCw,
   Loader2,
@@ -111,16 +108,6 @@ const PRIORITY_CONFIG: Record<
   LOW: { emoji: "🟢", className: "bg-emerald-500/10 text-emerald-500" },
 };
 
-const DAY_LABELS: Record<number, string> = {
-  1: "Light",
-  2: "Relaxed",
-  3: "Moderate",
-  4: "Balanced",
-  5: "Weekdays",
-  6: "Intense",
-  7: "Every Day",
-};
-
 const DURATION_OPTIONS = [30, 45, 60, 90];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -152,7 +139,7 @@ function computeStudyStreak(tasks: TaskItem[]): number {
 
   const today = new Date();
   let streak = 0;
-  let checkDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const checkDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   // Check if today has completions, if not start from yesterday
   const todayStr = checkDate.toISOString().split("T")[0];
@@ -407,8 +394,8 @@ High priority pending: ${topPriority || "None"}
         throw new Error(errorMessage);
       }
       setAdvice(data.advice);
-    } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -689,12 +676,6 @@ export function RevisionPlannerDashboard({
     if (daysUntilExam > 30) return "text-emerald-500";
     if (daysUntilExam > 15) return "text-amber-500";
     return "text-red-500";
-  }, [daysUntilExam]);
-
-  const urgencyBg = useMemo(() => {
-    if (daysUntilExam > 30) return "bg-emerald-500";
-    if (daysUntilExam > 15) return "bg-amber-500";
-    return "bg-red-500";
   }, [daysUntilExam]);
 
   // Task type breakdown for today
