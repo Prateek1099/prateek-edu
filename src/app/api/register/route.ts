@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
 import { AccountActionTokenPurpose } from "@prisma/client";
-import { isValidEmail, issueAccountActionToken, normalizeEmail } from "@/lib/account-action-tokens";
+import { invalidateAccountActionTokens, isValidEmail, issueAccountActionToken, normalizeEmail } from "@/lib/account-action-tokens";
 import { validatePassword } from "@/lib/passwords";
 
 function slugify(text: string): string {
@@ -60,9 +60,24 @@ export async function POST(req: Request) {
     });
 
     const { token } = await issueAccountActionToken(normalizedEmail, AccountActionTokenPurpose.EMAIL_VERIFICATION);
-    await sendVerificationEmail(normalizedEmail, token);
+    try {
+      await sendVerificationEmail(normalizedEmail, token);
+    } catch {
+      await invalidateAccountActionTokens(normalizedEmail, AccountActionTokenPurpose.EMAIL_VERIFICATION);
+      console.error("Registration completed but its verification email was not delivered.", {
+        userId: user.id,
+        recipientDomain: normalizedEmail.split("@").at(-1),
+      });
+      return NextResponse.json(
+        {
+          error: "Your account was created, but we could not send the verification email. Please use Resend Verification Email to try again.",
+          accountCreated: true,
+        },
+        { status: 503 },
+      );
+    }
 
-    return NextResponse.json({ message: "User registered successfully", userId: user.id });
+    return NextResponse.json({ message: "Verification email sent", userId: user.id });
   } catch (error: unknown) {
     console.error("Registration Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

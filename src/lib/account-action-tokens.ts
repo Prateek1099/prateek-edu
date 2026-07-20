@@ -62,6 +62,15 @@ export async function canIssueAccountActionToken(
   return !existing || Date.now() - existing.createdAt.getTime() >= RESEND_COOLDOWN_MS;
 }
 
+export async function invalidateAccountActionTokens(
+  identifier: string,
+  purpose: AccountActionTokenPurpose,
+): Promise<void> {
+  await prisma.accountActionToken.deleteMany({
+    where: { identifier: normalizeEmail(identifier), purpose },
+  });
+}
+
 export async function consumeAccountActionToken(
   identifier: string,
   token: string,

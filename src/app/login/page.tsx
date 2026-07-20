@@ -23,8 +23,6 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [resendStatus, setResendStatus] = useState("");
-  const [isResending, setIsResending] = useState(false);
   
   const isVerified = searchParams.get("verified") === "true";
 
@@ -40,11 +38,14 @@ function LoginForm() {
     });
 
     if (res?.error) {
-      setError(
-        res.error === "EMAIL_NOT_VERIFIED"
-          ? "Verify your email before logging in. You can request a new link below."
-          : "Incorrect email or password.",
-      );
+      if (res.error.includes("EMAIL_NOT_VERIFIED")) {
+        const params = new URLSearchParams({ email, reason: "unverified" });
+        const callback = readInternalCallbackPath(searchParams.get("callbackUrl"));
+        if (callback) params.set("callbackUrl", callback);
+        window.location.assign(`/verify-email?${params.toString()}`);
+        return;
+      }
+      setError("Incorrect email or password.");
       setLoading(false);
     } else {
       const callback = readInternalCallbackPath(searchParams.get("callbackUrl"));
@@ -55,28 +56,6 @@ function LoginForm() {
       } else {
         window.location.assign("/dashboard");
       }
-    }
-  };
-
-  const resendVerification = async () => {
-    if (!email) {
-      setResendStatus("Enter your email address first.");
-      return;
-    }
-    setIsResending(true);
-    setResendStatus("");
-    try {
-      const response = await fetch("/api/auth/resend-verification", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      const body = await response.json();
-      setResendStatus(body.message || "If eligible, a verification link has been sent.");
-    } catch {
-      setResendStatus("We could not request a new link. Please try again.");
-    } finally {
-      setIsResending(false);
     }
   };
 
@@ -159,11 +138,8 @@ function LoginForm() {
             </Button>
             <div className="flex justify-between gap-3 text-sm">
               <Link href="/forgot-password" className="text-primary hover:underline font-medium">Forgot password?</Link>
-              <button type="button" onClick={resendVerification} disabled={isResending} className="text-primary hover:underline font-medium disabled:opacity-60">
-                {isResending ? "Sending..." : "Resend verification"}
-              </button>
+              <Link href="/verify-email" className="text-primary hover:underline font-medium">Resend verification</Link>
             </div>
-            {resendStatus && <p className="text-xs text-muted-foreground text-center">{resendStatus}</p>}
           </form>
         </CardContent>
         <CardFooter className="flex flex-col text-sm text-muted-foreground text-center space-y-2">

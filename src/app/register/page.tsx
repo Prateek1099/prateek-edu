@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,11 +20,13 @@ export default function RegisterPage() {
   const [workspaceName, setWorkspaceName] = useState("");
   const [registerAs, setRegisterAs] = useState("student");
   const [error, setError] = useState("");
+  const [accountNeedsVerification, setAccountNeedsVerification] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setAccountNeedsVerification(false);
 
     try {
       const res = await fetch("/api/register", {
@@ -44,15 +46,16 @@ export default function RegisterPage() {
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Something went wrong.");
+        setAccountNeedsVerification(data.accountCreated === true);
         setLoading(false);
         return;
       }
 
       toast.success(
-        "Account created. Check your email to verify it before logging in.",
+        "Account created. We sent your verification email.",
         { duration: 5000 },
       );
-      router.push(`/login?registered=true&email=${encodeURIComponent(email)}`);
+      router.push(`/verify-email?email=${encodeURIComponent(email)}&sent=true`);
     } catch {
       setError("An unexpected error occurred.");
       setLoading(false);
@@ -85,7 +88,19 @@ export default function RegisterPage() {
             </TabsList>
             
             <form onSubmit={handleRegister} className="space-y-4">
-              {error && <div className="text-destructive text-sm text-center font-medium">{error}</div>}
+              {error && (
+                <div className="space-y-3 rounded-lg bg-destructive/10 p-3 text-center text-sm font-medium text-destructive">
+                  <p>{error}</p>
+                  {accountNeedsVerification && (
+                    <Link
+                      href={`/verify-email?email=${encodeURIComponent(email)}`}
+                      className={buttonVariants({ variant: "outline", className: "bg-background text-foreground" })}
+                    >
+                      Open verification page
+                    </Link>
+                  )}
+                </div>
+              )}
               
               <div className="grid gap-2">
                 <Label htmlFor="name">Full Name</Label>
