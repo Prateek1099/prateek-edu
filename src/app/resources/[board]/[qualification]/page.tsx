@@ -40,7 +40,7 @@ export default async function QualificationPage({ params }: { params: Promise<{ 
 
       <div className="mb-8">
         <h1 className="text-4xl font-bold tracking-tight mb-2">{qualificationData.title} Subjects</h1>
-        <p className="text-muted-foreground text-lg">Select a subject to view past papers, notes, and topical questions.</p>
+        <p className="text-muted-foreground text-lg">Select a subject to view notes, topical questions, worksheets, and practice activities.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

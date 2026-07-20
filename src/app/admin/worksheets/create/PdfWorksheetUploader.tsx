@@ -95,7 +95,7 @@ export function PdfWorksheetUploader({ subjects }: { subjects: any[] }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label>Worksheet Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Databases Past Paper 2024 P2" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Databases Practice Worksheet" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

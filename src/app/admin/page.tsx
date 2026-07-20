@@ -23,10 +23,9 @@ export default async function AdminDashboard() {
 
   const boardStats = await Promise.all(
     boards.map(async (b) => {
-      const papers = await prisma.paper.count({ where: { subject: { qualification: { boardId: b.id } } } });
       const notes = await prisma.note.count({ where: { subject: { qualification: { boardId: b.id } } } });
       const questions = await prisma.bankQuestion.count({ where: { subject: { qualification: { boardId: b.id } } } });
-      return { name: b.name, papers, notes, questions };
+      return { name: b.name, notes, questions };
     })
   );
 

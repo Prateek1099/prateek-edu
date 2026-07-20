@@ -32,6 +32,7 @@ export default async function RevisionPlannerPage() {
     where: { userId },
     include: {
       tasks: {
+        where: { type: { not: "PAST_PAPER" } },
         orderBy: { dueDate: "asc" },
       },
     },

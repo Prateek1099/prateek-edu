@@ -2,7 +2,7 @@
 
 import { useAdminBoard } from "@/components/AdminBoardContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Crown, IndianRupee, Bot, ShieldAlert, Layers, StickyNote, Database } from "lucide-react";
+import { Users, Crown, IndianRupee, Bot, ShieldAlert, StickyNote, Database } from "lucide-react";
 
 interface DashboardProps {
   userCount: number;
@@ -12,7 +12,6 @@ interface DashboardProps {
   failedPayments: number;
   boardStats: {
     name: string;
-    papers: number;
     notes: number;
     questions: number;
   }[];
@@ -31,11 +30,10 @@ export default function AdminDashboardClient({
 
   const stats = selectedBoard === "all" 
     ? {
-        papers: boardStats.reduce((sum, b) => sum + b.papers, 0),
         notes: boardStats.reduce((sum, b) => sum + b.notes, 0),
         questions: boardStats.reduce((sum, b) => sum + b.questions, 0),
       }
-    : boardStats.find((b) => b.name === selectedBoard) || { papers: 0, notes: 0, questions: 0 };
+    : boardStats.find((b) => b.name === selectedBoard) || { notes: 0, questions: 0 };
 
   return (
     <div className="space-y-6">
@@ -101,17 +99,7 @@ export default function AdminDashboardClient({
       </div>
 
       <h2 className="text-xl font-semibold tracking-tight mt-8">Content Overview</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Past Papers</CardTitle>
-            <Layers className="size-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.papers}</div>
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium">Revision Notes</CardTitle>
