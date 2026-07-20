@@ -16,7 +16,10 @@ export default async function RevisionPlannerPage() {
     redirect("/login");
   }
 
-  const userId = (session.user as any).id;
+  const userId = (session.user as { id?: string }).id;
+  if (!userId) {
+    redirect("/login");
+  }
 
   // Fetch user preferences
   const user = await prisma.user.findUnique({
@@ -32,6 +35,7 @@ export default async function RevisionPlannerPage() {
     where: { userId },
     include: {
       tasks: {
+        where: { type: { not: "PAST_PAPER" } },
         orderBy: { dueDate: "asc" },
       },
     },
@@ -90,10 +94,6 @@ export default async function RevisionPlannerPage() {
   const upcomingRaw = allTasks.filter(
     (t) => t.dueDate > todayEnd && t.dueDate <= sevenDaysLater
   );
-
-  const upcomingTasks: Record<string, typeof serializedTodayTasks> = {};
-
-  // We'll build this after serialization — first serialize everything
 
   // Serialize dates for client components
   const serializeTask = (t: (typeof allTasks)[0]) => ({

@@ -15,12 +15,16 @@ export async function GET() {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as { id?: string }).id;
+    if (!userId) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const plan = await prisma.revisionPlan.findUnique({
       where: { userId },
       include: {
         tasks: {
+          where: { type: { not: "PAST_PAPER" } },
           orderBy: { dueDate: "asc" },
         },
       },
@@ -31,7 +35,7 @@ export async function GET() {
     }
 
     return Response.json({ plan });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching revision plan:", error);
     return Response.json(
       { error: "Failed to fetch revision plan" },

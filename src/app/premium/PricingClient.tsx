@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,39 @@ interface Plan {
   price: number;
   aiQuota: number;
   isActive: boolean;
+}
+
+interface RazorpayPaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error: { description: string };
+}
+
+interface RazorpayInstance {
+  on(event: "payment.failed", handler: (response: RazorpayFailureResponse) => void): void;
+  open(): void;
+}
+
+interface RazorpayOptions {
+  key: string | undefined;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayPaymentResponse) => Promise<void>;
+  prefill: { name: string; email: string };
+  theme: { color: string };
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
 }
 
 export default function PricingClient({ plans }: { plans: Plan[] }) {
@@ -51,7 +84,7 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
         name: "Vexa Premium",
         description: `${plan.name} Subscription`,
         order_id: order.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayPaymentResponse) {
           try {
             const verifyRes = await fetch("/api/payments/verify", {
               method: "POST",
@@ -84,8 +117,11 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on("payment.failed", function (response: any) {
+      if (!window.Razorpay) {
+        throw new Error("Payment checkout is still loading. Please try again.");
+      }
+      const rzp = new window.Razorpay(options);
+      rzp.on("payment.failed", function (response: RazorpayFailureResponse) {
         alert("Payment Failed: " + response.error.description);
       });
       rzp.open();
@@ -121,7 +157,7 @@ export default function PricingClient({ plans }: { plans: Plan[] }) {
               <ul className="space-y-4">
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />
-                  <span>Access to all Past Papers</span>
+                  <span>Access to all learning resources</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <Check className="h-5 w-5 text-emerald-500" />

@@ -6,7 +6,7 @@ export interface GeneratedTask {
   title: string;
   subject: string;
   topic: string;
-  type: "NOTE_REVISION" | "CHALLENGE" | "PAST_PAPER" | "TOPICAL" | "MISTAKE_REVIEW";
+  type: "NOTE_REVISION" | "CHALLENGE" | "TOPICAL" | "MISTAKE_REVIEW";
   priority: "HIGH" | "MEDIUM" | "LOW";
   dueDate: Date;
   source: string;
@@ -458,18 +458,18 @@ export async function generateRevisionTasks(
         }
       }
     } else {
-      // General revision: NOTE_REVISION or PAST_PAPER
+      // General revision uses retained note resources.
       if (topic.hasNotes) {
         taskQueue.push({
           title: `Review: ${topic.topicName}`,
           subject: topic.subjectName,
           topic: topic.topicName,
-          type: topic.priority === "LOW" ? "PAST_PAPER" : "NOTE_REVISION",
+          type: "NOTE_REVISION",
           priority: topic.priority,
           source: "General Revision",
           sourceDetail: "Scheduled revision",
           linkUrl: baseLinkUrl,
-          linkLabel: topic.priority === "LOW" ? "Past Papers" : "Open Notes",
+          linkLabel: "Open Notes",
         });
       }
     }

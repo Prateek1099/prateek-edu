@@ -55,7 +55,7 @@ export default function ContactPage() {
           Get in <span className="text-primary">Touch</span>
         </h1>
         <p className="text-xl text-muted-foreground">
-          Have a question about our courses, past papers, or need technical support? We're here to help!
+          Have a question about our courses, learning resources, or need technical support? We&apos;re here to help!
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export default function ContactPage() {
             <CardDescription>We usually reply within 24 hours.</CardDescription>
           </CardHeader>
           <CardContent className="text-center font-medium">
-            support@
+            support.vexaonline@gmail.com
           </CardContent>
         </Card>
 
@@ -79,7 +79,7 @@ export default function ContactPage() {
               <Phone className="h-6 w-6 text-primary" />
             </div>
             <CardTitle>Call Us</CardTitle>
-            <CardDescription>Mon-Fri from 8am to 5pm.</CardDescription>
+            <CardDescription>Mon-Fri from 2pm to 7pm.</CardDescription>
           </CardHeader>
           <CardContent className="text-center font-medium">
             +91 7014769931

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { BookOpen, SplitSquareHorizontal, FolderTree, ChevronRight } from "lucide-react";
+import { BookOpen, FolderTree, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 const mockTopics = [
@@ -35,7 +35,7 @@ const mockTopics = [
   }
 ];
 
-export default function TopicalPapersPage() {
+export default function TopicalQuestionsPage() {
   const [selectedBoard, setSelectedBoard] = useState(boards[0].id);
   const [selectedLevel, setSelectedLevel] = useState(levels[0].id);
   const [selectedSubject, setSelectedSubject] = useState(subjects[0].id);
@@ -55,13 +55,13 @@ export default function TopicalPapersPage() {
       <aside className="w-full md:w-64 shrink-0 space-y-6">
         <div>
           <h2 className="text-lg font-semibold tracking-tight mb-4 flex items-center gap-2">
-            <FolderTree className="h-5 w-5 text-primary" /> Topical Papers
+            <FolderTree className="h-5 w-5 text-primary" /> Topical Questions
           </h2>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Education Board</Label>
               <div className="flex flex-col gap-2">
-                {boards.map((b: any) => (
+                {boards.map((b) => (
                   <Button 
                     key={b.id} 
                     variant={selectedBoard === b.id ? "default" : "outline"}
@@ -81,7 +81,7 @@ export default function TopicalPapersPage() {
             <div className="space-y-2">
               <Label>Level</Label>
               <div className="grid grid-cols-2 gap-2">
-                {filteredLevels.map((l: any) => (
+                {filteredLevels.map((l) => (
                   <Button 
                     key={l.id} 
                     size="sm"
@@ -102,7 +102,7 @@ export default function TopicalPapersPage() {
             <div className="space-y-2">
               <Label>Subject</Label>
               <div className="flex flex-col gap-2">
-                {filteredSubjects.map((s: any) => (
+                {filteredSubjects.map((s) => (
                   <Button 
                     key={s.id} 
                     size="sm"
@@ -132,7 +132,7 @@ export default function TopicalPapersPage() {
         {filteredTopics.length === 0 ? (
           <div className="text-center py-24 bg-muted/30 rounded-lg border border-dashed">
             <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground">No topic papers found</h3>
+            <h3 className="text-lg font-medium text-foreground">No topical questions found</h3>
             <p className="text-muted-foreground max-w-sm mx-auto mt-1">
               Topical questions for this subject are still being compiled. Check back soon!
             </p>
@@ -140,33 +140,41 @@ export default function TopicalPapersPage() {
         ) : (
           <Card className="border bg-card">
             <CardContent className="p-0">
-              {/* @ts-ignore */}
-              <Accordion type="single" collapsible="true" className="w-full">
-                {filteredTopics.map((topic: any, i: number) => (
+              <Accordion className="w-full">
+                {filteredTopics.map((topic, i) => (
                   <AccordionItem value={`item-${i}`} key={topic.id} className="last:border-0 px-6">
                     <AccordionTrigger className="hover:no-underline py-4">
                       <div className="flex text-left items-center justify-between w-full pr-4">
                         <span className="font-semibold text-base">{topic.chapterName}</span>
                         <Badge variant="secondary" className="font-normal shrink-0 ml-2">
-                          {topic.questions.reduce((acc: number, q: any) => acc + q.count, 0)} Questions
+                          {topic.questions.reduce((acc, q) => acc + q.count, 0)} Questions
                         </Badge>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4">
                       <div className="space-y-3 pt-2">
-                        {topic.questions.map((q: any, j: number) => (
+                        {topic.questions.map((q, j) => (
                           <div key={j} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 rounded-lg border bg-muted/20">
                             <div className="flex items-center gap-3 mb-3 sm:mb-0">
                               <Badge variant={q.difficulty === "Hard" ? "destructive" : q.difficulty === "Medium" ? "default" : "secondary"}>
                                 {q.difficulty}
                               </Badge>
-                              <span className="text-sm font-medium">{q.count} Questions selected directly from past papers.</span>
+                              <span className="text-sm font-medium">{q.count} exam-style questions.</span>
                             </div>
-                            <Link href={`/papers/viewer?qp=${q.qpUrl}&ms=${q.msUrl}`} className="w-full sm:w-auto">
-                              <Button size="sm" variant="outline" className="gap-2 bg-background w-full">
-                                <SplitSquareHorizontal className="h-4 w-4 text-primary" /> Practice Split View
+                            {q.qpUrl === "#" ? (
+                              <Button size="sm" variant="outline" className="w-full sm:w-auto" disabled>
+                                Resource coming soon
                               </Button>
-                            </Link>
+                            ) : (
+                              <Link
+                                href={`/topical/viewer?question=${encodeURIComponent(q.qpUrl)}&answers=${encodeURIComponent(q.msUrl || "")}`}
+                                className="w-full sm:w-auto"
+                              >
+                                <Button size="sm" variant="outline" className="w-full gap-2 bg-background">
+                                  <BookOpen className="h-4 w-4 text-primary" /> Open questions
+                                </Button>
+                              </Link>
+                            )}
                           </div>
                         ))}
                       </div>

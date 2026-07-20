@@ -8,12 +8,6 @@ async function forbidIfNeeded(): Promise<string | null> {
   return rejectIfNotAdmin();
 }
 
-function revalidatePaperRelated() {
-  revalidatePath("/admin/papers");
-  revalidatePath("/papers");
-  revalidatePath("/board", "layout");
-}
-
 function revalidateNoteRelated() {
   revalidatePath("/admin/notes");
 }
@@ -78,79 +72,6 @@ export async function deleteCourse(id: string) {
     await prisma.course.delete({ where: { id } });
     revalidatePath("/admin/courses");
     revalidatePath("/courses");
-    return { success: true as const };
-  } catch (error: unknown) {
-    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
-  }
-}
-
-// --- PAPERS ---
-
-export async function createPaper(data: {
-  subjectId: string;
-  year: number;
-  paperNumber: number;
-  variant: number | null;
-  season?: string | null;
-  questionPdfUrl: string | null;
-  msPdfUrl: string | null;
-  sourceFilesUrl: string | null;
-}) {
-  const denied = await forbidIfNeeded();
-  if (denied) return { success: false as const, error: denied };
-  try {
-    await prisma.paper.create({ data });
-    revalidatePaperRelated();
-    return { success: true as const };
-  } catch (error: unknown) {
-    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
-  }
-}
-
-export async function updatePaper(id: string, data: {
-  subjectId: string;
-  year: number;
-  paperNumber: number;
-  variant: number | null;
-  season?: string | null;
-  questionPdfUrl: string | null;
-  msPdfUrl: string | null;
-  sourceFilesUrl: string | null;
-}) {
-  const denied = await forbidIfNeeded();
-  if (denied) return { success: false as const, error: denied };
-  try {
-    await prisma.paper.update({ where: { id }, data });
-    revalidatePaperRelated();
-    return { success: true as const };
-  } catch (error: unknown) {
-    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
-  }
-}
-
-export async function deletePaper(id: string) {
-  const denied = await forbidIfNeeded();
-  if (denied) return { success: false as const, error: denied };
-  try {
-    await prisma.paper.delete({ where: { id } });
-    revalidatePaperRelated();
-    return { success: true as const };
-  } catch (error: unknown) {
-    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
-  }
-}
-
-export async function togglePaperPublished(id: string) {
-  const denied = await forbidIfNeeded();
-  if (denied) return { success: false as const, error: denied };
-  try {
-    const paper = await prisma.paper.findUnique({ where: { id } });
-    if (!paper) return { success: false as const, error: "Paper not found" };
-    await prisma.paper.update({
-      where: { id },
-      data: { isPublished: !paper.isPublished },
-    });
-    revalidatePaperRelated();
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };

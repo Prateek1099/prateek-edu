@@ -20,14 +20,6 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
     },
     include: {
       qualification: { include: { board: true } },
-      papers: {
-        orderBy: [
-          { year: 'desc' },
-          { season: 'desc' },
-          { paperNumber: 'asc' },
-          { variant: 'asc' }
-        ]
-      },
       topics: {
         where: { status: "PUBLISHED" },
         orderBy: { sortOrder: 'asc' }
@@ -50,21 +42,6 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
   if (!subjectData) {
     notFound();
   }
-
-  // Group papers by Year -> Season
-  // e.g., { "2023": { "May/June": [paper1, paper2] } }
-  const papersByYear: Record<number, Record<string, any[]>> = {};
-  
-  subjectData.papers.forEach((paper) => {
-    if (!papersByYear[paper.year]) {
-      papersByYear[paper.year] = {};
-    }
-    const season = paper.season || "Other";
-    if (!papersByYear[paper.year][season]) {
-      papersByYear[paper.year][season] = [];
-    }
-    papersByYear[paper.year][season].push(paper);
-  });
 
   return (
     <div className="container px-4 md:px-8 py-12 max-w-6xl mx-auto min-h-[calc(100vh-140px)]">
@@ -92,7 +69,6 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
       </div>
 
       <SubjectTabsClient 
-        papersByYear={papersByYear}
         topics={subjectData.topics}
         notes={subjectData.notes}
         subject={subjectData}
@@ -103,4 +79,3 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
     </div>
   );
 }
-

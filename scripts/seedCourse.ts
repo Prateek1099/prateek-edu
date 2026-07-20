@@ -30,7 +30,7 @@ async function main() {
   const course = await prisma.course.create({
     data: {
       title: 'IGCSE Computer Science Masterclass',
-      description: 'Comprehensive coverage of the entire IGCSE Computer Science syllabus including algorithms, programming, and theory. Comes with topical past papers and mark schemes.',
+      description: 'Comprehensive coverage of the entire IGCSE Computer Science syllabus including algorithms, programming, theory, and topical practice.',
       price: 4999.0, // Price in INR
       subjectId: subject.id,
     },
