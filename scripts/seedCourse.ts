@@ -29,8 +29,9 @@ async function main() {
 
   const course = await prisma.course.create({
     data: {
-      title: 'IGCSE Computer Science Masterclass',
-      description: 'Comprehensive coverage of the entire IGCSE Computer Science syllabus including algorithms, programming, theory, and topical practice.',
+      title: "Complete Web Development Bootcamp",
+      slug: "complete-web-development-bootcamp",
+      description: "Learn full-stack web development from scratch with HTML, CSS, JavaScript, React, Node.js, and PostgreSQL.",
       price: 4999.0, // Price in INR
       subjectId: subject.id,
     },

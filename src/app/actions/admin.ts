@@ -31,8 +31,18 @@ export async function updateSubjectSyllabus(id: string, data: { syllabusPdfUrl: 
 
 export async function createCourse(data: {
   title: string;
+  slug: string;
   description: string | null;
+  shortDescription: string | null;
+  imageUrl: string | null;
   price: number;
+  isPublished: boolean;
+  level: string | null;
+  language: string | null;
+  instructorName: string | null;
+  learningOutcomes: string | null;
+  requirements: string | null;
+  targetAudience: string | null;
   subjectId: string;
 }) {
   const denied = await forbidIfNeeded();
@@ -49,14 +59,42 @@ export async function createCourse(data: {
 
 export async function updateCourse(id: string, data: {
   title: string;
+  slug: string;
   description: string | null;
+  shortDescription: string | null;
+  imageUrl: string | null;
   price: number;
+  isPublished: boolean;
+  level: string | null;
+  language: string | null;
+  instructorName: string | null;
+  learningOutcomes: string | null;
+  requirements: string | null;
+  targetAudience: string | null;
   subjectId: string;
 }) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
     await prisma.course.update({ where: { id }, data });
+    revalidatePath("/admin/courses");
+    revalidatePath("/courses");
+    return { success: true as const };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function toggleCoursePublished(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+  try {
+    const course = await prisma.course.findUnique({ where: { id } });
+    if (!course) return { success: false as const, error: "Course not found" };
+    await prisma.course.update({
+      where: { id },
+      data: { isPublished: !course.isPublished },
+    });
     revalidatePath("/admin/courses");
     revalidatePath("/courses");
     return { success: true as const };
