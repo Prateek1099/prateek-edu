@@ -10,6 +10,8 @@ interface CheckoutButtonProps {
   price: number;
 }
 
+import Script from "next/script";
+
 export default function CheckoutButton({ courseId, price }: CheckoutButtonProps) {
   const { data: session } = useSession();
   const router = useRouter();
@@ -18,6 +20,11 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
   const handleCheckout = async () => {
     if (!session) {
       router.push("/login");
+      return;
+    }
+
+    if (!(window as any).Razorpay) {
+      alert("Razorpay SDK failed to load. Please check your connection.");
       return;
     }
 
@@ -95,8 +102,15 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
   };
 
   return (
-    <Button onClick={handleCheckout} disabled={loading} className="w-full font-semibold">
-      {loading ? "Processing..." : `Buy Now - ₹${price}`}
-    </Button>
+    <>
+      <Script
+        id="razorpay-checkout-js"
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
+      <Button onClick={handleCheckout} disabled={loading} className="w-full font-semibold">
+        {loading ? "Processing..." : `Buy Now - ₹${price}`}
+      </Button>
+    </>
   );
 }
