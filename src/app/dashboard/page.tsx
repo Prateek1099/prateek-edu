@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Rocket, Users } from "lucide-react";
+import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Users } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -154,65 +154,65 @@ Most Repeated Mistakes: ${mistakeTopicsList || "None yet"}
 Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}% average
   `.trim();
   return (
-    <div className="container px-4 md:px-8 py-8 max-w-7xl mx-auto space-y-10">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+    <div className="container px-4 md:px-8 py-6 md:py-8 max-w-7xl mx-auto space-y-8">
+
+      {/* ── 1. WELCOME HEADER ── */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
-          <p className="text-muted-foreground mt-1 text-lg">Welcome back, {session.user.name || "Student"}. Here is your learning progress.</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+            Welcome back, {session.user.name || "Student"} 👋
+          </h1>
+          <p className="text-muted-foreground mt-0.5 text-sm md:text-base">
+            Keep learning, keep growing.
+          </p>
         </div>
-        <div className="md:self-start pt-1 w-full md:w-auto flex flex-col md:flex-row gap-3">
-          <Link 
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
             href="/dashboard/join"
             className={cn(
-              buttonVariants({ size: "lg", variant: "outline" }), 
-              "w-full md:w-auto px-6 py-6 shadow-sm hover:shadow-md transition-all text-base font-semibold"
+              buttonVariants({ size: "sm", variant: "outline" }),
+              "shadow-sm"
             )}
           >
-            <Users className="w-5 h-5 mr-2" /> Join a Class
+            <Users className="w-4 h-4 mr-1.5" /> Join Class
           </Link>
-          <Link 
+          <Link
             href="/dashboard/ask-teacher"
-            className={cn(
-              buttonVariants({ size: "lg" }), 
-              "w-full md:w-auto px-6 py-6 shadow-md hover:shadow-lg transition-all text-base font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
-            )}
+            className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
           >
             Ask Teacher
           </Link>
         </div>
       </div>
 
-      {/* 0. Revision Planner Widget */}
+      {/* ── 2. CONTINUE LEARNING ── */}
       <section>
         {revisionPlan ? (
-          <Card className="bg-gradient-to-br from-primary/5 via-card to-card shadow-md border-primary/20 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 opacity-[0.04]">
-              <CalendarDays className="w-32 h-32 text-primary" />
-            </div>
-            <CardContent className="p-6 relative z-10">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-5">
+          <Card className="shadow-md border-primary/15">
+            <CardContent className="p-5 md:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <CalendarDays className="w-5 h-5 text-primary" />
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <CalendarDays className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">My Revision Plan</h2>
-                    <p className="text-sm text-muted-foreground">
-                      {revisionPlan.qualification.toUpperCase()} · {daysUntilExam} days remaining
+                    <h2 className="text-base font-bold leading-tight">Continue Learning</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {revisionPlan.qualification.toUpperCase()} · {daysUntilExam} day{daysUntilExam !== 1 ? "s" : ""} until exam
                     </p>
                   </div>
                 </div>
-                <Link 
+                <Link
                   href="/dashboard/revision-planner"
-                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
+                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0")}
                 >
-                  Open Full Planner <ArrowRight className="w-4 h-4 ml-1" />
+                  Open Planner <ArrowRight className="w-3.5 h-3.5 ml-1" />
                 </Link>
               </div>
 
               <div className="mb-4">
-                <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-muted-foreground">Completion</span>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-muted-foreground">Plan completion</span>
                   <span className="font-semibold">{planCompletionPct}%</span>
                 </div>
                 <Progress value={planCompletionPct} className="h-2" />
@@ -220,10 +220,10 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
 
               {revisionPlan.tasks.length > 0 ? (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Today&apos;s Tasks</p>
-                  <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Today&apos;s Tasks</p>
+                  <div className="space-y-1.5">
                     {revisionPlan.tasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-3 text-sm">
+                      <div key={task.id} className="flex items-center gap-2.5 text-sm">
                         {task.status === "COMPLETED" ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         ) : (
@@ -240,28 +240,27 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No tasks scheduled for today. Check your full planner for upcoming tasks.</p>
+                <p className="text-sm text-muted-foreground">No tasks for today. Check your planner for upcoming tasks.</p>
               )}
             </CardContent>
           </Card>
         ) : (
-          <Card className="bg-gradient-to-br from-primary/5 via-card to-card shadow-md border-primary/20 border-dashed relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 opacity-[0.04]">
-              <Rocket className="w-32 h-32 text-primary" />
-            </div>
-            <CardContent className="p-6 relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-primary" />
-                  What should you study today?
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Set up your personal Revision Planner to get daily study recommendations based on your mistakes, challenges, and progress.
-                </p>
+          <Card className="shadow-md border-dashed border-primary/15">
+            <CardContent className="p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <CalendarDays className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold">What should you study today?</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Set up your Revision Planner to get daily study tasks based on your progress.
+                  </p>
+                </div>
               </div>
-              <Link 
+              <Link
                 href="/dashboard/revision-planner"
-                className={cn(buttonVariants({ size: "lg" }), "shadow-md whitespace-nowrap")}
+                className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0")}
               >
                 Set Up Planner
               </Link>
@@ -270,56 +269,144 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         )}
       </section>
 
-      {/* 0.5 Worksheet Assignments Widget */}
+      {/* ── 3. THREE COMPACT METRICS ── */}
+      <section className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Target className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-xs font-medium truncate">Courses</span>
+          </div>
+          <p className="text-xl md:text-2xl font-bold">{enrollments}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <Target className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span className="text-xs font-medium truncate">Accuracy</span>
+          </div>
+          <p className="text-xl md:text-2xl font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1">
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+            <span className="text-xs font-medium truncate">Topics Done</span>
+          </div>
+          <p className="text-xl md:text-2xl font-bold">{topicProgress.filter((t) => t.completed).length}</p>
+        </div>
+      </section>
+
+      {/* ── 4 & 5. MY SUBJECTS + RECOMMENDED / AI ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 items-start">
+        {/* 4. My Subjects — wider column */}
+        <section className="lg:col-span-3">
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-primary" /> My Subjects
+          </h2>
+          {subjectProgressList.length > 0 ? (
+            <div className="space-y-4">
+              {subjectProgressList.map((sp, i) => {
+                const percentage = sp.total > 0 ? Math.round((sp.completed / sp.total) * 100) : 0;
+                return (
+                  <div key={i} className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">{sp.name}</span>
+                      <span className="text-muted-foreground text-xs">{sp.completed}/{sp.total} topics · {percentage}%</span>
+                    </div>
+                    <Progress value={percentage} className="h-1.5" />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="border-dashed">
+              <CardContent className="p-6 flex flex-col items-center text-center gap-2">
+                <BookOpen className="w-8 h-8 text-muted-foreground/40" />
+                <p className="text-sm text-muted-foreground">No subject progress yet.</p>
+                <p className="text-xs text-muted-foreground">Complete a topic challenge to start tracking your progress.</p>
+              </CardContent>
+            </Card>
+          )}
+        </section>
+
+        {/* 5. Recommended Next + AI Insight — narrower column, stacks on mobile */}
+        <section className="lg:col-span-2 space-y-5">
+          {/* Recommended Revision */}
+          {topMistakeTopics.length > 0 && (
+            <div>
+              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" /> Recommended Next
+              </h2>
+              <Card className="border-primary/15">
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {topMistakeTopics.slice(0, 3).map((t, index) => (
+                      <Badge key={t.topicTag ?? index} variant="outline" className="text-xs border-primary/30 text-primary">
+                        {t.topicTag ?? "Uncategorised"}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-2">These topics have the most repeated mistakes.</p>
+                  <Link href="/dashboard/mistakes" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
+                    Open Mistake Book <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* AI Insight */}
+          <AiInsightCard contextData={contextData} />
+        </section>
+      </div>
+
+      {/* ── 6. ASSIGNED WORKSHEETS ── */}
       {worksheetAssignments.length > 0 && (
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <FileText className="w-5 h-5 text-primary" /> Assigned Worksheets
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" /> Assigned Worksheets
             </h2>
-            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary")}>
-              View All <ArrowRight className="w-4 h-4 ml-1" />
+            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs")}>
+              View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {worksheetAssignments.map(assignment => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {worksheetAssignments.map((assignment) => {
               const ws = assignment.worksheet;
               const isCompleted = assignment.status === "COMPLETED";
               const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
               const board = ws.subject.qualification.board.name;
               const qual = ws.subject.qualification.name;
               const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
-
               return (
                 <Link key={assignment.id} href={isCompleted ? "#" : attemptLink} className="block group">
-                  <Card className={`h-full transition-all hover:shadow-md ${isOverdue ? 'border-destructive/50' : 'hover:border-primary/40'}`}>
-                    <CardContent className="p-5 flex flex-col h-full justify-between">
+                  <Card className={cn("h-full transition-colors hover:shadow-sm", isOverdue ? "border-destructive/40" : "hover:border-primary/30")}>
+                    <CardContent className="p-4 flex flex-col h-full justify-between">
                       <div>
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-1.5">
                           {isCompleted ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-600">
-                              <CheckCircle2 className="w-3 h-3" /> Completed
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3 h-3" /> Done
                             </span>
                           ) : isOverdue ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-destructive/10 text-destructive">
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
                               <AlertCircle className="w-3 h-3" /> Overdue
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm bg-primary/10 text-primary">
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">
                               <FileText className="w-3 h-3" /> Pending
                             </span>
                           )}
                           {assignment.dueDate && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                               <Clock className="w-3 h-3" /> {new Date(assignment.dueDate).toLocaleDateString()}
                             </span>
                           )}
                         </div>
-                        <h3 className="font-bold text-base group-hover:text-primary transition-colors line-clamp-2">{ws.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{ws.subject.name}</p>
+                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">{ws.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{ws.subject.name}</p>
                       </div>
-                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t pt-3">
-                        <span>{ws._count.questions} Questions</span>
+                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
+                        <span>{ws._count.questions} Qs</span>
                         {!isCompleted && <span className="text-primary font-medium group-hover:underline">Start →</span>}
                       </div>
                     </CardContent>
@@ -331,221 +418,105 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         </section>
       )}
 
-      {/* 1. Progress Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Courses Enrolled</CardTitle>
-             <Target className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{enrollments}</div>
-          </CardContent>
-        </Card>
+      {/* ── 7. RECENT ACTIVITY (secondary) ── */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-primary" /> Recent Activity
+          </h2>
+          {mistakeTotal > 0 && (
+            <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs")}>
+              Mistake Book <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            </Link>
+          )}
+        </div>
 
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Practice Attempts</CardTitle>
-             <Trophy className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{challengeAgg._count}</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Average Accuracy</CardTitle>
-             <Target className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
-          <CardHeader className="py-4 flex flex-row items-center justify-between space-y-0 pb-2">
-             <CardTitle className="text-sm font-medium">Topics Completed</CardTitle>
-             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-             <div className="text-2xl font-bold">{topicProgress.filter((topic) => topic.completed).length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        <div className="lg:col-span-2 space-y-10">
-          {/* 2. Subject Progress */}
-          <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-primary" /> Subject Progress
-            </h2>
-            <Card className="bg-card shadow-sm border-border">
-              <CardContent className="p-6 space-y-6">
-                {subjectProgressList.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-4">No subject progress tracked yet. Complete practice challenges to see progress!</div>
-                ) : subjectProgressList.map((sp, i) => {
-                  const percentage = sp.total > 0 ? Math.round((sp.completed / sp.total) * 100) : 0;
-                  return (
-                    <div key={i} className="space-y-2">
-                      <div className="flex justify-between text-sm font-medium">
-                        <span>{sp.name}</span>
-                        <span className="text-muted-foreground">{percentage}% ({sp.completed}/{sp.total})</span>
-                      </div>
-                      <Progress value={percentage} className="h-2" />
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* 5. Performance & Revision */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" /> Performance & Revision
-              </h2>
-              {mistakeTotal > 0 && (
-                <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary")}>
-                  View Mistake Book <ArrowRight className="w-4 h-4 ml-1" />
-                </Link>
-              )}
-            </div>
-
-            {/* Mistake Book Summary */}
-            {mistakeTotal > 0 && (
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <Card className="bg-card shadow-sm border-border">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold">{mistakeTotal}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Total Mistakes</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-card shadow-sm border-amber-500/20">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{mistakeNeedsRevision}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Needs Revision</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-card shadow-sm border-emerald-500/20">
-                  <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{mistakeRevised}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Revised</p>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            {/* Most Repeated Mistakes + Challenge Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {topMistakeTopics.length > 0 && (
-                <Card className="bg-card shadow-sm border-border">
-                  <CardContent className="p-5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-500" /> Most Repeated Mistakes
-                    </h3>
-                    <div className="space-y-2.5">
-                      {topMistakeTopics.map((t, i) => (
-                        <div key={t.topicTag ?? i} className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-muted-foreground w-4">{i + 1}.</span>
-                            <span className="text-sm font-medium">{t.topicTag ?? "Uncategorised"}</span>
-                          </div>
-                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
-                            {t._sum.mistakeCount}×
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {challengeAgg._count > 0 && (
-                <Card className="bg-card shadow-sm border-border">
-                  <CardContent className="p-5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
-                      <Trophy className="h-4 w-4 text-primary" /> Challenge Performance
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Challenges Taken</span>
-                        <span className="font-bold">{challengeAgg._count}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Average Score</span>
-                        <span className="font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Best Score</span>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{challengeAgg._max?.percentage ? Math.round(challengeAgg._max.percentage) : 0}%</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            {/* Recent Challenges */}
-            {recentChallenges.length > 0 && (
-              <Card className="bg-card shadow-sm border-border overflow-hidden">
-                <div className="divide-y divide-border">
-                  {recentChallenges.map((ca) => (
-                    <div key={ca.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-                      <div>
-                        <h4 className="font-semibold text-sm">{ca.challenge.title}</h4>
-                        <p className="text-xs text-muted-foreground mt-0.5">{ca.challenge.subject.name} · {new Date(ca.completedAt).toLocaleDateString()}</p>
-                      </div>
-                      <Badge variant="outline" className={`${ca.percentage >= 75 ? 'border-emerald-500 text-emerald-500' : ca.percentage >= 50 ? 'border-amber-500 text-amber-500' : 'border-red-500 text-red-500'}`}>
-                        {Math.round(ca.percentage)}%
-                      </Badge>
-                    </div>
-                  ))}
+        {/* Challenge Performance + Mistakes — compact inline strip */}
+        {(challengeAgg._count > 0 || mistakeTotal > 0) && (
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm mb-4 px-1">
+            {challengeAgg._count > 0 && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Challenges:</span>
+                  <span className="font-semibold">{challengeAgg._count}</span>
                 </div>
-              </Card>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Avg:</span>
+                  <span className="font-semibold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Best:</span>
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{challengeAgg._max?.percentage ? Math.round(challengeAgg._max.percentage) : 0}%</span>
+                </div>
+              </>
             )}
+            {mistakeTotal > 0 && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Mistakes:</span>
+                  <span className="font-semibold">{mistakeTotal}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-muted-foreground">Needs revision:</span>
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">{mistakeNeedsRevision}</span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
-            {/* Recommended Revision */}
-            {topMistakeTopics.length > 0 && (
-              <Card className="bg-primary/5 border-primary/20 shadow-sm mt-4">
-                <CardContent className="p-5">
-                  <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" /> Recommended Revision
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {topMistakeTopics.slice(0, 3).map((t, index) => (
-                      <Badge key={t.topicTag ?? index} variant="outline" className="py-1.5 px-3 text-sm border-primary/30 text-primary">
-                        Review: {t.topicTag ?? "Uncategorised"}
-                      </Badge>
-                    ))}
+        {/* Recent Challenges list */}
+        {recentChallenges.length > 0 ? (
+          <Card className="overflow-hidden">
+            <div className="divide-y divide-border">
+              {recentChallenges.map((ca) => (
+                <div key={ca.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+                  <div className="min-w-0">
+                    <h4 className="font-medium text-sm truncate">{ca.challenge.title}</h4>
+                    <p className="text-xs text-muted-foreground mt-0.5">{ca.challenge.subject.name} · {new Date(ca.completedAt).toLocaleDateString()}</p>
                   </div>
-                  <Link href="/dashboard/mistakes" className="text-sm text-primary font-medium mt-3 inline-block hover:underline">
-                    Open Mistake Book →
-                  </Link>
-                </CardContent>
-              </Card>
-            )}
+                  <Badge variant="outline" className={cn(
+                    "shrink-0 ml-3",
+                    ca.percentage >= 75 ? "border-emerald-500 text-emerald-500" :
+                    ca.percentage >= 50 ? "border-amber-500 text-amber-500" :
+                    "border-red-500 text-red-500"
+                  )}>
+                    {Math.round(ca.percentage)}%
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        ) : (
+          <Card className="border-dashed">
+            <CardContent className="p-6 flex flex-col items-center text-center gap-2">
+              <Trophy className="w-8 h-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No challenges attempted yet.</p>
+              <p className="text-xs text-muted-foreground">Complete a topic challenge to see your results here.</p>
+            </CardContent>
+          </Card>
+        )}
 
-            {/* Empty State */}
-            {mistakeTotal === 0 && challengeAgg._count === 0 && (
-              <Card className="bg-muted/20 border-dashed shadow-sm">
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  Complete a Topic Challenge to see your performance insights here.
-                </CardContent>
-              </Card>
-            )}
-          </section>
-        </div>
+        {/* Most Repeated Mistakes — compact */}
+        {topMistakeTopics.length > 0 && (
+          <div className="mt-4 rounded-xl border border-border bg-card p-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> Most Repeated Mistakes
+            </h3>
+            <div className="space-y-1.5">
+              {topMistakeTopics.map((t, i) => (
+                <div key={t.topicTag ?? i} className="flex items-center justify-between text-sm">
+                  <span className="font-medium">{t.topicTag ?? "Uncategorised"}</span>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
+                    {t._sum.mistakeCount}×
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
 
-        {/* Right Col */}
-        <div className="space-y-10 relative">
-          
-          <AiInsightCard contextData={contextData} />
-        </div>
-      </div>
     </div>
   );
 }

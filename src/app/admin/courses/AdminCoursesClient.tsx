@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Pencil, Trash2, BookOpen } from "lucide-react";
+import { Plus, Pencil, Trash2, BookOpen, Users, Eye, EyeOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { createCourse, updateCourse, deleteCourse } from "@/app/actions/admin";
+import { createCourse, updateCourse, deleteCourse, toggleCoursePublished } from "@/app/actions/admin";
 import { toast } from "sonner";
 import {
   Select,
@@ -32,20 +32,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 type SubjectOption = { id: string; label: string };
 
 type CourseRow = {
   id: string;
   title: string;
+  slug: string;
   description: string | null;
+  shortDescription: string | null;
+  imageUrl: string | null;
   price: number;
+  isPublished: boolean;
+  level: string | null;
+  language: string | null;
+  instructorName: string | null;
+  learningOutcomes: string | null;
+  requirements: string | null;
+  targetAudience: string | null;
   subjectId: string;
+  createdAt: Date;
+  _count: {
+    enrollments: number;
+  };
   subject: {
     name: string;
     code: string | null;
-    qualification: { title: string };
+    qualification: { 
+      title: string;
+      board: { title: string };
+    };
   };
 };
 
@@ -65,14 +83,41 @@ export default function AdminCoursesClient({
   const [tableSearch, setTableSearch] = useState("");
 
   const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
   const [price, setPrice] = useState("");
+  const [isPublished, setIsPublished] = useState(false);
+  const [level, setLevel] = useState("");
+  const [language, setLanguage] = useState("English");
+  const [instructorName, setInstructorName] = useState("");
+  const [learningOutcomes, setLearningOutcomes] = useState("");
+  const [requirements, setRequirements] = useState("");
+  const [targetAudience, setTargetAudience] = useState("");
   const [subjectId, setSubjectId] = useState(subjectOptions[0]?.id ?? "");
+
+  // Auto-generate slug from title for new courses
+  useEffect(() => {
+    if (isAddOpen && title) {
+      setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+    }
+  }, [title, isAddOpen]);
 
   const resetForm = () => {
     setTitle("");
+    setSlug("");
     setDescription("");
+    setShortDescription("");
+    setImageUrl("");
     setPrice("");
+    setIsPublished(false);
+    setLevel("");
+    setLanguage("English");
+    setInstructorName("");
+    setLearningOutcomes("");
+    setRequirements("");
+    setTargetAudience("");
     setSubjectId(subjectOptions[0]?.id ?? "");
     setSelectedCourse(null);
   };
@@ -87,8 +132,18 @@ export default function AdminCoursesClient({
   const openEdit = (course: CourseRow) => {
     setSelectedCourse(course);
     setTitle(course.title);
+    setSlug(course.slug);
     setDescription(course.description || "");
+    setShortDescription(course.shortDescription || "");
+    setImageUrl(course.imageUrl || "");
     setPrice(course.price.toString());
+    setIsPublished(course.isPublished);
+    setLevel(course.level || "");
+    setLanguage(course.language || "English");
+    setInstructorName(course.instructorName || "");
+    setLearningOutcomes(course.learningOutcomes || "");
+    setRequirements(course.requirements || "");
+    setTargetAudience(course.targetAudience || "");
     setSubjectId(course.subjectId);
     setIsEditOpen(true);
   };
@@ -130,6 +185,16 @@ export default function AdminCoursesClient({
     </div>
   );
 
+  const handleTogglePublish = async (course: CourseRow) => {
+    const res = await toggleCoursePublished(course.id);
+    if (res.success) {
+      toast.success(course.isPublished ? "Course unpublished" : "Course published");
+      refresh();
+    } else {
+      toast.error(res.error || "Failed to toggle status");
+    }
+  };
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!subjectId) {
@@ -139,8 +204,18 @@ export default function AdminCoursesClient({
     setLoading(true);
     const res = await createCourse({
       title,
+      slug,
       description: description.trim() === "" ? null : description,
+      shortDescription: shortDescription.trim() === "" ? null : shortDescription,
+      imageUrl: imageUrl.trim() === "" ? null : imageUrl,
       price: parseFloat(price) || 0,
+      isPublished,
+      level: level.trim() === "" ? null : level,
+      language: language.trim() === "" ? null : language,
+      instructorName: instructorName.trim() === "" ? null : instructorName,
+      learningOutcomes: learningOutcomes.trim() === "" ? null : learningOutcomes,
+      requirements: requirements.trim() === "" ? null : requirements,
+      targetAudience: targetAudience.trim() === "" ? null : targetAudience,
       subjectId,
     });
     setLoading(false);
@@ -164,8 +239,18 @@ export default function AdminCoursesClient({
     setLoading(true);
     const res = await updateCourse(selectedCourse.id, {
       title,
+      slug,
       description: description.trim() === "" ? null : description,
+      shortDescription: shortDescription.trim() === "" ? null : shortDescription,
+      imageUrl: imageUrl.trim() === "" ? null : imageUrl,
       price: parseFloat(price) || 0,
+      isPublished,
+      level: level.trim() === "" ? null : level,
+      language: language.trim() === "" ? null : language,
+      instructorName: instructorName.trim() === "" ? null : instructorName,
+      learningOutcomes: learningOutcomes.trim() === "" ? null : learningOutcomes,
+      requirements: requirements.trim() === "" ? null : requirements,
+      targetAudience: targetAudience.trim() === "" ? null : targetAudience,
       subjectId,
     });
     setLoading(false);
@@ -195,39 +280,142 @@ export default function AdminCoursesClient({
   };
 
   const formFields = (idPrefix: "add-course" | "edit-course") => (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-title`}>Title</Label>
+          <Input
+            id={`${idPrefix}-title`}
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. IGCSE Computer Science"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-slug`}>Slug</Label>
+          <Input
+            id={`${idPrefix}-slug`}
+            required
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            placeholder="e.g. igcse-computer-science"
+          />
+        </div>
+      </div>
+
+      <SubjectSelect id={`${idPrefix}-subject`} />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-price`}>Price (₹)</Label>
+          <Input
+            id={`${idPrefix}-price`}
+            required
+            type="number"
+            min="0"
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="0"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-instructor`}>Instructor Name</Label>
+          <Input
+            id={`${idPrefix}-instructor`}
+            value={instructorName}
+            onChange={(e) => setInstructorName(e.target.value)}
+            placeholder="e.g. Jane Doe"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-level`}>Level</Label>
+          <Input
+            id={`${idPrefix}-level`}
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            placeholder="e.g. Beginner, Intermediate"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-language`}>Language</Label>
+          <Input
+            id={`${idPrefix}-language`}
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            placeholder="e.g. English"
+          />
+        </div>
+      </div>
+
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-title`}>Title</Label>
-        <Input
-          id={`${idPrefix}-title`}
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g. IGCSE Computer Science — full course"
+        <Label htmlFor={`${idPrefix}-short-desc`}>Short Description</Label>
+        <Textarea
+          id={`${idPrefix}-short-desc`}
+          className="min-h-[80px] resize-y"
+          value={shortDescription}
+          onChange={(e) => setShortDescription(e.target.value)}
+          placeholder="Brief summary for catalog cards..."
         />
       </div>
+
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-desc`}>Description</Label>
+        <Label htmlFor={`${idPrefix}-desc`}>Full Description</Label>
         <Textarea
           id={`${idPrefix}-desc`}
-          className="min-h-[100px] resize-y"
+          className="min-h-[120px] resize-y"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="What students get, duration, format…"
+          placeholder="Full course details for the detail page..."
         />
       </div>
-      <SubjectSelect id={`${idPrefix}-subject`} />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-outcomes`}>Learning Outcomes</Label>
+          <Textarea
+            id={`${idPrefix}-outcomes`}
+            className="min-h-[100px] resize-y"
+            value={learningOutcomes}
+            onChange={(e) => setLearningOutcomes(e.target.value)}
+            placeholder="What will they learn? (one per line)"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={`${idPrefix}-requirements`}>Requirements</Label>
+          <Textarea
+            id={`${idPrefix}-requirements`}
+            className="min-h-[100px] resize-y"
+            value={requirements}
+            onChange={(e) => setRequirements(e.target.value)}
+            placeholder="Prerequisites? (one per line)"
+          />
+        </div>
+      </div>
+      
       <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-price`}>Price (₹)</Label>
+        <Label htmlFor={`${idPrefix}-audience`}>Target Audience</Label>
+        <Textarea
+          id={`${idPrefix}-audience`}
+          className="min-h-[80px] resize-y"
+          value={targetAudience}
+          onChange={(e) => setTargetAudience(e.target.value)}
+          placeholder="Who is this course for?"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-image`}>Thumbnail/Image URL</Label>
         <Input
-          id={`${idPrefix}-price`}
-          required
-          type="number"
-          min="0"
-          step="0.01"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          placeholder="0"
+          id={`${idPrefix}-image`}
+          type="url"
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          placeholder="https://..."
         />
       </div>
     </div>
@@ -251,6 +439,27 @@ export default function AdminCoursesClient({
         </Button>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="border border-border/80 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
+            <BookOpen className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{courses.length}</div>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/80 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Enrollments</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{courses.reduce((sum, c) => sum + (c._count?.enrollments || 0), 0)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="border border-border/80 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Catalog</CardTitle>
@@ -269,14 +478,16 @@ export default function AdminCoursesClient({
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Subject</TableHead>
-                <TableHead className="w-28">Price</TableHead>
-                <TableHead className="text-right w-52">Actions</TableHead>
+                <TableHead className="w-24">Price</TableHead>
+                <TableHead className="w-28 text-center">Status</TableHead>
+                <TableHead className="w-20 text-right">Enrolled</TableHead>
+                <TableHead className="text-right w-64">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCourses.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-14">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-14">
                     No courses match this filter.
                   </TableCell>
                 </TableRow>
@@ -285,18 +496,27 @@ export default function AdminCoursesClient({
                   <TableRow key={course.id}>
                     <TableCell>
                       <div className="font-medium">{course.title}</div>
-                      {course.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 mt-1 max-w-md">
-                          {course.description}
+                      {course.shortDescription && (
+                        <p className="text-xs text-muted-foreground line-clamp-1 mt-1 max-w-sm">
+                          {course.shortDescription}
                         </p>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm font-medium">{course.subject.name}</div>
-                      <div className="text-xs text-muted-foreground">{course.subject.qualification.title}</div>
+                      <div className="text-xs text-muted-foreground">{course.subject.qualification.board.title} &gt; {course.subject.qualification.title}</div>
                     </TableCell>
-                    <TableCell className="tabular-nums">₹{course.price}</TableCell>
+                    <TableCell className="tabular-nums font-medium">₹{course.price.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={course.isPublished ? "default" : "secondary"}>
+                        {course.isPublished ? "Published" : "Draft"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{course._count?.enrollments || 0}</TableCell>
                     <TableCell className="text-right space-x-2">
+                      <Button variant="ghost" size="icon" title={course.isPublished ? "Unpublish" : "Publish"} onClick={() => handleTogglePublish(course)}>
+                        {course.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4 text-emerald-500" />}
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => openEdit(course)}>
                         <Pencil className="size-4" /> Edit
                       </Button>
@@ -313,7 +533,7 @@ export default function AdminCoursesClient({
       </Card>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add course</DialogTitle>
             <DialogDescription>Create a priced offering tied to one subject.</DialogDescription>
@@ -330,7 +550,7 @@ export default function AdminCoursesClient({
       </Dialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit course</DialogTitle>
           </DialogHeader>

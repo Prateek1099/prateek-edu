@@ -32,35 +32,35 @@ export function AiInsightCard({ contextData }: { contextData: string }) {
   };
 
   return (
-    <Card className="bg-gradient-to-br from-primary/5 via-card to-card shadow-sm border-primary/20 relative overflow-hidden">
-      <div className="absolute top-0 right-0 p-4 opacity-10">
-        <Sparkles className="w-24 h-24 text-primary" />
-      </div>
-      <CardHeader className="pb-2 relative z-10">
-        <CardTitle className="text-lg flex items-center gap-2 text-primary">
-          <Sparkles className="w-5 h-5" /> AI Study Insight
+    <Card className="bg-card shadow-sm border-border">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-primary" />
+          </div>
+          AI Study Insight
         </CardTitle>
-        <CardDescription>Get personalized, smart recommendations based on your recent activity.</CardDescription>
+        <CardDescription>Personalised recommendations based on your activity.</CardDescription>
       </CardHeader>
-      <CardContent className="relative z-10">
+      <CardContent>
         {!insight && !loading && (
-          <Button onClick={generateInsight} className="mt-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 shadow-none">
+          <Button onClick={generateInsight} size="sm" className="mt-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 shadow-none">
             Generate Insight
           </Button>
         )}
         
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
-            <Loader2 className="w-4 h-4 animate-spin" /> Analyzing your progress...
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
+            <Loader2 className="w-4 h-4 animate-spin" /> Analysing your progress…
           </div>
         )}
 
         {error && (
-          <div className="text-sm text-destructive mt-4">{error}</div>
+          <div className="text-sm text-destructive mt-3">{error}</div>
         )}
 
         {insight && (
-          <div className="mt-4 prose prose-sm dark:prose-invert max-w-none text-foreground/90">
+          <div className="mt-3 prose prose-sm dark:prose-invert max-w-none text-foreground/90">
             <ReactMarkdown>{insight}</ReactMarkdown>
           </div>
         )}
