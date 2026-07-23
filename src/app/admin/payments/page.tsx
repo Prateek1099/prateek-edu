@@ -14,7 +14,9 @@ export default async function AdminPaymentsPage() {
   const payments = await prisma.payment.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      user: true
+      user: true,
+      course: { select: { title: true } },
+      plan: { select: { name: true } },
     }
   });
 
@@ -31,6 +33,7 @@ export default async function AdminPaymentsPage() {
               <TableHead>User</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Purchase</TableHead>
               <TableHead>Payment ID</TableHead>
               <TableHead>Date</TableHead>
             </TableRow>
@@ -38,12 +41,12 @@ export default async function AdminPaymentsPage() {
           <TableBody>
             {payments.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No payments found.
                 </TableCell>
               </TableRow>
             ) : (
-              payments.map((payment: any) => (
+              payments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-medium">{payment.user.name || payment.user.email}</TableCell>
                   <TableCell>₹{payment.amount}</TableCell>
@@ -52,6 +55,7 @@ export default async function AdminPaymentsPage() {
                       {payment.status}
                     </Badge>
                   </TableCell>
+                  <TableCell>{payment.course?.title || payment.plan?.name || "Legacy / unmapped"}</TableCell>
                   <TableCell className="text-xs font-mono">{payment.razorpayPaymentId || 'N/A'}</TableCell>
                   <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
                 </TableRow>

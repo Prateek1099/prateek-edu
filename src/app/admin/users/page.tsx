@@ -18,7 +18,9 @@ export default async function AdminUsersPage() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      enrollments: true
+      enrollments: {
+        select: { paymentStatus: true },
+      },
     }
   });
 
@@ -43,12 +45,12 @@ export default async function AdminUsersPage() {
           <TableBody>
             {users.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                   No users found.
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user: any) => (
+              users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name || 'N/A'}</TableCell>
                   <TableCell>{user.email}</TableCell>
@@ -57,7 +59,14 @@ export default async function AdminUsersPage() {
                       {user.role}
                     </Badge>
                   </TableCell>
-                  <TableCell>{user.enrollments.length}</TableCell>
+                  <TableCell>
+                    {user.enrollments.filter((enrollment) => enrollment.paymentStatus === "completed").length} completed
+                    {user.enrollments.some((enrollment) => enrollment.paymentStatus === "pending") && (
+                      <span className="block text-xs text-muted-foreground">
+                        {user.enrollments.filter((enrollment) => enrollment.paymentStatus === "pending").length} pending
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

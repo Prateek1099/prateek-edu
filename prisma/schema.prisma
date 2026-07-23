@@ -203,6 +203,7 @@ model Course {
 
   subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
+  payments    Payment[]
 
   @@index([subjectId])
   @@map("courses")
@@ -218,6 +219,7 @@ model Enrollment {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, courseId])
   @@index([userId])
   @@index([courseId])
   @@map("enrollments")
@@ -333,13 +335,17 @@ model Payment {
   amount            Float
   status            String   @default("pending") // pending, successful, failed
   planId            String?  @map("plan_id")
+  courseId          String?  @map("course_id")
   createdAt         DateTime @default(now()) @map("created_at")
 
-  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan SubscriptionPlan? @relation(fields: [planId], references: [id])
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan   SubscriptionPlan? @relation(fields: [planId], references: [id])
+  course Course?           @relation(fields: [courseId], references: [id], onDelete: SetNull)
 
+  @@unique([razorpayOrderId])
   @@index([userId])
   @@index([planId])
+  @@index([courseId])
   @@map("payments")
 }
 

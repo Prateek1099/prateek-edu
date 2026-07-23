@@ -1,79 +1,115 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { getServerSession } from "next-auth";
+
 import { authOptions } from "@/lib/auth";
+import {
+  completeStoredPayment,
+  getRazorpayClient,
+  isValidHmacSignature,
+  paymentPurchaseInclude,
+  validateCapturedPayment,
+  validatePaidOrder,
+} from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
+
+function readPaymentFields(body: unknown) {
+  if (!body || typeof body !== "object") return null;
+
+  const candidate = body as Record<string, unknown>;
+  const paymentId = candidate.razorpay_payment_id;
+  const orderId = candidate.razorpay_order_id;
+  const signature = candidate.razorpay_signature;
+
+  if (
+    typeof paymentId !== "string" ||
+    typeof orderId !== "string" ||
+    typeof signature !== "string" ||
+    !paymentId ||
+    !orderId ||
+    !signature
+  ) {
+    return null;
+  }
+
+  return { paymentId, orderId, signature };
+}
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = (session?.user as { id?: string } | undefined)?.id;
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, courseId } = await req.json();
-
-    const text = `${razorpay_order_id}|${razorpay_payment_id}`;
-    
-    // Verify signature
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET as string)
-      .update(text)
-      .digest("hex");
-
-    if (expectedSignature !== razorpay_signature) {
-      return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
+    const fields = readPaymentFields(await req.json());
+    if (!fields) {
+      return NextResponse.json({ error: "Invalid payment verification request." }, { status: 400 });
     }
 
-    // Payment is valid, update database
-    const payment = await prisma.payment.findFirst({
-      where: { razorpayOrderId: razorpay_order_id, userId: (session.user as any).id },
-      include: { plan: true }
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      console.error("Razorpay verify failed: payment secret is not configured.");
+      return NextResponse.json({ error: "Payment verification is unavailable." }, { status: 500 });
+    }
+
+    if (
+      !isValidHmacSignature(
+        `${fields.orderId}|${fields.paymentId}`,
+        fields.signature,
+        keySecret,
+      )
+    ) {
+      console.warn("Razorpay verify rejected an invalid signature.", {
+        orderId: fields.orderId,
+        userId,
+      });
+      return NextResponse.json({ error: "Invalid payment signature." }, { status: 400 });
+    }
+
+    const storedPayment = await prisma.payment.findUnique({
+      where: { razorpayOrderId: fields.orderId },
+      include: paymentPurchaseInclude,
     });
 
-    if (payment) {
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          razorpayPaymentId: razorpay_payment_id,
-          razorpaySignature: razorpay_signature,
-          status: "successful",
-        },
+    if (
+      !storedPayment ||
+      storedPayment.userId !== userId ||
+      (!storedPayment.courseId && !storedPayment.planId) ||
+      (storedPayment.courseId && storedPayment.planId)
+    ) {
+      console.warn("Razorpay verify rejected an unmapped or unauthorized order.", {
+        orderId: fields.orderId,
+        userId,
       });
+      return NextResponse.json({ error: "Payment order was not found." }, { status: 404 });
+    }
 
-      // If it's a subscription plan
-      if (payment.plan) {
-        const plan = payment.plan;
-        const durationMonths = plan.name.toLowerCase().includes("year") ? 12 : 1;
-        const expiry = new Date();
-        expiry.setMonth(expiry.getMonth() + durationMonths);
-
-        await prisma.user.update({
-          where: { id: payment.userId },
-          data: {
-            isPremium: true,
-            planId: plan.id,
-            subscriptionStart: new Date(),
-            subscriptionExpiry: expiry,
-            monthlyAIQuota: plan.aiQuota,
-            usageConsumed: 0,
-          }
-        });
+    if (storedPayment.status === "successful") {
+      if (storedPayment.razorpayPaymentId !== fields.paymentId) {
+        return NextResponse.json({ error: "Payment ID does not match this order." }, { status: 409 });
       }
+      return NextResponse.json({ message: "Payment already verified." });
     }
 
-    if (courseId) {
-      await prisma.enrollment.updateMany({
-        where: { courseId, userId: (session.user as any).id },
-        data: {
-          paymentStatus: "completed",
-        },
-      });
-    }
+    const razorpay = getRazorpayClient();
+    const [paymentEntity, order] = await Promise.all([
+      razorpay.payments.fetch(fields.paymentId),
+      razorpay.orders.fetch(fields.orderId),
+    ]);
 
-    return NextResponse.json({ message: "Payment verified successfully" });
-  } catch (error: any) {
-    console.error("Razorpay Verify Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    validateCapturedPayment(paymentEntity, storedPayment, fields.paymentId);
+    validatePaidOrder(order, storedPayment);
+
+    await completeStoredPayment(storedPayment.id, fields.paymentId, fields.signature);
+
+    return NextResponse.json({ message: "Payment verified successfully." });
+  } catch (error) {
+    console.error(
+      "Razorpay verify failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return NextResponse.json({ error: "Payment verification failed." }, { status: 400 });
   }
 }

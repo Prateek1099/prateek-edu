@@ -1,84 +1,94 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import type { Payments } from "razorpay/dist/types/payments";
+
+import {
+  completeStoredPayment,
+  isValidHmacSignature,
+  paymentPurchaseInclude,
+  validateCapturedPayment,
+} from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
 
+type RazorpayWebhookEvent = {
+  event?: string;
+  payload?: {
+    payment?: {
+      entity?: Payments.RazorpayPayment;
+    };
+  };
+};
+
 export async function POST(req: Request) {
+  const bodyText = await req.text();
+  const signature = req.headers.get("x-razorpay-signature");
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  if (!signature || !webhookSecret) {
+    console.error("Razorpay webhook rejected: signature verification is unavailable.");
+    return NextResponse.json({ error: "Webhook verification failed." }, { status: 400 });
+  }
+
+  if (!isValidHmacSignature(bodyText, signature, webhookSecret)) {
+    console.warn("Razorpay webhook rejected an invalid signature.");
+    return NextResponse.json({ error: "Invalid webhook signature." }, { status: 400 });
+  }
+
   try {
-    const bodyText = await req.text();
-    const signature = req.headers.get("x-razorpay-signature");
+    const event = JSON.parse(bodyText) as RazorpayWebhookEvent;
 
-    if (!signature || !process.env.RAZORPAY_WEBHOOK_SECRET) {
-      console.error("Webhook Error: Missing signature or webhook secret in ENV");
-      return NextResponse.json({ error: "Missing signature or webhook secret", details: !process.env.RAZORPAY_WEBHOOK_SECRET ? "Missing Secret in ENV" : "Missing Signature" }, { status: 400 });
+    if (event.event !== "payment.captured" && event.event !== "payment.failed") {
+      return NextResponse.json({ status: "ignored" });
     }
 
-    // Verify signature
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
-      .update(bodyText)
-      .digest("hex");
+    const paymentEntity = event.payload?.payment?.entity;
+    const orderId = paymentEntity?.order_id;
 
-    if (expectedSignature !== signature) {
-      console.error("Webhook Error: Signature mismatch. Expected vs Received mismatch.");
-      return NextResponse.json({ error: "Invalid signature", expected: false }, { status: 400 });
+    if (!paymentEntity || typeof orderId !== "string" || !orderId) {
+      console.warn("Razorpay webhook ignored a malformed payment event.");
+      return NextResponse.json({ status: "ignored" });
     }
 
-    const event = JSON.parse(bodyText);
+    const storedPayment = await prisma.payment.findUnique({
+      where: { razorpayOrderId: orderId },
+      include: paymentPurchaseInclude,
+    });
 
-    if (event.event === "payment.captured") {
-      const paymentData = event.payload.payment.entity;
-      const orderId = paymentData.order_id;
+    if (!storedPayment) {
+      return NextResponse.json({ status: "ignored", reason: "order_not_found" });
+    }
 
-      // Find the pending payment in our DB
-      const payment = await prisma.payment.findFirst({
-        where: { razorpayOrderId: orderId, status: "pending" },
-        include: { plan: true }
+    if (storedPayment.razorpayPaymentId && storedPayment.razorpayPaymentId !== paymentEntity.id) {
+      console.warn("Razorpay webhook rejected a mismatched payment ID.", {
+        orderId,
       });
+      return NextResponse.json({ error: "Payment ID mismatch." }, { status: 409 });
+    }
 
-      if (!payment) {
-        // Could be already processed, or order not found
-        return NextResponse.json({ status: "ignored" });
+    if (event.event === "payment.failed") {
+      if (storedPayment.status === "pending") {
+        await prisma.payment.update({
+          where: { id: storedPayment.id },
+          data: {
+            status: "failed",
+          },
+        });
       }
-
-      const plan = payment.plan;
-      if (!plan) {
-        // If this payment has no plan, it might be a course payment. 
-        // We shouldn't fail with 400, otherwise Razorpay will keep retrying.
-        // We just return 200 to acknowledge receipt.
-        return NextResponse.json({ status: "ignored", reason: "not_a_subscription_payment" });
-      }
-
-      // Calculate expiry date (assuming 1 month by default for monthly plans, 1 year for yearly)
-      const durationMonths = plan.name.toLowerCase().includes("year") ? 12 : 1;
-      const expiry = new Date();
-      expiry.setMonth(expiry.getMonth() + durationMonths);
-
-      // 1. Update Payment Status
-      await prisma.payment.update({
-        where: { id: payment.id },
-        data: {
-          status: "successful",
-          razorpayPaymentId: paymentData.id,
-        },
-      });
-
-      // 2. Unlock Premium User
-      await prisma.user.update({
-        where: { id: payment.userId },
-        data: {
-          isPremium: true,
-          planId: plan.id,
-          subscriptionStart: new Date(),
-          subscriptionExpiry: expiry,
-          monthlyAIQuota: plan.aiQuota,
-          usageConsumed: 0, // Reset usage
-        }
-      });
+      return NextResponse.json({ status: "ok" });
     }
+
+    if (storedPayment.status === "successful") {
+      return NextResponse.json({ status: "ok", idempotent: true });
+    }
+
+    validateCapturedPayment(paymentEntity, storedPayment, paymentEntity.id);
+    await completeStoredPayment(storedPayment.id, paymentEntity.id);
 
     return NextResponse.json({ status: "ok" });
-  } catch (error: any) {
-    console.error("Webhook error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error) {
+    console.error(
+      "Razorpay webhook failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

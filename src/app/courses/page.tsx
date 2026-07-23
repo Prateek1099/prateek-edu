@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { BookOpen } from "lucide-react";
 import { authOptions } from "@/lib/auth";
+import { getCompletedCourseIds } from "@/lib/course-entitlements";
 import { prisma } from "@/lib/prisma";
 import { CourseCatalog } from "./CourseCatalog";
 
@@ -14,10 +15,10 @@ export default async function CoursesPage() {
       include: { subject: { include: { qualification: { include: { board: true } } } } },
       orderBy: { title: "asc" },
     }),
-    userId ? prisma.enrollment.findMany({ where: { userId, paymentStatus: "completed" }, select: { courseId: true } }) : Promise.resolve([]),
+    userId ? getCompletedCourseIds(userId) : Promise.resolve([]),
   ]);
 
-  const enrolledCourseIds = enrollments.map((e) => e.courseId);
+  const enrolledCourseIds = enrollments;
 
   return (
     <div className="container mx-auto max-w-7xl space-y-8 px-4 py-10 md:px-8">

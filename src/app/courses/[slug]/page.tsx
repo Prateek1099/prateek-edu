@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { hasCompletedCourseEnrollment } from "@/lib/course-entitlements";
 import { prisma } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,6 @@ import {
   User 
 } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
-import { enrollInFreeCourse } from "@/app/actions/courses";
 
 export default async function CourseDetailPage({
   params,
@@ -49,12 +49,7 @@ export default async function CourseDetailPage({
   
   let isEnrolled = false;
   if (userId) {
-    const enrollment = await prisma.enrollment.findFirst({
-      where: { userId, courseId: course.id, paymentStatus: "completed" },
-    });
-    if (enrollment) {
-      isEnrolled = true;
-    }
+    isEnrolled = await hasCompletedCourseEnrollment(userId, course.id);
   }
 
   const resourceUrl = `/resources/${course.subject.qualification.board.name}/${course.subject.qualification.name}/${course.subject.slug}`;
@@ -122,7 +117,7 @@ export default async function CourseDetailPage({
           {learningOutcomes.length > 0 && (
             <Card className="border-border/60 bg-muted/20">
               <CardContent className="p-6 md:p-8">
-                <h2 className="text-xl font-bold mb-6">What you'll learn</h2>
+                <h2 className="text-xl font-bold mb-6">What you&apos;ll learn</h2>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {learningOutcomes.map((outcome, i) => (
                     <div key={i} className="flex gap-3">
