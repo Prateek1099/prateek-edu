@@ -20,7 +20,7 @@ export async function getStudentSubjectOptions(userId: string): Promise<StudentS
       select: { class: { select: { subject: { select: { id: true } } } } },
     }),
     prisma.enrollment.findMany({
-      where: { userId },
+      where: { userId, paymentStatus: "completed" },
       select: { course: { select: { subjectId: true } } },
     }),
     prisma.userTopicProgress.findMany({

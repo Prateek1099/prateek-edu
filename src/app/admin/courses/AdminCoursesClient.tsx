@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -96,13 +96,6 @@ export default function AdminCoursesClient({
   const [requirements, setRequirements] = useState("");
   const [targetAudience, setTargetAudience] = useState("");
   const [subjectId, setSubjectId] = useState(subjectOptions[0]?.id ?? "");
-
-  // Auto-generate slug from title for new courses
-  useEffect(() => {
-    if (isAddOpen && title) {
-      setSlug(title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
-    }
-  }, [title, isAddOpen]);
 
   const resetForm = () => {
     setTitle("");
@@ -288,7 +281,13 @@ export default function AdminCoursesClient({
             id={`${idPrefix}-title`}
             required
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (isAddOpen) {
+                setSlug(nextTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+              }
+            }}
             placeholder="e.g. IGCSE Computer Science"
           />
         </div>
@@ -451,7 +450,7 @@ export default function AdminCoursesClient({
         </Card>
         <Card className="border border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Enrollments</CardTitle>
+            <CardTitle className="text-sm font-medium">Completed Enrollments</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

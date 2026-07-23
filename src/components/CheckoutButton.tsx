@@ -10,6 +10,46 @@ interface CheckoutButtonProps {
   price: number;
 }
 
+interface RazorpayPaymentResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayFailureResponse {
+  error: { description: string };
+}
+
+interface RazorpayInstance {
+  on(event: "payment.failed", handler: (response: RazorpayFailureResponse) => void): void;
+  open(): void;
+}
+
+interface RazorpayOptions {
+  key: string | undefined;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: RazorpayPaymentResponse) => Promise<void>;
+  prefill: { name: string; email: string };
+  theme: { color: string };
+}
+
+interface RazorpayOrderResponse {
+  id?: string;
+  amount?: number;
+  currency?: string;
+  error?: string;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
+  }
+}
+
 import Script from "next/script";
 
 export default function CheckoutButton({ courseId, price }: CheckoutButtonProps) {
@@ -23,7 +63,7 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
       return;
     }
 
-    if (!(window as any).Razorpay) {
+    if (!window.Razorpay) {
       alert("Razorpay SDK failed to load. Please check your connection.");
       return;
     }
@@ -38,26 +78,29 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
         body: JSON.stringify({ courseId }),
       });
 
-      let data;
+      let data: RazorpayOrderResponse;
       try {
-        data = await res.json();
-      } catch (e) {
+        data = await res.json() as RazorpayOrderResponse;
+      } catch {
         throw new Error("Server returned an invalid response. Please try again.");
       }
 
       if (!res.ok) {
         throw new Error(data?.error || "Failed to create order");
       }
+      if (!data.id || typeof data.amount !== "number") {
+        throw new Error("Server returned an invalid payment order.");
+      }
 
       // 2. Initialize Razorpay checkout
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Use public key here
         amount: data.amount,
-        currency: "INR",
+        currency: data.currency || "INR",
         name: "Vexa",
         description: "Course Enrollment",
         order_id: data.id,
-        handler: async function (response: any) {
+        handler: async function (response: RazorpayPaymentResponse) {
           // 3. Verify payment on backend
           const verifyRes = await fetch("/api/payments/verify", {
             method: "POST",
@@ -66,7 +109,6 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_signature: response.razorpay_signature,
-              courseId,
             }),
           });
 
@@ -78,24 +120,24 @@ export default function CheckoutButton({ courseId, price }: CheckoutButtonProps)
           }
         },
         prefill: {
-          name: session.user?.name,
-          email: session.user?.email,
+          name: session.user?.name || "",
+          email: session.user?.email || "",
         },
         theme: {
           color: "#0f172a", // Match your app primary color
         },
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
+      const paymentObject = new window.Razorpay(options);
       paymentObject.open();
       
-      paymentObject.on("payment.failed", function (response: any) {
+      paymentObject.on("payment.failed", function (response: RazorpayFailureResponse) {
         alert("Payment Failed: " + response.error.description);
       });
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Checkout error:", error);
-      alert(error.message);
+      alert(error instanceof Error ? error.message : "Unable to start checkout.");
     } finally {
       setLoading(false);
     }

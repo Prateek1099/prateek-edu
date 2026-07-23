@@ -1,86 +1,149 @@
+import crypto from "crypto";
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import { getServerSession } from "next-auth";
+
 import { authOptions } from "@/lib/auth";
+import { getRazorpayClient } from "@/lib/payments";
 import { prisma } from "@/lib/prisma";
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    const userId = (session?.user as { id?: string } | undefined)?.id;
+
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return NextResponse.json({ error: "Razorpay keys are not configured." }, { status: 500 });
+    const body: unknown = await req.json();
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     }
 
-    const razorpay = new Razorpay({
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
+    const { planId, courseId } = body as { planId?: unknown; courseId?: unknown };
+    const hasPlanId = isNonEmptyString(planId);
+    const hasCourseId = isNonEmptyString(courseId);
 
-    const { planId, courseId } = await req.json();
-
-    if (!planId && !courseId) {
-      return NextResponse.json({ error: "Plan ID or Course ID is required" }, { status: 400 });
+    if (hasPlanId === hasCourseId) {
+      return NextResponse.json(
+        { error: "Provide exactly one subscription plan or course." },
+        { status: 400 },
+      );
     }
 
-    let amount = 0;
-    let receiptStr = "";
+    let amount: number;
+    let purchaseId: string;
+    let purchaseType: "plan" | "course";
 
-    if (planId) {
-      const plan = await prisma.subscriptionPlan.findUnique({
-        where: { id: planId },
+    if (hasPlanId) {
+      const plan = await prisma.subscriptionPlan.findFirst({
+        where: { id: planId, isActive: true },
+        select: { id: true, price: true },
       });
-      if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+
+      if (!plan || plan.price <= 0) {
+        return NextResponse.json({ error: "Subscription plan is not available." }, { status: 404 });
+      }
+
       amount = plan.price;
-      receiptStr = `rcpt_${(session.user as any).id.substring(0, 5)}_${planId.substring(0, 5)}`;
-    } else if (courseId) {
-      const course = await prisma.course.findUnique({
-        where: { id: courseId },
+      purchaseId = plan.id;
+      purchaseType = "plan";
+    } else {
+      const course = await prisma.course.findFirst({
+        where: { id: courseId as string, isPublished: true },
+        select: { id: true, price: true },
       });
-      if (!course) return NextResponse.json({ error: "Course not found" }, { status: 404 });
+
+      if (!course) {
+        return NextResponse.json({ error: "Course not found." }, { status: 404 });
+      }
+
+      if (course.price <= 0) {
+        return NextResponse.json(
+          { error: "Free courses must use the free enrollment flow." },
+          { status: 400 },
+        );
+      }
+
+      const alreadyEnrolled = await prisma.enrollment.findUnique({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId: course.id,
+          },
+        },
+        select: { paymentStatus: true },
+      });
+
+      if (alreadyEnrolled?.paymentStatus === "completed") {
+        return NextResponse.json({ error: "You already have access to this course." }, { status: 409 });
+      }
+
       amount = course.price;
-      receiptStr = `rcpt_${(session.user as any).id.substring(0, 5)}_${courseId.substring(0, 5)}`;
+      purchaseId = course.id;
+      purchaseType = "course";
     }
 
-    // Initialize Razorpay Order
+    const razorpay = getRazorpayClient();
     const amountInPaise = Math.round(amount * 100);
-    const options = {
+    const receipt = [
+      "rcpt",
+      userId.slice(0, 6),
+      purchaseId.slice(0, 6),
+      crypto.randomUUID().replaceAll("-", "").slice(0, 10),
+    ].join("_");
+
+    const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: "INR",
-      receipt: receiptStr,
-    };
-
-    const order = await razorpay.orders.create(options);
-
-    // Create a pending payment record
-    await prisma.payment.create({
-      data: {
-        userId: (session.user as any).id,
-        razorpayOrderId: order.id,
-        amount: amount,
-        status: "pending",
-        planId: planId || null,
+      receipt,
+      notes: {
+        purchaseType,
+        userId,
+        purchaseId,
       },
     });
 
-    if (courseId) {
-      // Create a pending enrollment record for courses
-      await prisma.enrollment.create({
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.create({
         data: {
-          userId: (session.user as any).id,
-          courseId: courseId,
-          paymentStatus: "pending",
+          userId,
+          razorpayOrderId: order.id,
+          amount,
+          status: "pending",
+          planId: purchaseType === "plan" ? purchaseId : null,
+          courseId: purchaseType === "course" ? purchaseId : null,
         },
       });
-    }
+
+      if (purchaseType === "course") {
+        await tx.enrollment.upsert({
+          where: {
+            userId_courseId: {
+              userId,
+              courseId: purchaseId,
+            },
+          },
+          create: {
+            userId,
+            courseId: purchaseId,
+            paymentStatus: "pending",
+          },
+          update: {},
+        });
+      }
+    });
 
     return NextResponse.json(order);
-  } catch (error: any) {
-    console.error("Razorpay Create Order Error:", error?.message || error);
-    console.error("Razorpay Error Details:", JSON.stringify(error?.error || error?.response?.data || {}, null, 2));
-    return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
+  } catch (error) {
+    console.error(
+      "Razorpay create-order failed:",
+      error instanceof Error ? error.message : "Unknown error",
+    );
+    return NextResponse.json({ error: "Unable to create payment order." }, { status: 500 });
   }
 }

@@ -12,7 +12,11 @@ export default async function AdminCoursesPage() {
             qualification: { include: { board: true } },
           },
         },
-        _count: { select: { enrollments: true } },
+        _count: {
+          select: {
+            enrollments: { where: { paymentStatus: "completed" } },
+          },
+        },
       },
     }),
     prisma.subject.findMany({

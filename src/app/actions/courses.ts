@@ -10,18 +10,21 @@ export async function enrollInFreeCourse(courseId: string) {
   const userId = (session?.user as { id?: string } | undefined)?.id;
   if (!userId) return { success: false, error: "Please log in to start this course." };
 
-  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } });
-  if (!course) return { success: false, error: "Course not found." };
-
-  const existingEnrollment = await prisma.enrollment.findFirst({
-    where: { userId, courseId },
-    select: { id: true },
+  const course = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { id: true, price: true, isPublished: true },
   });
-  if (existingEnrollment) {
-    await prisma.enrollment.update({ where: { id: existingEnrollment.id }, data: { paymentStatus: "completed" } });
-  } else {
-    await prisma.enrollment.create({ data: { userId, courseId, paymentStatus: "completed" } });
+  if (!course) return { success: false, error: "Course not found." };
+  if (!course.isPublished) return { success: false, error: "Course is not available." };
+  if (course.price !== 0) {
+    return { success: false, error: "Paid courses require a verified payment." };
   }
+
+  await prisma.enrollment.upsert({
+    where: { userId_courseId: { userId, courseId } },
+    create: { userId, courseId, paymentStatus: "completed" },
+    update: { paymentStatus: "completed" },
+  });
   revalidatePath("/courses");
   revalidatePath("/dashboard");
   return { success: true };
