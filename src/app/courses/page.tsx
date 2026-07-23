@@ -14,7 +14,7 @@ export default async function CoursesPage() {
       include: { subject: { include: { qualification: { include: { board: true } } } } },
       orderBy: { title: "asc" },
     }),
-    userId ? prisma.enrollment.findMany({ where: { userId }, select: { courseId: true } }) : Promise.resolve([]),
+    userId ? prisma.enrollment.findMany({ where: { userId, paymentStatus: "completed" }, select: { courseId: true } }) : Promise.resolve([]),
   ]);
 
   const enrolledCourseIds = enrollments.map((e) => e.courseId);
