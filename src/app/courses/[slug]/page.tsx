@@ -50,7 +50,7 @@ export default async function CourseDetailPage({
   let isEnrolled = false;
   if (userId) {
     const enrollment = await prisma.enrollment.findFirst({
-      where: { userId, courseId: course.id },
+      where: { userId, courseId: course.id, paymentStatus: "completed" },
     });
     if (enrollment) {
       isEnrolled = true;
