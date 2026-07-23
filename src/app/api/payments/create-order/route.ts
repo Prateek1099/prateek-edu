@@ -79,7 +79,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json(order);
   } catch (error: any) {
-    console.error("Razorpay Create Order Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("Razorpay Create Order Error:", error?.message || error);
+    console.error("Razorpay Error Details:", JSON.stringify(error?.error || error?.response?.data || {}, null, 2));
+    return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 });
   }
 }

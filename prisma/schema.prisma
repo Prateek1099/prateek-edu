@@ -184,12 +184,22 @@ model Subject {
 }
 
 model Course {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  price       Float    @default(0.0)
-  subjectId   String   @map("subject_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  description      String?  @db.Text
+  shortDescription String?  @map("short_description")
+  imageUrl         String?  @map("image_url")
+  price            Float    @default(0.0)
+  isPublished      Boolean  @default(false) @map("is_published")
+  level            String?
+  language         String?  @default("English")
+  instructorName   String?  @map("instructor_name")
+  learningOutcomes String?  @db.Text @map("learning_outcomes")
+  requirements     String?  @db.Text
+  targetAudience   String?  @db.Text @map("target_audience")
+  subjectId        String   @map("subject_id")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   subject     Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   enrollments Enrollment[]
