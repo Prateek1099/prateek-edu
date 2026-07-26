@@ -13,24 +13,38 @@ export default async function AdminWorksheetsPage() {
   if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) redirect("/dashboard");
 
   const worksheets = await prisma.challenge.findMany({
-    where: { type: { in: ["WORKSHEET", "PDF_WORKSHEET"] } },
+    where: {
+      type: { in: ["WORKSHEET", "PDF_WORKSHEET"] },
+      workspaceId: null,
+    },
     orderBy: { createdAt: "desc" },
     include: {
       subject: { include: { qualification: { include: { board: true } } } },
       topic: true,
-      _count: { select: { questions: true, assignments: true } }
+      _count: {
+        select: {
+          questions: true,
+          assignments: true,
+          attempts: true,
+          mistakes: true,
+        },
+      },
     }
   });
 
   return (
-    <div className="space-y-6 max-w-6xl">
-      <div className="flex justify-between items-center">
+    <div className="w-full space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Worksheets</h1>
-          <p className="text-muted-foreground mt-1">Generate and assign intelligent practice worksheets.</p>
+          <p className="mt-1 text-muted-foreground">
+            Manage generated worksheets, PDF worksheets, and assignments.
+          </p>
         </div>
-        <Link href="/admin/worksheets/create">
-          <Button className="gap-2"><Plus className="w-4 h-4" /> Create Worksheet</Button>
+        <Link href="/admin/worksheets/create" className="sm:shrink-0">
+          <Button className="w-full gap-2 sm:w-auto">
+            <Plus className="size-4" /> Create Worksheet
+          </Button>
         </Link>
       </div>
 

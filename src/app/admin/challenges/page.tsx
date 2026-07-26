@@ -15,6 +15,10 @@ export default async function AdminChallengesPage() {
 
   const [challenges, subjects, topics] = await Promise.all([
     prisma.challenge.findMany({
+      where: {
+        type: { in: ["CHALLENGE", "QUICK_PRACTICE"] },
+        workspaceId: null,
+      },
       include: {
         subject: { include: { qualification: { include: { board: true } } } },
         topic: true,

@@ -4,8 +4,28 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { GoogleGenAI } from "@google/genai";
 import { isAdminRole } from "@/lib/roles";
+import { revalidatePath } from "next/cache";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+type GeneratedWorksheetQuestion = {
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  explanation: string | null;
+  topicTag: string | null;
+  bankQuestionId?: string;
+  difficulty: string;
+  marks: number;
+  sortOrder: number;
+};
+
+function stringOrFallback(value: unknown, fallback: string) {
+  return typeof value === "string" && value.trim() ? value : fallback;
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,8 +39,14 @@ export async function POST(req: Request) {
     if (!subjectId) {
       return NextResponse.json({ error: "Subject ID is required" }, { status: 400 });
     }
+    if (source !== "bank" && source !== "ai") {
+      return NextResponse.json(
+        { error: "Worksheet source must be the question bank or AI." },
+        { status: 400 },
+      );
+    }
 
-    let newQuestions: any[] = [];
+    let newQuestions: GeneratedWorksheetQuestion[] = [];
 
     if (source === "bank") {
       const dbQuestions = await prisma.bankQuestion.findMany({
@@ -70,21 +96,40 @@ export async function POST(req: Request) {
          contents: prompt,
        });
        const rawText = response.text ? response.text.replace(/```json/g, '').replace(/```/g, '').trim() : "[]";
-       const parsed = JSON.parse(rawText);
+       const parsed: unknown = JSON.parse(rawText);
        if (!Array.isArray(parsed)) throw new Error("AI did not return a valid JSON array");
-       newQuestions = parsed.map((q: any, i: number) => ({
-         questionText: q.questionText || "Missing Question",
-         optionA: q.optionA || "A",
-         optionB: q.optionB || "B",
-         optionC: q.optionC || "C",
-         optionD: q.optionD || "D",
-         correctAnswer: ["A","B","C","D"].includes(q.correctAnswer) ? q.correctAnswer : "A",
-         explanation: q.explanation || null,
-         topicTag: q.topicTag || null,
-         difficulty,
-         marks: 1,
-         sortOrder: i
-       }));
+       newQuestions = parsed.map((item: unknown, i: number) => {
+         const q =
+           typeof item === "object" && item !== null
+             ? (item as Record<string, unknown>)
+             : {};
+         const correctAnswer =
+           typeof q.correctAnswer === "string" &&
+           ["A", "B", "C", "D"].includes(q.correctAnswer)
+             ? q.correctAnswer
+             : "A";
+
+         return {
+           questionText: stringOrFallback(q.questionText, "Missing Question"),
+           optionA: stringOrFallback(q.optionA, "A"),
+           optionB: stringOrFallback(q.optionB, "B"),
+           optionC: stringOrFallback(q.optionC, "C"),
+           optionD: stringOrFallback(q.optionD, "D"),
+           correctAnswer,
+           explanation: typeof q.explanation === "string" ? q.explanation : null,
+           topicTag: typeof q.topicTag === "string" ? q.topicTag : null,
+           difficulty,
+           marks: 1,
+           sortOrder: i
+         };
+       });
+    }
+
+    if (newQuestions.length === 0) {
+      return NextResponse.json(
+        { error: "A generated worksheet needs at least one question." },
+        { status: 400 },
+      );
     }
 
     const worksheet = await prisma.challenge.create({
@@ -102,9 +147,15 @@ export async function POST(req: Request) {
       }
     });
 
+    revalidatePath("/admin/worksheets");
+    revalidatePath("/resources", "layout");
+
     return NextResponse.json({ worksheetId: worksheet.id });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Worksheet generation error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Worksheet generation failed" },
+      { status: 500 },
+    );
   }
 }

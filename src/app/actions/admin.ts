@@ -194,6 +194,25 @@ function revalidateChallengeRelated() {
   revalidatePath("/resources", "layout");
 }
 
+function revalidateWorksheetRelated() {
+  revalidatePath("/admin/worksheets");
+  revalidatePath("/resources", "layout");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/worksheets");
+}
+
+function isValidWorksheetDocumentUrl(value: string | null) {
+  if (!value) return false;
+  if (value.startsWith("/") && !value.startsWith("//")) return true;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
 export async function createChallenge(data: {
   title: string;
   subjectId: string;
@@ -265,6 +284,23 @@ export async function deleteChallenge(id: string) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
+    const challenge = await prisma.challenge.findUnique({
+      where: { id },
+      select: { type: true, workspaceId: true },
+    });
+    if (!challenge) return { success: false as const, error: "Challenge not found" };
+    if (challenge.workspaceId) {
+      return {
+        success: false as const,
+        error: "Teacher workspace content must be managed from Teacher Workspace.",
+      };
+    }
+    if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
+      return {
+        success: false as const,
+        error: "Manage worksheet deletion from Admin Worksheets.",
+      };
+    }
     await prisma.challenge.delete({ where: { id } });
     revalidateChallengeRelated();
     return { success: true as const };
@@ -279,6 +315,18 @@ export async function toggleChallengePublished(id: string) {
   try {
     const challenge = await prisma.challenge.findUnique({ where: { id } });
     if (!challenge) return { success: false as const, error: "Challenge not found" };
+    if (challenge.workspaceId) {
+      return {
+        success: false as const,
+        error: "Teacher workspace content must be managed from Teacher Workspace.",
+      };
+    }
+    if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
+      return {
+        success: false as const,
+        error: "Manage worksheet publishing from Admin Worksheets.",
+      };
+    }
     await prisma.challenge.update({
       where: { id },
       data: { isPublished: !challenge.isPublished },
@@ -287,6 +335,140 @@ export async function toggleChallengePublished(id: string) {
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
+  }
+}
+
+export async function setWorksheetPublished(id: string, isPublished: boolean) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+
+  try {
+    const worksheet = await prisma.challenge.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        workspaceId: true,
+        pdfUrl: true,
+        subject: { select: { id: true } },
+        _count: { select: { questions: true } },
+      },
+    });
+
+    if (!worksheet) {
+      return { success: false as const, error: "Worksheet not found." };
+    }
+    if (worksheet.workspaceId) {
+      return {
+        success: false as const,
+        error: "Teacher workspace worksheets must be managed from Teacher Workspace.",
+      };
+    }
+    if (worksheet.type !== "WORKSHEET" && worksheet.type !== "PDF_WORKSHEET") {
+      return { success: false as const, error: "This record is not a worksheet." };
+    }
+
+    if (isPublished) {
+      if (!worksheet.title.trim()) {
+        return { success: false as const, error: "Add a worksheet title before publishing." };
+      }
+      if (!worksheet.subject) {
+        return { success: false as const, error: "Choose a subject before publishing." };
+      }
+      if (worksheet.type === "WORKSHEET" && worksheet._count.questions === 0) {
+        return {
+          success: false as const,
+          error: "Generated worksheets need at least one question before publishing.",
+        };
+      }
+      if (
+        worksheet.type === "PDF_WORKSHEET" &&
+        !isValidWorksheetDocumentUrl(worksheet.pdfUrl)
+      ) {
+        return {
+          success: false as const,
+          error: "Add a valid Questions PDF before publishing.",
+        };
+      }
+    }
+
+    await prisma.challenge.update({
+      where: { id },
+      data: { isPublished },
+    });
+    revalidateWorksheetRelated();
+
+    return { success: true as const, isPublished };
+  } catch (error: unknown) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to update worksheet status.",
+    };
+  }
+}
+
+export async function deleteWorksheet(id: string) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+
+  try {
+    const worksheet = await prisma.challenge.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        type: true,
+        workspaceId: true,
+        _count: {
+          select: {
+            attempts: true,
+            assignments: true,
+            mistakes: true,
+          },
+        },
+      },
+    });
+
+    if (!worksheet) {
+      return { success: false as const, error: "Worksheet not found." };
+    }
+    if (worksheet.workspaceId) {
+      return {
+        success: false as const,
+        error: "Teacher workspace worksheets must be managed from Teacher Workspace.",
+      };
+    }
+    if (worksheet.type !== "WORKSHEET" && worksheet.type !== "PDF_WORKSHEET") {
+      return { success: false as const, error: "This record is not a worksheet." };
+    }
+
+    const hasStudentHistory =
+      worksheet._count.attempts > 0 ||
+      worksheet._count.assignments > 0 ||
+      worksheet._count.mistakes > 0;
+
+    if (hasStudentHistory) {
+      return {
+        success: false as const,
+        blocked: true as const,
+        error:
+          "This worksheet has student activity or assignments. Archive it instead of deleting.",
+        counts: worksheet._count,
+      };
+    }
+
+    await prisma.challenge.delete({ where: { id } });
+    revalidateWorksheetRelated();
+
+    return {
+      success: true as const,
+      storageFilesPreserved: true as const,
+    };
+  } catch (error: unknown) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to delete worksheet.",
+    };
   }
 }
 
