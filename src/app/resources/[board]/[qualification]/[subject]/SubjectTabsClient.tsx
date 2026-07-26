@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, BookOpen, ScrollText, Download, Trophy, Clock, Zap, ClipboardCheck, ListChecks } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowRight, BookMarked, BookOpen, ClipboardCheck, Clock, Download, FileText, ListChecks, ScrollText, Target, Trophy, Zap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -45,22 +47,31 @@ export default function SubjectTabsClient({
   board?: string;
   qualification?: string;
 }) {
-  void topics;
+  const [practiceTopic, setPracticeTopic] = useState("all");
+  const [practiceDifficulty, setPracticeDifficulty] = useState("all");
   const quickPractices = challenges.filter((challenge) => challenge.type === "QUICK_PRACTICE");
   const standardChallenges = challenges.filter((challenge) => challenge.type === "CHALLENGE" || !challenge.type);
   const worksheets = challenges.filter((challenge) => challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET");
+  const quickPracticeTopicIds = new Set(quickPractices.map((practice) => practice.topic?.id).filter(Boolean));
+  const availablePracticeTopics = topics.filter((topic) => quickPracticeTopicIds.has(topic.id));
+  const availableDifficulties = Array.from(new Set(quickPractices.map((practice) => practice.difficulty)));
+  const filteredQuickPractices = quickPractices.filter((practice) => {
+    const matchesTopic = practiceTopic === "all" || practice.topic?.id === practiceTopic;
+    const matchesDifficulty = practiceDifficulty === "all" || practice.difficulty === practiceDifficulty;
+    return matchesTopic && matchesDifficulty;
+  });
 
   return (
     <Tabs defaultValue="practice" className="w-full">
       <TabsList className="mb-8 flex h-auto w-full max-w-4xl flex-wrap justify-start gap-1 rounded-xl border bg-muted/30 p-1.5">
         <TabsTrigger value="practice" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm">
-          <Zap className="h-4 w-4" /> Quick Practice
+          <Zap className="h-4 w-4" /> Practice
         </TabsTrigger>
         <TabsTrigger value="notes" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
         <TabsTrigger value="syllabus" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
       </TabsList>
       
-      {/* Quick Practice Hub replaces Topical/Challenges */}
+      {/* Practice hub */}
 
       <TabsContent value="notes" className="mt-0">
         {notes.length === 0 ? (
@@ -97,151 +108,264 @@ export default function SubjectTabsClient({
         )}
       </TabsContent>
 
-      {/* Quick Practice Tab */}
       <TabsContent value="practice" className="mt-0">
-        <div className="space-y-8">
-          <section>
-            <div className="mb-4 flex items-center gap-2"><Zap className="h-5 w-5 text-primary" /><h2 className="text-xl font-bold">Quick Practice</h2></div>
-            <p className="mb-4 text-sm text-muted-foreground">Start with a short, focused set before moving into full challenges.</p>
-            {quickPractices.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-primary/5 p-6 text-center"><ClipboardCheck className="mx-auto mb-3 h-8 w-8 text-primary/70" /><h3 className="font-semibold">No quick practices yet</h3><p className="mt-1 text-sm text-muted-foreground">Try a challenge below, or check back when your teacher publishes a short practice.</p></div>
-            ) : <div className="grid gap-4 md:grid-cols-2">{quickPractices.map((practice) => <Card key={practice.id} className="border-primary/25 bg-primary/5 shadow-sm transition-colors hover:border-primary/50"><CardContent className="p-5"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{practice.title}</h3>{practice.topic && <p className="mt-1 text-sm text-muted-foreground">{practice.topic.topicName}</p>}</div><Badge variant="outline" className={cn("capitalize", difficultyColor[practice.difficulty] || difficultyColor.medium)}>{practice.difficulty}</Badge></div><div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground"><span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5" /> {practice._count.questions} questions</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {practice.estimatedTime} min</span></div><Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${practice.id}`}><Button className="mt-5 w-full">Start quick practice</Button></Link></CardContent></Card>)}</div>}
-          </section>
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <Zap className="h-5 w-5 text-amber-500" />
-              <h2 className="text-xl font-bold">MCQ Challenges</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">Fast revision and topic mastery.</p>
-            {standardChallenges.length === 0 ? (
-              <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
-                <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold text-foreground">No challenges available</h3>
+        <div className="space-y-12">
+          <header className="max-w-2xl">
+            <p className="text-sm font-semibold text-primary">Practice</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Choose how you want to revise today.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+              Build quick recall with MCQs, work through longer worksheets, or revisit questions you found difficult.
+            </p>
+          </header>
+
+          {standardChallenges.length === 0 && worksheets.length === 0 && quickPractices.length === 0 && (
+            <section className="rounded-2xl border border-dashed bg-muted/25 px-5 py-12 text-center">
+              <ClipboardCheck className="mx-auto size-10 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No practice activities available</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Practice challenges and worksheets for this subject will appear here when they are published.
+              </p>
+            </section>
+          )}
+
+          {standardChallenges.length > 0 && (
+            <section>
+              <div className="mb-5 flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-primary/10 p-2.5 text-primary">
+                  <Trophy className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Practice Challenges</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Fast MCQ-based revision for recall, topic mastery, and instant scoring.
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              <div className="grid gap-4 md:grid-cols-2">
                 {standardChallenges.map((challenge) => (
-                  <Card key={challenge.id} className="hover:border-primary/50 transition-all shadow-sm bg-card group overflow-hidden relative">
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500/80 to-amber-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="bg-amber-500/10 p-3 rounded-xl">
-                          <Trophy className="h-6 w-6 text-amber-500" />
-                        </div>
-                        <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
-                          {challenge.difficulty}
-                        </Badge>
-                      </div>
+                  <article key={challenge.id} className="flex flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <Badge variant="secondary" className="font-medium">
+                        {challenge.topic?.topicName || "Mixed topics"}
+                      </Badge>
+                      <Badge variant="outline" className={cn("capitalize", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
+                        {challenge.difficulty}
+                      </Badge>
+                    </div>
+                    <h4 className="mt-5 text-lg font-semibold tracking-tight">{challenge.title}</h4>
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <ClipboardCheck className="size-4" />
+                        {challenge._count.questions} question{challenge._count.questions === 1 ? "" : "s"}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="size-4" />
+                        About {challenge.estimatedTime} min
+                      </span>
+                    </div>
+                    <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`} className="mt-6">
+                      <Button size="lg" className="h-11 w-full gap-2">
+                        Start challenge
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </Link>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-amber-500 transition-colors">
-                        {challenge.title}
-                      </h3>
+          {quickPractices.length > 0 && (
+            <section>
+              <div className="mb-5 flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-primary/10 p-2.5 text-primary">
+                  <Target className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Topic Practice</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Focused mixed practice built around a specific topic.
+                  </p>
+                </div>
+              </div>
 
-                      {challenge.topic && (
-                        <p className="text-sm text-muted-foreground mt-1">{challenge.topic.topicName}</p>
+              <div className="rounded-2xl bg-muted/40 p-4 sm:p-5">
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,auto)] sm:items-end">
+                  <div className="space-y-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject</span>
+                    <div className="flex h-11 items-center gap-2 rounded-xl bg-background px-3 text-sm font-medium ring-1 ring-foreground/10">
+                      <BookOpen className="size-4 text-primary" />
+                      <span className="truncate">{subject.name}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="practice-topic">
+                      Topic
+                    </label>
+                    <Select value={practiceTopic} onValueChange={(value) => value && setPracticeTopic(value)}>
+                      <SelectTrigger id="practice-topic" className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue placeholder="All topics" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All topics</SelectItem>
+                        {availablePracticeTopics.map((topic) => (
+                          <SelectItem key={topic.id} value={topic.id}>{topic.topicName}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="practice-difficulty">
+                      Difficulty
+                    </label>
+                    <Select value={practiceDifficulty} onValueChange={(value) => value && setPracticeDifficulty(value)}>
+                      <SelectTrigger id="practice-difficulty" className="h-11 w-full rounded-xl bg-background">
+                        <SelectValue placeholder="All levels" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All levels</SelectItem>
+                        {availableDifficulties.map((difficulty) => (
+                          <SelectItem key={difficulty} value={difficulty}>
+                            <span className="capitalize">{difficulty}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {filteredQuickPractices.length === 0 ? (
+                <div className="mt-4 rounded-2xl bg-muted/25 px-5 py-9 text-center">
+                  <Target className="mx-auto size-8 text-muted-foreground" />
+                  <h4 className="mt-3 font-semibold">No matching topic practice</h4>
+                  <p className="mt-1 text-sm text-muted-foreground">Try a different topic or difficulty.</p>
+                  <Button
+                    variant="ghost"
+                    className="mt-3"
+                    onClick={() => {
+                      setPracticeTopic("all");
+                      setPracticeDifficulty("all");
+                    }}
+                  >
+                    Clear filters
+                  </Button>
+                </div>
+              ) : (
+                <div className="mt-4 overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10">
+                  {filteredQuickPractices.map((practice, index) => (
+                    <article
+                      key={practice.id}
+                      className={cn(
+                        "flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
+                        index > 0 && "border-t"
                       )}
-
-                      <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="h-3.5 w-3.5" />
-                          {challenge._count.questions} Questions
-                        </span>
-                        <span>·</span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {challenge.estimatedTime} min
-                        </span>
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary">{practice.topic?.topicName || "Mixed topics"}</Badge>
+                          <Badge variant="outline" className={cn("capitalize", difficultyColor[practice.difficulty] || difficultyColor.medium)}>
+                            {practice.difficulty}
+                          </Badge>
+                        </div>
+                        <h4 className="mt-3 text-lg font-semibold tracking-tight">{practice.title}</h4>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <ClipboardCheck className="size-4" />
+                            {practice._count.questions} question{practice._count.questions === 1 ? "" : "s"}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="size-4" />
+                            About {practice.estimatedTime} min
+                          </span>
+                        </div>
                       </div>
-
-                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`}>
-                        <Button className="w-full mt-5 font-semibold bg-amber-500 hover:bg-amber-600 text-white" size="lg">
-                          Start Challenge
+                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${practice.id}`} className="shrink-0">
+                        <Button size="lg" variant="outline" className="h-11 w-full gap-2 px-5 sm:w-auto">
+                          Start topic practice
+                          <ArrowRight className="size-4" />
                         </Button>
                       </Link>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </section>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
-          <section>
-            <div className="flex items-center gap-2 mb-4">
-              <FileText className="h-5 w-5 text-blue-500" />
-              <h2 className="text-xl font-bold">Worksheets</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">Exam-style structured practice.</p>
-            {worksheets.length === 0 ? (
-              <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
-                <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold text-foreground">No worksheets published yet</h3>
+          {worksheets.length > 0 && (
+            <section>
+              <div className="mb-5 flex items-start gap-3">
+                <div className="mt-0.5 rounded-xl bg-blue-500/10 p-2.5 text-blue-600 dark:text-blue-400">
+                  <FileText className="size-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Worksheets</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                    Longer teacher-created activities, assignments, and printable revision.
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+              <div className="grid gap-4 md:grid-cols-2">
                 {worksheets.map((worksheet) => (
-                  <Card key={worksheet.id} className="hover:border-blue-500/50 transition-all shadow-sm bg-card group overflow-hidden relative">
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500/80 to-blue-500/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="bg-blue-500/10 p-3 rounded-xl">
-                          <FileText className="h-6 w-6 text-blue-500" />
-                        </div>
-                        <Badge variant="outline" className={cn("capitalize font-medium", difficultyColor[worksheet.difficulty] || difficultyColor.medium)}>
-                          {worksheet.difficulty}
-                        </Badge>
-                      </div>
+                  <article key={worksheet.id} className="flex flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <Badge variant="secondary">
+                        {worksheet.type === "PDF_WORKSHEET" ? "PDF worksheet" : "Printable worksheet"}
+                      </Badge>
+                      {worksheet.pdfAnswerUrl && <Badge variant="outline">Answer key included</Badge>}
+                    </div>
+                    <h4 className="mt-5 text-lg font-semibold tracking-tight">{worksheet.title}</h4>
+                    {worksheet.topic && <p className="mt-1 text-sm text-muted-foreground">{worksheet.topic.topicName}</p>}
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <ClipboardCheck className="size-4" />
+                        {worksheet.type === "PDF_WORKSHEET"
+                          ? "PDF format"
+                          : `${worksheet._count.questions} question${worksheet._count.questions === 1 ? "" : "s"}`}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="size-4" />
+                        About {worksheet.estimatedTime} min
+                      </span>
+                    </div>
 
-                      <h3 className="text-lg font-bold text-foreground group-hover:text-blue-500 transition-colors">
-                        {worksheet.title}
-                      </h3>
-
-                      {worksheet.topic && (
-                        <p className="text-sm text-muted-foreground mt-1">{worksheet.topic.topicName}</p>
-                      )}
-
-                      <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Zap className="h-3.5 w-3.5" />
-                          {worksheet.type === "PDF_WORKSHEET" ? "PDF format" : `${worksheet._count.questions} Questions`}
-                        </span>
-                        <span>·</span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" />
-                          {worksheet.estimatedTime} min
-                        </span>
-                      </div>
-
-                      {worksheet.type === "PDF_WORKSHEET" ? (
-                        <div className="flex flex-col sm:flex-row gap-2 mt-5">
-                          {worksheet.pdfUrl && (
-                            <a href={worksheet.pdfUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
-                              <Button className="w-full font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
-                                View Questions
-                              </Button>
-                            </a>
-                          )}
-                          {worksheet.pdfAnswerUrl && (
-                            <a href={worksheet.pdfAnswerUrl} target="_blank" rel="noopener noreferrer" className="flex-1">
-                              <Button variant="outline" className="w-full font-semibold" size="lg">
-                                View Answers
-                              </Button>
-                            </a>
-                          )}
-                        </div>
-                      ) : (
-                        <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${worksheet.id}`}>
-                          <Button className="w-full mt-5 font-semibold bg-blue-500 hover:bg-blue-600 text-white" size="lg">
-                            Start Worksheet
-                          </Button>
-                        </Link>
-                      )}
-                    </CardContent>
-                  </Card>
+                    <Link
+                      href={`/resources/${board}/${qualification}/${subject.slug}/worksheet/${worksheet.id}`}
+                      className="mt-6"
+                    >
+                      <Button size="lg" variant="outline" className="h-11 w-full gap-2">
+                        Open worksheet
+                        <ArrowRight className="size-4" />
+                      </Button>
+                    </Link>
+                  </article>
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
+          <section className="flex flex-col gap-5 rounded-2xl bg-muted/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex gap-3">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                <BookMarked className="size-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Mistake Book</h3>
+                <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                  Review questions you answered incorrectly and focus revision on your weaker areas.
+                </p>
+              </div>
+            </div>
+            <Link href="/dashboard/mistakes" className="shrink-0">
+              <Button size="lg" variant="outline" className="h-11 w-full gap-2 bg-background sm:w-auto">
+                Review mistakes
+                <ArrowRight className="size-4" />
+              </Button>
+            </Link>
+          </section>
         </div>
       </TabsContent>
 

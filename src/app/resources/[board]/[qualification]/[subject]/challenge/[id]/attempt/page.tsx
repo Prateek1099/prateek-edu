@@ -32,15 +32,16 @@ export default async function ChallengeAttemptPage({
     },
   });
 
-  if (!challenge || !challenge.isPublished || challenge.questions.length === 0) {
+  if (!challenge || !challenge.isPublished) {
     notFound();
   }
 
   // Strict Authorization Guard for Workspace Challenges
   if (challenge.workspaceId) {
-    const userId = (session.user as any).id as string;
+    const sessionUser = session.user as typeof session.user & { id?: string; workspaceId?: string | null };
+    const userId = sessionUser.id;
     if (!userId) redirect("/login");
-    const isOwner = (session.user as any).workspaceId === challenge.workspaceId;
+    const isOwner = sessionUser.workspaceId === challenge.workspaceId;
     
     if (!isOwner) {
       const assignment = await prisma.worksheetAssignment.findUnique({
@@ -55,11 +56,18 @@ export default async function ChallengeAttemptPage({
     }
   }
 
+  if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
+    redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);
+  }
+
+  if (challenge.questions.length === 0 && challenge.type !== "QUICK_PRACTICE") notFound();
+
   return (
     <ChallengeEngine
       challenge={{
         id: challenge.id,
         title: challenge.title,
+        type: challenge.type,
         estimatedTime: challenge.estimatedTime,
         questions: challenge.questions,
       }}

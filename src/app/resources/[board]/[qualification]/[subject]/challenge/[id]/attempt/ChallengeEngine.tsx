@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Clock, ChevronLeft, ChevronRight, Send, AlertTriangle } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, CircleAlert, Clock, LoaderCircle, RotateCcw, Send } from "lucide-react";
 
 type ChallengeQuestion = {
   id: string;
@@ -24,6 +24,7 @@ type Props = {
   challenge: {
     id: string;
     title: string;
+    type: string;
     estimatedTime: number;
     questions: ChallengeQuestion[];
   };
@@ -50,16 +51,27 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const answeredCount = Object.keys(answers).length;
   const current = questions[currentIndex];
   const progressPercent = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
+  const positionProgress = total > 0 ? Math.round(((currentIndex + 1) / total) * 100) : 0;
+  const isQuickPractice = challenge.type === "QUICK_PRACTICE";
 
   // Timer
   useEffect(() => {
     const interval = setInterval(() => setTimeElapsed((t) => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const selectAnswer = useCallback(
+    (opt: string) => {
+      if (!current) return;
+      setAnswers((prev) => ({ ...prev, [current.id]: opt }));
+    },
+    [current]
+  );
 
   // Keyboard nav
   useEffect(() => {
@@ -88,18 +100,11 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [currentIndex, total]);
-
-  const selectAnswer = useCallback(
-    (opt: string) => {
-      if (!current) return;
-      setAnswers((prev) => ({ ...prev, [current.id]: opt }));
-    },
-    [current]
-  );
+  }, [currentIndex, selectAnswer, total]);
 
   const handleSubmit = async () => {
     setShowConfirm(false);
+    setSubmitError(null);
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/challenges/${challenge.id}/attempt`, {
@@ -113,11 +118,15 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
           `/resources/${board}/${qualification}/${subject}/challenge/${challenge.id}/results/${data.attemptId}`
         );
       } else {
-        alert(data.error || "Submission failed");
+        const message = data.error || "Submission failed";
+        if (isQuickPractice) setSubmitError(message);
+        else alert(message);
         setIsSubmitting(false);
       }
     } catch {
-      alert("Network error. Please try again.");
+      const message = "We couldn’t submit your answers. Check your connection and try again.";
+      if (isQuickPractice) setSubmitError(message);
+      else alert("Network error. Please try again.");
       setIsSubmitting(false);
     }
   };
@@ -127,13 +136,225 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
     return map[opt] || "";
   };
 
+  if (isQuickPractice && total === 0) {
+    return (
+      <main className="flex min-h-[calc(100vh-140px)] items-center justify-center bg-background px-4 py-12">
+        <div className="w-full max-w-md rounded-2xl bg-muted/40 px-6 py-10 text-center">
+          <CircleAlert className="mx-auto size-10 text-muted-foreground" />
+          <h1 className="mt-4 text-xl font-semibold">No questions available</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            This practice set does not have any published questions yet. Please return to the subject page and choose another set.
+          </p>
+          <Button className="mt-6 h-11" onClick={() => router.back()}>
+            Go back
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
   if (isSubmitting) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center space-y-4">
-          <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin mx-auto" />
-          <p className="text-lg font-semibold">Submitting your answers...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm text-center" role="status" aria-live="polite">
+          {isQuickPractice ? (
+            <LoaderCircle className="mx-auto size-10 animate-spin text-primary" />
+          ) : (
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          )}
+          <p className="mt-5 text-lg font-semibold">
+            {isQuickPractice ? "Finishing your practice…" : "Submitting your answers..."}
+          </p>
+          {isQuickPractice && (
+            <p className="mt-2 text-sm text-muted-foreground">Calculating your score and preparing your review.</p>
+          )}
         </div>
+      </div>
+    );
+  }
+
+  if (isQuickPractice) {
+    return (
+      <div className="min-h-screen bg-muted/20">
+        <header className="sticky top-16 z-30 border-b bg-background/95 backdrop-blur">
+          <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{challenge.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {answeredCount} of {total} answered
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3 sm:gap-5">
+              <div className="text-right">
+                <p className="text-xs font-medium text-muted-foreground">Question</p>
+                <p className="text-sm font-semibold tabular-nums">{currentIndex + 1} / {total}</p>
+              </div>
+              <div className="flex h-10 min-w-23 items-center justify-center gap-2 rounded-xl bg-muted px-3">
+                <Clock className="size-4 text-primary" />
+                <span className="font-mono text-sm font-semibold tabular-nums">{formatTimer(timeElapsed)}</span>
+              </div>
+            </div>
+          </div>
+          <Progress value={positionProgress} className="h-1 rounded-none" aria-label={`Question ${currentIndex + 1} of ${total}`} />
+        </header>
+
+        <main className="mx-auto w-full max-w-5xl px-4 py-5 sm:px-6 sm:py-8">
+          <nav aria-label="Practice questions" className="mb-5 flex gap-2 overflow-x-auto pb-2">
+            {questions.map((question, index) => {
+              const isCurrent = index === currentIndex;
+              const isAnswered = Boolean(answers[question.id]);
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => setCurrentIndex(index)}
+                  aria-label={`Question ${index + 1}${isAnswered ? ", answered" : ""}`}
+                  aria-current={isCurrent ? "step" : undefined}
+                  className={cn(
+                    "flex size-11 shrink-0 items-center justify-center rounded-xl text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                    isCurrent && "bg-foreground text-background",
+                    !isCurrent && isAnswered && "bg-primary/12 text-primary",
+                    !isCurrent && !isAnswered && "bg-background text-muted-foreground ring-1 ring-foreground/10 hover:bg-muted"
+                  )}
+                >
+                  {isAnswered && !isCurrent ? <Check className="size-4" /> : index + 1}
+                </button>
+              );
+            })}
+          </nav>
+
+          {submitError && (
+            <div className="mb-5 flex flex-col gap-4 rounded-2xl bg-destructive/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between" role="alert">
+              <div className="flex gap-3">
+                <CircleAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+                <div>
+                  <p className="font-semibold text-foreground">Couldn’t submit your practice</p>
+                  <p className="mt-1 text-muted-foreground">{submitError}</p>
+                </div>
+              </div>
+              <Button variant="outline" className="h-10 shrink-0" onClick={() => setShowConfirm(true)}>
+                <RotateCcw className="size-4" />
+                Try again
+              </Button>
+            </div>
+          )}
+
+          <section className="mx-auto max-w-3xl overflow-hidden rounded-3xl bg-card ring-1 ring-foreground/10">
+            <div className="px-5 py-6 sm:px-8 sm:py-9 md:px-10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-primary">Question {currentIndex + 1}</p>
+                {current.topicTag && (
+                  <Badge variant="secondary" className="font-medium">{current.topicTag}</Badge>
+                )}
+              </div>
+
+              <h1 className="mt-5 text-xl font-semibold leading-8 tracking-tight text-balance sm:text-2xl sm:leading-9">
+                {current.questionText}
+              </h1>
+
+              <div className="mt-8 space-y-3" role="radiogroup" aria-label={`Answers for question ${currentIndex + 1}`}>
+                {OPTIONS.map((option) => {
+                  const isSelected = answers[current.id] === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => selectAnswer(option)}
+                      className={cn(
+                        "group flex min-h-14 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/40 sm:min-h-16 sm:gap-4 sm:px-4",
+                        isSelected
+                          ? "bg-primary/10 text-foreground ring-2 ring-primary"
+                          : "bg-muted/45 text-foreground ring-1 ring-foreground/10 hover:bg-muted"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold transition-colors",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground ring-1 ring-foreground/10 group-hover:text-foreground"
+                        )}
+                      >
+                        {isSelected ? <Check className="size-4" /> : option}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm leading-6 sm:text-base">
+                        {getOptionText(current, option)}
+                      </span>
+                      {isSelected && <span className="hidden text-xs font-semibold text-primary sm:inline">Selected</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 border-t bg-muted/25 px-4 py-4 sm:px-8">
+              <Button
+                variant="ghost"
+                size="lg"
+                className="h-11 px-3 sm:px-4"
+                onClick={() => setCurrentIndex((index) => Math.max(0, index - 1))}
+                disabled={currentIndex === 0}
+              >
+                <ChevronLeft className="size-4" />
+                <span className="hidden sm:inline">Previous</span>
+              </Button>
+
+              <div className="ml-auto flex items-center gap-3">
+                {currentIndex === total - 1 ? (
+                  <Button size="lg" className="h-11 px-5" onClick={() => setShowConfirm(true)}>
+                    Submit practice
+                    <Send className="size-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="h-11 px-5"
+                    onClick={() => setCurrentIndex((index) => Math.min(total - 1, index + 1))}
+                  >
+                    Next
+                    <ChevronRight className="size-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <p className="mx-auto mt-4 max-w-3xl text-center text-xs text-muted-foreground">
+            Your answers are saved while you move between questions. Results appear after you submit.
+          </p>
+        </main>
+
+        <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                {answeredCount < total && <AlertTriangle className="size-5 text-amber-500" />}
+                Finish this practice?
+              </DialogTitle>
+              <DialogDescription className="pt-1 leading-6">
+                {answeredCount < total ? (
+                  <>
+                    You answered <strong className="text-foreground">{answeredCount}</strong> of{" "}
+                    <strong className="text-foreground">{total}</strong> questions. The remaining{" "}
+                    <strong className="text-foreground">{total - answeredCount}</strong> will be marked incorrect.
+                  </>
+                ) : (
+                  <>You answered all {total} questions. Submit now to see your score and explanations.</>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-3 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button variant="outline" size="lg" className="h-11" onClick={() => setShowConfirm(false)}>
+                Keep reviewing
+              </Button>
+              <Button size="lg" className="h-11" onClick={handleSubmit}>
+                Submit answers
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

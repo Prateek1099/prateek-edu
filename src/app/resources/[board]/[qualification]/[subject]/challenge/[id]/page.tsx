@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Trophy, Clock, Zap, BarChart3, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import QuickPracticeStart from "./QuickPracticeStart";
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
@@ -26,7 +27,9 @@ export default async function ChallengeDetailPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const userId = (session.user as any).id;
+  const sessionUser = session.user as typeof session.user & { id?: string; workspaceId?: string | null };
+  const userId = sessionUser.id;
+  if (!userId) redirect("/login");
 
   const [challenge, attempts] = await Promise.all([
     prisma.challenge.findUnique({
@@ -48,7 +51,7 @@ export default async function ChallengeDetailPage({
 
   // Strict Authorization Guard for Workspace Challenges
   if (challenge.workspaceId) {
-    const isOwner = (session.user as any).workspaceId === challenge.workspaceId;
+    const isOwner = sessionUser.workspaceId === challenge.workspaceId;
     
     if (!isOwner) {
       const assignment = await prisma.worksheetAssignment.findUnique({
@@ -61,6 +64,29 @@ export default async function ChallengeDetailPage({
       });
       if (!assignment) notFound();
     }
+  }
+
+  if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
+    redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);
+  }
+
+  if (challenge.type === "QUICK_PRACTICE") {
+    const challengeBaseUrl = `/resources/${board}/${qualification}/${subject}/challenge/${id}`;
+
+    return (
+      <QuickPracticeStart
+        title={challenge.title}
+        subjectName={challenge.subject.name}
+        topicName={challenge.topic?.topicName || null}
+        difficulty={challenge.difficulty}
+        questionCount={challenge._count.questions}
+        estimatedTime={challenge.estimatedTime}
+        backUrl={`/resources/${board}/${qualification}/${subject}`}
+        attemptUrl={`${challengeBaseUrl}/attempt`}
+        resultBaseUrl={`${challengeBaseUrl}/results`}
+        attempts={attempts}
+      />
+    );
   }
 
   const formatTime = (seconds: number | null) => {

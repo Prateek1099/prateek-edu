@@ -20,9 +20,9 @@ import {
   Lightbulb,
   AlertTriangle,
   BookOpen,
-  ArrowRight,
 } from "lucide-react";
 import { AskTeacherDialog } from "@/components/AskTeacherDialog";
+import QuickPracticeResults from "./QuickPracticeResults";
 
 type QuestionData = {
   id: string;
@@ -49,6 +49,7 @@ type Props = {
     id: string;
     title: string;
     difficulty: string;
+    type: string;
     topic: { topicName: string } | null;
     questions: QuestionData[];
   };
@@ -78,7 +79,15 @@ function getOptionText(q: QuestionData, opt: string): string {
   return map[opt] || "";
 }
 
-export default function ChallengeResults({ attempt, challenge, backUrl, retryUrl, trackedMistakes = {} }: Props) {
+export default function ChallengeResults(props: Props) {
+  if (props.challenge.type === "QUICK_PRACTICE") {
+    return <QuickPracticeResults {...props} />;
+  }
+
+  return <LegacyChallengeResults {...props} />;
+}
+
+function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, trackedMistakes = {} }: Props) {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const perf = getPerformanceMessage(attempt.percentage);
   const incorrect = attempt.totalQuestions - attempt.score;

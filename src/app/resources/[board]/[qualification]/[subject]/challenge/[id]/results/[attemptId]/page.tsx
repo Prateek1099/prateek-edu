@@ -20,7 +20,9 @@ export default async function ResultsPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const userId = (session.user as any).id;
+  const sessionUser = session.user as typeof session.user & { id?: string };
+  const userId = sessionUser.id;
+  if (!userId) redirect("/login");
 
   const attempt = await prisma.challengeAttempt.findUnique({
     where: { id: attemptId },
@@ -37,6 +39,10 @@ export default async function ResultsPage({
 
   if (!attempt || attempt.userId !== userId || attempt.challengeId !== id) {
     notFound();
+  }
+
+  if (attempt.challenge.type === "WORKSHEET" || attempt.challenge.type === "PDF_WORKSHEET") {
+    redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);
   }
 
   let parsedAnswers: Record<string, string> = {};
@@ -74,6 +80,7 @@ export default async function ResultsPage({
         id: attempt.challenge.id,
         title: attempt.challenge.title,
         difficulty: attempt.challenge.difficulty,
+        type: attempt.challenge.type,
         topic: attempt.challenge.topic,
         questions: attempt.challenge.questions.map((q) => ({
           id: q.id,
@@ -93,4 +100,3 @@ export default async function ResultsPage({
     />
   );
 }
-
