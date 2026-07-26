@@ -128,3 +128,21 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  body:has(.worksheet-print-root) > header,
+  body:has(.worksheet-print-root) > footer,
+  body:has(.worksheet-print-root) .worksheet-screen-only {
+    display: none !important;
+  }
+
+  body:has(.worksheet-print-root),
+  body:has(.worksheet-print-root) main {
+    background: white !important;
+    color: black !important;
+  }
+
+  .worksheet-print-root {
+    break-after: page;
+  }
+}

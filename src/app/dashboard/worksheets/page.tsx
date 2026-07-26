@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileText, Calendar, CheckCircle2, Clock } from "lucide-react";
@@ -10,9 +10,14 @@ import { FileText, Calendar, CheckCircle2, Clock } from "lucide-react";
 export default async function StudentWorksheetsPage() {
   const session = await getServerSession(authOptions);
   if (!session || !session.user) redirect("/login");
+  const userId = (session.user as typeof session.user & { id?: string }).id;
+  if (!userId) redirect("/login");
 
   const assignments = await prisma.worksheetAssignment.findMany({
-    where: { userId: (session.user as any).id },
+    where: {
+      userId,
+      worksheet: { isPublished: true },
+    },
     include: {
       worksheet: {
         include: {
@@ -30,7 +35,9 @@ export default async function StudentWorksheetsPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">My Worksheets</h1>
-        <p className="text-muted-foreground mt-1">Complete your assigned worksheets to improve your weak areas.</p>
+        <p className="text-muted-foreground mt-1">
+          Open your assigned worksheets and work through them as document-style practice.
+        </p>
       </div>
 
       <div className="grid gap-4">
@@ -48,10 +55,11 @@ export default async function StudentWorksheetsPage() {
             const isCompleted = assignment.status === "COMPLETED";
             const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
 
-            // Compute the attempt link. Since Worksheet is a Challenge, we use the challenge attempt route.
             const board = ws.subject.qualification.board.name;
             const qual = ws.subject.qualification.name;
+            const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
             const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
+            const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
 
             return (
               <Card key={assignment.id} className={`transition-colors ${isOverdue ? "border-destructive/50" : ""}`}>
@@ -69,12 +77,14 @@ export default async function StudentWorksheetsPage() {
                         </span>
                       ) : (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">
-                          Pending
+                          Assigned
                         </span>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      {ws.subject.name} • {ws._count.questions} Questions • {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
+                      {ws.subject.name} • {ws.type === "PDF_WORKSHEET"
+                        ? "PDF assignment"
+                        : `${ws._count.questions} Questions`} • {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
                     </p>
                     <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
@@ -89,28 +99,18 @@ export default async function StudentWorksheetsPage() {
                   </div>
                   
                   <div className="w-full sm:w-auto shrink-0 flex flex-col sm:flex-row gap-2">
-                    {ws.type === "PDF_WORKSHEET" ? (
-                      <>
-                        {ws.pdfUrl && (
-                          <a href={ws.pdfUrl} target="_blank" rel="noopener noreferrer">
-                            <Button variant="default" className="w-full sm:w-auto gap-2">
-                              <FileText className="w-4 h-4" /> View Questions
-                            </Button>
-                          </a>
-                        )}
-                        {ws.pdfAnswerUrl && (
-                          <a href={ws.pdfAnswerUrl} target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" className="w-full sm:w-auto gap-2">
-                              <FileText className="w-4 h-4" /> View Answers
-                            </Button>
-                          </a>
-                        )}
-                      </>
+                    {isDocumentWorksheet ? (
+                      <Link href={worksheetLink} className="block">
+                        <Button className="w-full gap-2 sm:w-auto">
+                          <FileText className="size-4" />
+                          View Worksheet
+                        </Button>
+                      </Link>
                     ) : isCompleted ? (
                       <Button variant="outline" className="w-full sm:w-auto" disabled>Already Completed</Button>
                     ) : (
                       <Link href={attemptLink} className="block">
-                        <Button className="w-full sm:w-auto">Start Worksheet</Button>
+                        <Button className="w-full sm:w-auto">Start Practice</Button>
                       </Link>
                     )}
                   </div>

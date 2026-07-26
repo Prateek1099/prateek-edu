@@ -88,7 +88,10 @@ export default async function DashboardPage() {
       },
     }),
     prisma.worksheetAssignment.findMany({
-      where: { userId },
+      where: {
+        userId,
+        worksheet: { isPublished: true },
+      },
       select: {
         id: true,
         dueDate: true,
@@ -97,6 +100,7 @@ export default async function DashboardPage() {
           select: {
             id: true,
             title: true,
+            type: true,
             subject: { select: { name: true, slug: true, qualification: { select: { name: true, board: { select: { name: true } } } } } },
             _count: { select: { questions: true } }
           }
@@ -376,9 +380,16 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
               const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
               const board = ws.subject.qualification.board.name;
               const qual = ws.subject.qualification.name;
+              const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
+              const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
               const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
+              const assignmentLink = isDocumentWorksheet ? worksheetLink : attemptLink;
               return (
-                <Link key={assignment.id} href={isCompleted ? "#" : attemptLink} className="block group">
+                <Link
+                  key={assignment.id}
+                  href={isCompleted && !isDocumentWorksheet ? "#" : assignmentLink}
+                  className="block group"
+                >
                   <Card className={cn("h-full transition-colors hover:shadow-sm", isOverdue ? "border-destructive/40" : "hover:border-primary/30")}>
                     <CardContent className="p-4 flex flex-col h-full justify-between">
                       <div>
@@ -406,8 +417,12 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                         <p className="text-xs text-muted-foreground mt-0.5">{ws.subject.name}</p>
                       </div>
                       <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
-                        <span>{ws._count.questions} Qs</span>
-                        {!isCompleted && <span className="text-primary font-medium group-hover:underline">Start →</span>}
+                        <span>{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws._count.questions} Qs`}</span>
+                        {isDocumentWorksheet ? (
+                          <span className="text-primary font-medium group-hover:underline">View worksheet →</span>
+                        ) : (
+                          !isCompleted && <span className="text-primary font-medium group-hover:underline">Start →</span>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
