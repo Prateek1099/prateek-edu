@@ -24,7 +24,11 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
         where: { status: "PUBLISHED" },
         orderBy: { sortOrder: 'asc' }
       },
-      notes: true,
+      notes: {
+        where: { isPublished: true },
+        include: { topic: true },
+        orderBy: [{ topicId: "asc" }, { title: "asc" }],
+      },
       challenges: {
         where: { 
           isPublished: true,

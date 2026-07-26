@@ -10,6 +10,7 @@ async function forbidIfNeeded(): Promise<string | null> {
 
 function revalidateNoteRelated() {
   revalidatePath("/admin/notes");
+  revalidatePath("/resources", "layout");
 }
 
 // --- SUBJECTS & SYLLABUS ---
@@ -118,19 +119,63 @@ export async function deleteCourse(id: string) {
 
 // --- NOTES ---
 
+type AdminNoteType = "NOTEBOOK_WORK" | "STUDY_NOTES";
+
+function normalizeNoteData(data: {
+  subjectId: string;
+  title: string;
+  content: string | null;
+  pdfUrl: string | null;
+  topicId: string | null;
+  noteType: AdminNoteType;
+}) {
+  const content = data.content?.trim() || null;
+  const pdfUrl = data.pdfUrl?.trim() || null;
+
+  if (!content && !pdfUrl) {
+    return {
+      success: false as const,
+      error: "Add text content or attach a PDF before saving this note.",
+    };
+  }
+  if (
+    data.noteType !== "NOTEBOOK_WORK" &&
+    data.noteType !== "STUDY_NOTES"
+  ) {
+    return { success: false as const, error: "Choose a valid note type." };
+  }
+
+  return {
+    success: true as const,
+    data: {
+      ...data,
+      title: data.title.trim(),
+      content,
+      pdfUrl,
+      topicId: data.topicId || null,
+    },
+  };
+}
+
 export async function createNote(data: {
   subjectId: string;
   title: string;
   content: string | null;
   pdfUrl: string | null;
   topicId: string | null;
+  noteType: AdminNoteType;
 }) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
-    await prisma.note.create({ data });
+    const normalized = normalizeNoteData(data);
+    if (!normalized.success) return normalized;
+    if (!normalized.data.title) {
+      return { success: false as const, error: "Add a note title." };
+    }
+
+    await prisma.note.create({ data: normalized.data });
     revalidateNoteRelated();
-    revalidatePath("/board", "layout");
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
@@ -143,13 +188,19 @@ export async function updateNote(id: string, data: {
   content: string | null;
   pdfUrl: string | null;
   topicId: string | null;
+  noteType: AdminNoteType;
 }) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
-    await prisma.note.update({ where: { id }, data });
+    const normalized = normalizeNoteData(data);
+    if (!normalized.success) return normalized;
+    if (!normalized.data.title) {
+      return { success: false as const, error: "Add a note title." };
+    }
+
+    await prisma.note.update({ where: { id }, data: normalized.data });
     revalidateNoteRelated();
-    revalidatePath("/board", "layout");
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
@@ -162,7 +213,6 @@ export async function deleteNote(id: string) {
   try {
     await prisma.note.delete({ where: { id } });
     revalidateNoteRelated();
-    revalidatePath("/board", "layout");
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };
@@ -180,7 +230,6 @@ export async function toggleNotePublished(id: string) {
       data: { isPublished: !note.isPublished },
     });
     revalidateNoteRelated();
-    revalidatePath("/board", "layout");
     return { success: true as const };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Failed" };

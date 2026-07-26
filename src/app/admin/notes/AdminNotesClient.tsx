@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Table,
@@ -45,6 +45,8 @@ type SubjectRow = {
   topics: { id: string; topicName: string }[];
 };
 
+type NoteType = "NOTEBOOK_WORK" | "STUDY_NOTES";
+
 type NoteWithRelations = {
   id: string;
   title: string;
@@ -53,6 +55,7 @@ type NoteWithRelations = {
   subjectId: string;
   topicId: string | null;
   isPublished: boolean;
+  noteType: NoteType;
   subject: {
     id: string;
     name: string;
@@ -73,6 +76,10 @@ type NoteWithRelations = {
 };
 
 const TOPIC_NONE = "__none__";
+const NOTE_TYPE_LABELS: Record<NoteType, string> = {
+  NOTEBOOK_WORK: "Notebook Work",
+  STUDY_NOTES: "Study Notes",
+};
 
 export default function AdminNotesClient({
   notes,
@@ -101,18 +108,13 @@ export default function AdminNotesClient({
   const [content, setContent] = useState("");
   const [pdfUrlExisting, setPdfUrlExisting] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [noteType, setNoteType] = useState<NoteType>("STUDY_NOTES");
+  const [typeFilter, setTypeFilter] = useState<"all" | NoteType>("all");
 
   const topicsForSubject = useMemo(() => {
     const s = subjectRows.find((row) => row.id === subjectId);
     return s?.topics ?? [];
   }, [subjectRows, subjectId]);
-
-  useEffect(() => {
-    if (topicId === TOPIC_NONE) return;
-    if (!topicsForSubject.some((t) => t.id === topicId)) {
-      setTopicId(TOPIC_NONE);
-    }
-  }, [topicsForSubject, topicId]);
 
   const resetForm = () => {
     setSubjectId(filteredSubjectRows[0]?.id ?? "");
@@ -121,6 +123,7 @@ export default function AdminNotesClient({
     setContent("");
     setPdfUrlExisting("");
     setPdfFile(null);
+    setNoteType("STUDY_NOTES");
     setSelected(null);
   };
 
@@ -152,6 +155,7 @@ export default function AdminNotesClient({
     setContent(n.content ?? "");
     setPdfUrlExisting(n.pdfUrl ?? "");
     setPdfFile(null);
+    setNoteType(n.noteType);
     setIsEditOpen(true);
   };
 
@@ -166,14 +170,19 @@ export default function AdminNotesClient({
       result = result.filter((n) => n.subject.qualification.board.name === selectedBoard);
     }
     const q = search.trim().toLowerCase();
-    if (!q) return result;
-    return result.filter((n) => {
-      const hay = `${n.title} ${n.subject.name} ${n.topic?.topicName ?? ""} ${
-        n.content ?? ""
-      }`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [notes, search, selectedBoard]);
+    if (typeFilter !== "all") {
+      result = result.filter((n) => n.noteType === typeFilter);
+    }
+    if (q) {
+      result = result.filter((n) => {
+        const hay = `${n.title} ${n.subject.name} ${n.topic?.topicName ?? ""} ${
+          n.content ?? ""
+        } ${NOTE_TYPE_LABELS[n.noteType]}`.toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    return result;
+  }, [notes, search, selectedBoard, typeFilter]);
 
   const resolvedTopicId = (): string | null =>
     topicId === TOPIC_NONE ? null : topicId;
@@ -182,6 +191,10 @@ export default function AdminNotesClient({
     e.preventDefault();
     if (!subjectId) {
       toast.error("Choose a subject");
+      return;
+    }
+    if (!content.trim() && !pdfFile) {
+      toast.error("Add text content or attach a PDF");
       return;
     }
     setLoading(true);
@@ -197,6 +210,7 @@ export default function AdminNotesClient({
         content: content.trim() === "" ? null : content,
         pdfUrl: pdfFinal,
         topicId: resolvedTopicId(),
+        noteType,
       });
       setLoading(false);
       if (res.success) {
@@ -218,6 +232,10 @@ export default function AdminNotesClient({
       toast.error("Choose a subject");
       return;
     }
+    if (!content.trim() && !pdfFile && !pdfUrlExisting) {
+      toast.error("Add text content or attach a PDF");
+      return;
+    }
     setLoading(true);
     try {
       let pdfFinal = pdfUrlExisting || null;
@@ -231,6 +249,7 @@ export default function AdminNotesClient({
         content: content.trim() === "" ? null : content,
         pdfUrl: pdfFinal,
         topicId: resolvedTopicId(),
+        noteType,
       });
       setLoading(false);
       if (res.success) {
@@ -273,8 +292,39 @@ export default function AdminNotesClient({
   const formFields = (idPrefix: "add-note" | "edit-note") => (
     <div className="space-y-4">
       <div className="space-y-2">
+        <Label htmlFor={`${idPrefix}-type`}>Note type</Label>
+        <Select
+          value={noteType}
+          onValueChange={(value) =>
+            setNoteType((value || "STUDY_NOTES") as NoteType)
+          }
+        >
+          <SelectTrigger id={`${idPrefix}-type`} className="w-full">
+            <SelectValue>
+              {NOTE_TYPE_LABELS[noteType]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="NOTEBOOK_WORK">Notebook Work</SelectItem>
+            <SelectItem value="STUDY_NOTES">Study Notes</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs leading-5 text-muted-foreground">
+          {noteType === "NOTEBOOK_WORK"
+            ? "Short classroom-style material students can copy into a notebook."
+            : "Detailed material for understanding, revision, and exam preparation."}
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor={`${idPrefix}-sub`}>Subject</Label>
-        <Select value={subjectId} onValueChange={(v) => setSubjectId(v ?? "")}>
+        <Select
+          value={subjectId}
+          onValueChange={(value) => {
+            setSubjectId(value ?? "");
+            setTopicId(TOPIC_NONE);
+          }}
+        >
           <SelectTrigger id={`${idPrefix}-sub`}>
             <SelectValue placeholder="Choose subject" />
           </SelectTrigger>
@@ -339,10 +389,10 @@ export default function AdminNotesClient({
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <StickyNote className="size-8 text-primary" />
-            Revision notes
+            Notes
           </h1>
           <p className="text-muted-foreground mt-1">
-            Link notes to subjects and optional syllabus topics; add a PDF summary when helpful.
+            Manage Notebook Work and detailed Study Notes by subject and topic.
           </p>
         </div>
         <Button onClick={openAdd}>
@@ -356,12 +406,31 @@ export default function AdminNotesClient({
           <CardTitle className="text-lg">Library</CardTitle>
           <CardDescription>Quick search across titles and topics.</CardDescription>
         </CardHeader>
-        <div className="px-6 pb-4 max-w-md">
+        <div className="grid gap-3 px-6 pb-4 sm:max-w-2xl sm:grid-cols-[minmax(0,1fr)_180px]">
           <Input
             placeholder="Filter notes…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <Select
+            value={typeFilter}
+            onValueChange={(value) =>
+              setTypeFilter((value || "all") as "all" | NoteType)
+            }
+          >
+            <SelectTrigger className="w-full" aria-label="Filter by note type">
+              <SelectValue>
+                {typeFilter === "all"
+                  ? "All note types"
+                  : NOTE_TYPE_LABELS[typeFilter]}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All note types</SelectItem>
+              <SelectItem value="NOTEBOOK_WORK">Notebook Work</SelectItem>
+              <SelectItem value="STUDY_NOTES">Study Notes</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="border-t overflow-x-auto">
           <Table>
@@ -370,6 +439,7 @@ export default function AdminNotesClient({
                 <TableHead className="min-w-[10rem]">Subject</TableHead>
                 <TableHead>Topic</TableHead>
                 <TableHead>Title</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>PDF</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right w-52">Actions</TableHead>
@@ -378,8 +448,10 @@ export default function AdminNotesClient({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-14 text-muted-foreground">
-                    No notes yet — create one above.
+                  <TableCell colSpan={7} className="text-center py-14 text-muted-foreground">
+                    {notes.length === 0
+                      ? "No notes yet — create one above."
+                      : "No notes match these filters."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -391,6 +463,11 @@ export default function AdminNotesClient({
                     </TableCell>
                     <TableCell className="text-sm">{n.topic?.topicName ?? "—"}</TableCell>
                     <TableCell className="font-medium">{n.title}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {NOTE_TYPE_LABELS[n.noteType]}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       {n.pdfUrl ? (
                         <Link

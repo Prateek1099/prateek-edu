@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, BookMarked, BookOpen, ClipboardCheck, Clock, Download, FileText, ListChecks, ScrollText, Target, Trophy, Zap } from "lucide-react";
+import { ArrowRight, BookMarked, BookOpen, BookOpenCheck, ClipboardCheck, Clock, Download, FileText, ListChecks, NotebookPen, ScrollText, Target, Trophy, Zap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +17,14 @@ const difficultyColor: Record<string, string> = {
   mixed: "border-primary/50 text-primary bg-primary/10",
 };
 
-type Note = { id: string; title: string; pdfUrl: string | null };
+type Note = {
+  id: string;
+  title: string;
+  content: string | null;
+  pdfUrl: string | null;
+  noteType: "NOTEBOOK_WORK" | "STUDY_NOTES";
+  topic: Topic | null;
+};
 type Topic = { id: string; topicName: string };
 type Subject = { slug: string; name: string; syllabusPdfUrl: string | null };
 type Challenge = {
@@ -31,6 +38,17 @@ type Challenge = {
   topic: Topic | null;
   _count: { questions: number };
 };
+
+function noteExcerpt(note: Note) {
+  const content = note.content?.replace(/\s+/g, " ").trim();
+  if (content) {
+    return content.length > 170 ? `${content.slice(0, 167)}…` : content;
+  }
+
+  return note.noteType === "NOTEBOOK_WORK"
+    ? "Concise classroom-ready points to copy into your notebook."
+    : "Detailed explanations and revision support for this topic.";
+}
 
 export default function SubjectTabsClient({
   topics,
@@ -60,6 +78,96 @@ export default function SubjectTabsClient({
     const matchesDifficulty = practiceDifficulty === "all" || practice.difficulty === practiceDifficulty;
     return matchesTopic && matchesDifficulty;
   });
+  const notebookNotes = notes.filter((note) => note.noteType === "NOTEBOOK_WORK");
+  const studyNotes = notes.filter((note) => note.noteType === "STUDY_NOTES");
+
+  const renderNoteSection = (
+    sectionNotes: Note[],
+    type: "NOTEBOOK_WORK" | "STUDY_NOTES",
+  ) => {
+    if (sectionNotes.length === 0) return null;
+
+    const isNotebookWork = type === "NOTEBOOK_WORK";
+    const SectionIcon = isNotebookWork ? NotebookPen : BookOpenCheck;
+
+    return (
+      <section>
+        <div className="mb-5 flex items-start gap-3">
+          <div
+            className={cn(
+              "mt-0.5 rounded-xl p-2.5",
+              isNotebookWork
+                ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                : "bg-primary/10 text-primary",
+            )}
+          >
+            <SectionIcon className="size-5" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              {isNotebookWork ? "Notebook Work" : "Study Notes"}
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+              {isNotebookWork
+                ? "Short definitions, key points, and examples you can copy into your school notebook."
+                : "Detailed explanations and revision material for understanding topics and preparing for exams."}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {sectionNotes.map((note) => {
+            const isPdf = Boolean(note.pdfUrl);
+            const href =
+              isPdf && note.pdfUrl
+                ? `/notes/viewer?pdf=${encodeURIComponent(note.pdfUrl)}&title=${encodeURIComponent(note.title)}`
+                : `/resources/${board}/${qualification}/${subject.slug}/notes/${note.id}`;
+
+            return (
+              <article
+                key={note.id}
+                className="flex min-h-64 flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:ring-primary/35 sm:p-6"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary">
+                    {isPdf ? "PDF note" : "Text note"}
+                  </Badge>
+                  {note.topic && (
+                    <Badge variant="outline">{note.topic.topicName}</Badge>
+                  )}
+                </div>
+                <h3 className="mt-5 text-lg font-semibold tracking-tight">
+                  {note.title}
+                </h3>
+                <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                  {noteExcerpt(note)}
+                </p>
+                <Link
+                  href={href}
+                  className={cn(
+                    buttonVariants({
+                      size: "lg",
+                      variant: isNotebookWork ? "outline" : "default",
+                    }),
+                    "mt-auto h-11 w-full gap-2 pt-0 sm:w-fit",
+                  )}
+                >
+                  {isPdf ? (
+                    <FileText className="size-4" />
+                  ) : (
+                    <ScrollText className="size-4" />
+                  )}
+                  {isNotebookWork
+                    ? "Open Notebook Work"
+                    : "Open Study Notes"}
+                </Link>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <Tabs defaultValue="practice" className="w-full">
@@ -75,35 +183,26 @@ export default function SubjectTabsClient({
 
       <TabsContent value="notes" className="mt-0">
         {notes.length === 0 ? (
-          <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
-            <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-semibold text-foreground">No notes available</h3>
-            <p className="text-muted-foreground">Revision notes will be uploaded shortly.</p>
+          <div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-14 text-center">
+            <BookOpen className="mx-auto size-10 text-muted-foreground" />
+            <h2 className="mt-4 text-lg font-semibold">No notes available</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+              Notebook Work and Study Notes for this subject will appear here when they are published.
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {notes.map((note) => (
-               <Card key={note.id} className="hover:border-primary/50 transition-colors shadow-sm bg-card">
-                 <CardContent className="p-4 flex items-center justify-between">
-                   <div className="flex items-center gap-3">
-                     <div className="bg-primary/10 p-2 rounded-lg">
-                       <ScrollText className="h-5 w-5 text-primary" />
-                     </div>
-                     <span className="font-medium">{note.title}</span>
-                   </div>
-                   {note.pdfUrl && (
-                     <a 
-                       href={note.pdfUrl} 
-                       target="_blank" 
-                       rel="noreferrer"
-                       className={buttonVariants({ size: "sm", variant: "secondary" })}
-                     >
-                       <Download className="h-4 w-4 mr-2" /> Download
-                     </a>
-                   )}
-                 </CardContent>
-               </Card>
-             ))}
+          <div className="space-y-12">
+            <header className="max-w-2xl">
+              <p className="text-sm font-semibold text-primary">Notes</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+                Write the essentials. Study the details.
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+                Use Notebook Work for concise classroom material and Study Notes for deeper understanding and exam preparation.
+              </p>
+            </header>
+            {renderNoteSection(notebookNotes, "NOTEBOOK_WORK")}
+            {renderNoteSection(studyNotes, "STUDY_NOTES")}
           </div>
         )}
       </TabsContent>

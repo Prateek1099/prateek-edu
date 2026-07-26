@@ -20,6 +20,11 @@ enum AccountActionTokenPurpose {
   PASSWORD_RESET
 }
 
+enum NoteType {
+  NOTEBOOK_WORK
+  STUDY_NOTES
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -303,6 +308,7 @@ model Note {
   pdfUrl      String? @map("pdf_url")
   topicId     String? @map("topic_id")
   isPublished Boolean @default(true) @map("is_published")
+  noteType    NoteType @default(STUDY_NOTES) @map("note_type")
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
