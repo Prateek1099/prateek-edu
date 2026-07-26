@@ -398,6 +398,7 @@ export default function AdminWorksheetsClient({
     return (
       <Button
         variant="outline"
+        nativeButton={false}
         render={<Link href={`/admin/worksheets/${worksheet.id}/print`} />}
       >
         <Printer />
@@ -536,6 +537,7 @@ export default function AdminWorksheetsClient({
           {!hasActiveFilters && (
             <Button
               className="mt-5"
+              nativeButton={false}
               render={<Link href="/admin/worksheets/create" />}
             >
               Create Worksheet

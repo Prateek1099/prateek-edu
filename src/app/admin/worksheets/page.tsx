@@ -41,11 +41,13 @@ export default async function AdminWorksheetsPage() {
             Manage generated worksheets, PDF worksheets, and assignments.
           </p>
         </div>
-        <Link href="/admin/worksheets/create" className="sm:shrink-0">
-          <Button className="w-full gap-2 sm:w-auto">
-            <Plus className="size-4" /> Create Worksheet
-          </Button>
-        </Link>
+        <Button
+          className="w-full gap-2 sm:w-auto sm:shrink-0"
+          nativeButton={false}
+          render={<Link href="/admin/worksheets/create" />}
+        >
+          <Plus className="size-4" /> Create Worksheet
+        </Button>
       </div>
 
       <AdminWorksheetsClient worksheets={worksheets} />
