@@ -37,6 +37,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -330,34 +331,36 @@ export default function AdminWorksheetsClient({
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          <DropdownMenuLabel>
-            {worksheet.type === "PDF_WORKSHEET"
-              ? "PDF worksheet"
-              : "Generated worksheet"}
-          </DropdownMenuLabel>
-          {worksheet.type === "PDF_WORKSHEET" ? (
-            <>
-              <DropdownMenuItem
-                disabled={!questionsUrl}
-                onClick={() => questionsUrl && openDocument(questionsUrl)}
-              >
-                <ExternalLink /> Open Questions PDF
-              </DropdownMenuItem>
-              {answersUrl && (
-                <DropdownMenuItem onClick={() => openDocument(answersUrl)}>
-                  <FileText /> View Solutions
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              {worksheet.type === "PDF_WORKSHEET"
+                ? "PDF worksheet"
+                : "Generated worksheet"}
+            </DropdownMenuLabel>
+            {worksheet.type === "PDF_WORKSHEET" ? (
+              <>
+                <DropdownMenuItem
+                  disabled={!questionsUrl}
+                  onClick={() => questionsUrl && openDocument(questionsUrl)}
+                >
+                  <ExternalLink /> Open Questions PDF
                 </DropdownMenuItem>
-              )}
-            </>
-          ) : (
-            <DropdownMenuItem
-              render={
-                <Link href={`/admin/worksheets/${worksheet.id}/print`} />
-              }
-            >
-              <Printer /> Print Worksheet
-            </DropdownMenuItem>
-          )}
+                {answersUrl && (
+                  <DropdownMenuItem onClick={() => openDocument(answersUrl)}>
+                    <FileText /> View Solutions
+                  </DropdownMenuItem>
+                )}
+              </>
+            ) : (
+              <DropdownMenuItem
+                render={
+                  <Link href={`/admin/worksheets/${worksheet.id}/print`} />
+                }
+              >
+                <Printer /> Print Worksheet
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={() =>
