@@ -2,35 +2,38 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isAdminRole } from "@/lib/roles";
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const url = searchParams.get("url");
     const download = searchParams.get("download") === "true";
-    let isNote = searchParams.get("isNote") === "true";
+    const requestedAsNote = searchParams.get("isNote") === "true";
 
     if (!url) {
       return new NextResponse("Missing URL", { status: 400 });
     }
 
-    // Fallback: If not explicitly flagged as note, check DB to see if it is a Note
-    if (!isNote) {
-      const noteExists = await prisma.note.findFirst({
-        where: {
-          pdfUrl: url,
-        },
-      });
-      if (noteExists) {
-        isNote = true;
-      }
+    const note = await prisma.note.findFirst({
+      where: { pdfUrl: url },
+      select: { isPublished: true },
+    });
+
+    // Never trust a public query flag to turn an arbitrary URL into a note.
+    if (requestedAsNote && !note) {
+      return new NextResponse("Note not found", { status: 404 });
     }
 
-    // Notes remain account-only, but are currently free for every verified student.
-    if (isNote) {
+    // Published Notes are free for everyone. Draft Notes remain admin-only so the
+    // existing admin preview continues to work without exposing unpublished files.
+    if (note && !note.isPublished) {
       const session = await getServerSession(authOptions);
-      if (!session || !session.user) {
-        return new NextResponse("Unauthorized", { status: 401 });
+      const user = session?.user as
+        | { email?: string | null; role?: string }
+        | undefined;
+      if (!user?.email || !isAdminRole(user.role)) {
+        return new NextResponse("Note not found", { status: 404 });
       }
     }
 
