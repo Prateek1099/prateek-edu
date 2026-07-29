@@ -18,25 +18,17 @@ function NotesViewerInner() {
   const pdf = searchParams.get("pdf");
   const title = searchParams.get("title") ?? "Revision note";
 
-  const decodedPdf = useMemo(() => {
-    try {
-      return pdf ? decodeURIComponent(pdf) : null;
-    } catch {
-      return pdf;
-    }
+  const proxiedPdfUrl = useMemo(() => {
+    if (!pdf) return null;
+    return `/api/protected/pdf?url=${encodeURIComponent(pdf)}&isNote=true`;
   }, [pdf]);
 
-  const proxiedPdfUrl = useMemo(() => {
-    if (!decodedPdf) return null;
-    return `/api/protected/pdf?url=${encodeURIComponent(decodedPdf)}&isNote=true`;
-  }, [decodedPdf]);
-
   const downloadUrl = useMemo(() => {
-    if (!decodedPdf) return null;
-    return `/api/protected/pdf?url=${encodeURIComponent(decodedPdf)}&isNote=true&download=true`;
-  }, [decodedPdf]);
+    if (!pdf) return null;
+    return `/api/protected/pdf?url=${encodeURIComponent(pdf)}&isNote=true&download=true`;
+  }, [pdf]);
 
-  if (!decodedPdf || !proxiedPdfUrl || !downloadUrl) {
+  if (!pdf || !proxiedPdfUrl || !downloadUrl) {
     return (
       <div className="flex h-[calc(100vh-140px)] items-center justify-center">
         <p className="text-muted-foreground">No note PDF provided.</p>

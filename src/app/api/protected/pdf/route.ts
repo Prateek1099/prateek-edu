@@ -15,8 +15,13 @@ export async function GET(req: Request) {
       return new NextResponse("Missing URL", { status: 400 });
     }
 
+    const urlWithEncodedSpaces = url.replace(/ /g, "%20");
     const note = await prisma.note.findFirst({
-      where: { pdfUrl: url },
+      where: {
+        pdfUrl: {
+          in: Array.from(new Set([url, urlWithEncodedSpaces])),
+        },
+      },
       select: { isPublished: true },
     });
 
@@ -51,7 +56,7 @@ export async function GET(req: Request) {
 
     // Fix spaces in the URL without double-encoding existing %XX sequences.
     // searchParams.get() auto-decodes, so we just need to re-encode spaces.
-    targetUrl = targetUrl.replace(/ /g, '%20');
+    targetUrl = targetUrl.replace(/ /g, "%20");
 
     // Fetch the PDF from the original source
     const response = await fetch(targetUrl);
@@ -61,7 +66,14 @@ export async function GET(req: Request) {
       return new NextResponse("Failed to fetch PDF", { status: response.status });
     }
 
-    const filename = url.split("/").pop() || "document.pdf";
+    const storedFilename = url.split("/").pop() || "document.pdf";
+    let filename = storedFilename;
+    try {
+      filename = decodeURIComponent(storedFilename);
+    } catch {
+      // Keep the stored filename when it contains malformed percent encoding.
+    }
+    filename = filename.replace(/["\r\n]/g, "_");
 
     let contentType = response.headers.get("content-type") || "application/pdf";
     // Force correct content type for PDFs — some old Blob uploads may have wrong content-type
