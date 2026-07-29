@@ -37,6 +37,26 @@ import { useAdminBoard } from "@/components/AdminBoardContext";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
+type ChallengeRow = {
+  id: string;
+  title: string;
+  subjectId: string;
+  topicId: string | null;
+  difficulty: string;
+  estimatedTime: number;
+  isPublished: boolean;
+  subject: {
+    name: string;
+    code: string | null;
+    qualification: { board: { name: string } };
+  };
+  topic: { topicName: string } | null;
+  _count: {
+    questions: number;
+    attempts: number;
+    mistakes: number;
+  };
+};
 
 const DIFFICULTY_OPTIONS = [
   { value: "easy", label: "Easy" },
@@ -63,7 +83,7 @@ TOPIC: Primary Keys
 ---`;
 
 interface Props {
-  challenges: any[];
+  challenges: ChallengeRow[];
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
 }
@@ -87,7 +107,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showAppend, setShowAppend] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
+  const [editing, setEditing] = useState<ChallengeRow | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
@@ -98,6 +118,10 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
   const [estimatedTime, setEstimatedTime] = useState(15);
   const [bulkText, setBulkText] = useState("");
   const [appendText, setAppendText] = useState("");
+  const editingHasHistory =
+    (editing?._count?.attempts ?? 0) > 0 ||
+    (editing?._count?.mistakes ?? 0) > 0;
+  const editingDeleteBlocked = Boolean(editing?.isPublished) || editingHasHistory;
 
   // Filtered topics based on selected subject
   const filteredTopics = useMemo(
@@ -226,7 +250,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
     }
   };
 
-  const openEdit = (c: any) => {
+  const openEdit = (c: ChallengeRow) => {
     setEditing(c);
     setTitle(c.title);
     setSubjectId(c.subjectId);
@@ -236,7 +260,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
     setShowEdit(true);
   };
 
-  const openAppend = (c: any) => {
+  const openAppend = (c: ChallengeRow) => {
     setEditing(c);
     setAppendText("");
     setShowAppend(true);
@@ -569,12 +593,20 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
           <DialogHeader>
             <DialogTitle>Delete Challenge</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{editing?.title}&quot;? This will permanently delete all {editing?._count?.questions || 0} questions and {editing?._count?.attempts || 0} student attempts.
+              {editing?.isPublished
+                ? "Unpublish this challenge before deleting it."
+                : editingHasHistory
+                  ? `This challenge has ${editing?._count?.attempts ?? 0} attempt(s) and ${editing?._count?.mistakes ?? 0} mistake record(s). It cannot be deleted; keep it unpublished to preserve student history.`
+                  : `Delete "${editing?.title}" and its ${editing?._count?.questions || 0} question(s)? The server will recheck that no student history exists.`}
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setShowDelete(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isSubmitting || editingDeleteBlocked}
+            >
               {isSubmitting ? "Deleting..." : "Delete Challenge"}
             </Button>
           </div>

@@ -69,7 +69,7 @@ export default function AdminDashboardClient({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Revenue (MRR)</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Successful Revenue</CardTitle>
             <IndianRupee className="size-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>

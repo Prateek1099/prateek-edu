@@ -56,6 +56,7 @@ type CourseRow = {
   createdAt: Date;
   _count: {
     enrollments: number;
+    payments: number;
   };
   subject: {
     name: string;
@@ -272,6 +273,12 @@ export default function AdminCoursesClient({
     }
   };
 
+  const selectedCourseHasHistory =
+    (selectedCourse?._count.enrollments ?? 0) > 0 ||
+    (selectedCourse?._count.payments ?? 0) > 0;
+  const selectedCourseDeleteBlocked =
+    Boolean(selectedCourse?.isPublished) || selectedCourseHasHistory;
+
   const formFields = (idPrefix: "add-course" | "edit-course") => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -450,7 +457,7 @@ export default function AdminCoursesClient({
         </Card>
         <Card className="border border-border/80 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed Enrollments</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Enrollments</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -569,14 +576,22 @@ export default function AdminCoursesClient({
           <DialogHeader>
             <DialogTitle>Delete course</DialogTitle>
             <DialogDescription>
-              Remove <span className="font-medium">{selectedCourse?.title}</span>? This cannot be undone.
+              {selectedCourse?.isPublished
+                ? "Unpublish this course before deleting it."
+                : selectedCourseHasHistory
+                  ? `This course has ${selectedCourse?._count.enrollments ?? 0} enrollment(s) and ${selectedCourse?._count.payments ?? 0} attributed payment record(s). It cannot be deleted; keep it unpublished to preserve history.`
+                  : <>Remove <span className="font-medium">{selectedCourse?.title}</span>? Only this history-free draft course and its catalog content will be deleted.</>}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={loading || selectedCourseDeleteBlocked}
+            >
               {loading ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>

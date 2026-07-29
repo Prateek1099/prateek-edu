@@ -22,7 +22,7 @@ export default async function AdminChallengesPage() {
       include: {
         subject: { include: { qualification: { include: { board: true } } } },
         topic: true,
-        _count: { select: { questions: true, attempts: true } },
+        _count: { select: { questions: true, attempts: true, mistakes: true } },
       },
       orderBy: { createdAt: "desc" },
     }),

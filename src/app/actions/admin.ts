@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { rejectIfNotAdmin } from "@/lib/require-admin";
+import { requireSuperAdmin } from "@/lib/require-role";
 import { revalidatePath } from "next/cache";
 
 async function forbidIfNeeded(): Promise<string | null> {
@@ -108,7 +109,42 @@ export async function deleteCourse(id: string) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
-    await prisma.course.delete({ where: { id } });
+    await requireSuperAdmin();
+    const result = await prisma.$transaction(async (tx) => {
+      const course = await tx.course.findUnique({
+        where: { id },
+        select: {
+          isPublished: true,
+          _count: {
+            select: {
+              enrollments: true,
+              payments: true,
+            },
+          },
+        },
+      });
+
+      if (!course) {
+        return { success: false as const, error: "Course not found" };
+      }
+      if (course.isPublished) {
+        return {
+          success: false as const,
+          error: "Unpublish this course before deleting it.",
+        };
+      }
+      if (course._count.enrollments > 0 || course._count.payments > 0) {
+        return {
+          success: false as const,
+          error: `This course cannot be deleted because it has ${course._count.enrollments} enrollment(s) and ${course._count.payments} attributed payment record(s). Unpublish it to preserve purchase and access history.`,
+        };
+      }
+
+      await tx.course.delete({ where: { id } });
+      return { success: true as const };
+    });
+
+    if (!result.success) return result;
     revalidatePath("/admin/courses");
     revalidatePath("/courses");
     return { success: true as const };
@@ -333,24 +369,55 @@ export async function deleteChallenge(id: string) {
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
-    const challenge = await prisma.challenge.findUnique({
-      where: { id },
-      select: { type: true, workspaceId: true },
+    await requireSuperAdmin();
+    const result = await prisma.$transaction(async (tx) => {
+      const challenge = await tx.challenge.findUnique({
+        where: { id },
+        select: {
+          type: true,
+          workspaceId: true,
+          isPublished: true,
+          _count: {
+            select: {
+              attempts: true,
+              mistakes: true,
+            },
+          },
+        },
+      });
+      if (!challenge) {
+        return { success: false as const, error: "Challenge not found" };
+      }
+      if (challenge.workspaceId) {
+        return {
+          success: false as const,
+          error: "Teacher workspace content must be managed from Teacher Workspace.",
+        };
+      }
+      if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
+        return {
+          success: false as const,
+          error: "Manage worksheet deletion from Admin Worksheets.",
+        };
+      }
+      if (challenge.isPublished) {
+        return {
+          success: false as const,
+          error: "Unpublish this challenge before deleting it.",
+        };
+      }
+      if (challenge._count.attempts > 0 || challenge._count.mistakes > 0) {
+        return {
+          success: false as const,
+          error: `This challenge cannot be deleted because it has ${challenge._count.attempts} attempt(s) and ${challenge._count.mistakes} mistake record(s). Unpublish it to preserve student history.`,
+        };
+      }
+
+      await tx.challenge.delete({ where: { id } });
+      return { success: true as const };
     });
-    if (!challenge) return { success: false as const, error: "Challenge not found" };
-    if (challenge.workspaceId) {
-      return {
-        success: false as const,
-        error: "Teacher workspace content must be managed from Teacher Workspace.",
-      };
-    }
-    if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
-      return {
-        success: false as const,
-        error: "Manage worksheet deletion from Admin Worksheets.",
-      };
-    }
-    await prisma.challenge.delete({ where: { id } });
+
+    if (!result.success) return result;
     revalidateChallengeRelated();
     return { success: true as const };
   } catch (error: unknown) {

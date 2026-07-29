@@ -14,7 +14,8 @@ export default async function AdminCoursesPage() {
         },
         _count: {
           select: {
-            enrollments: { where: { paymentStatus: "completed" } },
+            enrollments: true,
+            payments: true,
           },
         },
       },

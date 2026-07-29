@@ -11,10 +11,12 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { isAdminRole } from "@/lib/roles";
+import { requireSuperAdmin } from "@/lib/require-role";
+import { isAdminRole, isSuperAdmin } from "@/lib/roles";
 import DeleteUserButton from "./DeleteUserButton";
 
 export default async function AdminUsersPage() {
+  const admin = await requireSuperAdmin();
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
@@ -70,7 +72,17 @@ export default async function AdminUsersPage() {
                   <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <DeleteUserButton userId={user.id} userName={user.name} />
+                      <DeleteUserButton
+                        userId={user.id}
+                        userName={user.name}
+                        disabledReason={
+                          user.id === admin.id
+                            ? "You cannot delete your own administrator account."
+                            : isSuperAdmin(user.role)
+                              ? "SUPER_ADMIN accounts cannot be deleted here."
+                              : undefined
+                        }
+                      />
                       {!isAdminRole(user.role) && (
                         <Link href={`/admin/users/${user.id}/performance`}>
                           <Button variant="ghost" size="sm" className="text-primary text-xs">

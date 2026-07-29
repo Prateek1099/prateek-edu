@@ -8,8 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import ResolveQueryButton from "./ResolveQueryButton";
 
 export default async function AdminQueriesPage() {
   const queries = await prisma.contactQuery.findMany({
@@ -42,7 +42,7 @@ export default async function AdminQueriesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              queries.map((query: any) => (
+              queries.map((query) => (
                 <TableRow key={query.id}>
                   <TableCell className="font-medium">{query.name}</TableCell>
                   <TableCell>{query.email}</TableCell>
@@ -55,7 +55,7 @@ export default async function AdminQueriesPage() {
                   <TableCell>{new Date(query.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right space-x-2">
                     {!query.resolved && (
-                      <Button variant="outline" size="sm">Mark Resolved</Button>
+                      <ResolveQueryButton queryId={query.id} />
                     )}
                   </TableCell>
                 </TableRow>

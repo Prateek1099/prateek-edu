@@ -1,12 +1,19 @@
 import { AdminSidebar } from "@/components/AdminSidebar";
 import { AdminBoardProvider } from "@/components/AdminBoardContext";
 import { prisma } from "@/lib/prisma";
+import { rejectIfNotAdmin } from "@/lib/require-role";
+import { redirect } from "next/navigation";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const denied = await rejectIfNotAdmin();
+  if (denied) {
+    redirect("/dashboard");
+  }
+
   const dbBoards = await prisma.board.findMany({
     orderBy: { title: "asc" }
   });

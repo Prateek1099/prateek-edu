@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Archive, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { deleteWorkspace } from "@/app/actions/workspace";
+import { toast } from "sonner";
+import { archiveWorkspace } from "@/app/actions/workspace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,65 +17,80 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-interface DeleteWorkspaceButtonProps {
+interface ArchiveWorkspaceButtonProps {
   workspaceId: string;
   workspaceName: string;
+  isArchived: boolean;
 }
 
-export default function DeleteWorkspaceButton({ workspaceId, workspaceName }: DeleteWorkspaceButtonProps) {
+export default function ArchiveWorkspaceButton({
+  workspaceId,
+  workspaceName,
+  isArchived,
+}: ArchiveWorkspaceButtonProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const isConfirmed = confirmText === "DELETE";
+  const isConfirmed = confirmText === "ARCHIVE";
 
-  const handleDelete = () => {
+  const handleArchive = () => {
     if (!isConfirmed) return;
     
     startTransition(async () => {
       try {
-        await deleteWorkspace(workspaceId);
+        await archiveWorkspace(workspaceId);
         setIsOpen(false);
+        toast.success("Workspace archived. Its owner and all workspace data were preserved.");
         router.push("/admin/workspaces");
         router.refresh();
       } catch (error) {
-        console.error("Failed to delete workspace:", error);
-        alert("Failed to delete workspace. See console for details.");
+        console.error("Failed to archive workspace:", error);
+        toast.error("Failed to archive workspace.");
       }
     });
   };
+
+  if (isArchived) {
+    return (
+      <Button variant="outline" size="sm" className="gap-2" disabled>
+        <Archive className="size-4" />
+        Archived
+      </Button>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger 
         render={
-          <Button variant="destructive" size="sm" className="gap-2">
-            <Trash2 className="size-4" />
-            Delete Workspace
+          <Button variant="outline" size="sm" className="gap-2">
+            <Archive className="size-4" />
+            Archive Workspace
           </Button>
         } 
       />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
+          <DialogTitle className="flex items-center gap-2">
             <AlertTriangle className="size-5" />
-            Delete Workspace
+            Archive Workspace
           </DialogTitle>
           <DialogDescription className="pt-2 space-y-3">
             <div className="text-sm">
-              This action is <strong>irreversible</strong>. You are about to permanently delete the workspace <strong>{workspaceName}</strong>.
+              You are about to archive <strong>{workspaceName}</strong>.
             </div>
             <div className="text-sm">
-              This will also permanently delete the teacher's user account, all associated classes, class memberships, and workspace content (worksheets, notes, challenges). Global content like Question Bank items will be preserved.
+              The teacher account, classes, memberships, learning history, and workspace content will all be preserved. The workspace can be reactivated later.
             </div>
-            <div className="bg-destructive/10 p-3 rounded-md border border-destructive/20 text-destructive text-sm">
-              Please type <strong>DELETE</strong> to confirm.
+            <div className="bg-amber-500/10 p-3 rounded-md border border-amber-500/20 text-amber-700 dark:text-amber-300 text-sm">
+              Please type <strong>ARCHIVE</strong> to confirm.
             </div>
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type DELETE"
+              placeholder="Type ARCHIVE"
               className="mt-2 font-mono"
               autoComplete="off"
             />
@@ -94,11 +110,10 @@ export default function DeleteWorkspaceButton({ workspaceId, workspaceName }: De
           </Button>
           <Button
             type="button"
-            variant="destructive"
             disabled={!isConfirmed || isPending}
-            onClick={handleDelete}
+            onClick={handleArchive}
           >
-            {isPending ? "Deleting..." : "Permanently Delete"}
+            {isPending ? "Archiving..." : "Archive Workspace"}
           </Button>
         </DialogFooter>
       </DialogContent>

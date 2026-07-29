@@ -20,6 +20,10 @@ type WorkspaceItem = {
   _count: { classes: number; members: number };
 };
 
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Failed";
+}
+
 export default function AdminWorkspacesClient({ workspaces }: { workspaces: WorkspaceItem[] }) {
   const [filter, setFilter] = useState("all");
 
@@ -29,8 +33,8 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
     try {
       await approveWorkspace(id);
       toast.success("Workspace approved");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error));
     }
   };
 
@@ -38,8 +42,8 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
     try {
       await suspendWorkspace(id);
       toast.success("Workspace suspended");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error));
     }
   };
 
@@ -47,8 +51,8 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
     try {
       await reactivateWorkspace(id);
       toast.success("Workspace reactivated");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error));
     }
   };
 
@@ -57,6 +61,7 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
       case "ACTIVE": return "bg-emerald-600 hover:bg-emerald-700";
       case "PENDING_APPROVAL": return "bg-amber-600 hover:bg-amber-700";
       case "SUSPENDED": return "bg-red-600 hover:bg-red-700";
+      case "ARCHIVED": return "bg-slate-600 hover:bg-slate-700";
       default: return "";
     }
   };
@@ -79,7 +84,7 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
           <p className="text-muted-foreground mt-1">Manage teacher workspaces.</p>
         </div>
         <div className="flex gap-2">
-          {["all", "PENDING_APPROVAL", "ACTIVE", "SUSPENDED"].map((s) => (
+          {["all", "PENDING_APPROVAL", "ACTIVE", "SUSPENDED", "ARCHIVED"].map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>
               {s === "all" ? "All" : s === "PENDING_APPROVAL" ? "Pending" : s.charAt(0) + s.slice(1).toLowerCase()}
             </Button>
@@ -140,7 +145,7 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
                           <XCircle className="size-4" />
                         </Button>
                       )}
-                      {ws.status === "SUSPENDED" && (
+                      {(ws.status === "SUSPENDED" || ws.status === "ARCHIVED") && (
                         <Button variant="outline" size="sm" onClick={() => handleReactivate(ws.id)}>
                           <RotateCcw className="size-4" />
                         </Button>
