@@ -83,7 +83,7 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
           </h1>
           <p className="text-muted-foreground mt-1">Manage teacher workspaces.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {["all", "PENDING_APPROVAL", "ACTIVE", "SUSPENDED", "ARCHIVED"].map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>
               {s === "all" ? "All" : s === "PENDING_APPROVAL" ? "Pending" : s.charAt(0) + s.slice(1).toLowerCase()}
@@ -131,10 +131,18 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
                         {ws.status === "PENDING_APPROVAL" ? "Pending" : ws.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Link href={`/admin/workspaces/${ws.id}`}>
-                        <Button variant="outline" size="sm"><Eye className="size-4" /></Button>
-                      </Link>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        nativeButton={false}
+                        render={<Link href={`/admin/workspaces/${ws.id}`} />}
+                        title="View workspace"
+                      >
+                        <Eye className="size-4" />
+                        <span className="sr-only">View workspace</span>
+                      </Button>
                       {ws.status === "PENDING_APPROVAL" && (
                         <Button variant="outline" size="sm" onClick={() => handleApprove(ws.id)} className="text-emerald-600 hover:text-emerald-700">
                           <Check className="size-4" />
@@ -150,6 +158,7 @@ export default function AdminWorkspacesClient({ workspaces }: { workspaces: Work
                           <RotateCcw className="size-4" />
                         </Button>
                       )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

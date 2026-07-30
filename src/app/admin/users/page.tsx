@@ -1,19 +1,8 @@
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { requireSuperAdmin } from "@/lib/require-role";
 import { isAdminRole, isSuperAdmin } from "@/lib/roles";
-import DeleteUserButton from "./DeleteUserButton";
+import AdminUsersClient from "./AdminUsersClient";
 
 export default async function AdminUsersPage() {
   const admin = await requireSuperAdmin();
@@ -27,77 +16,23 @@ export default async function AdminUsersPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Users</h1>
-      </div>
-      
-      <div className="border rounded-md bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Enrollments</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  No users found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name || 'N/A'}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={isAdminRole(user.role) ? "destructive" : "secondary"}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.enrollments.filter((enrollment) => enrollment.paymentStatus === "completed").length} completed
-                    {user.enrollments.some((enrollment) => enrollment.paymentStatus === "pending") && (
-                      <span className="block text-xs text-muted-foreground">
-                        {user.enrollments.filter((enrollment) => enrollment.paymentStatus === "pending").length} pending
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <DeleteUserButton
-                        userId={user.id}
-                        userName={user.name}
-                        disabledReason={
-                          user.id === admin.id
-                            ? "You cannot delete your own administrator account."
-                            : isSuperAdmin(user.role)
-                              ? "SUPER_ADMIN accounts cannot be deleted here."
-                              : undefined
-                        }
-                      />
-                      {!isAdminRole(user.role) && (
-                        <Link href={`/admin/users/${user.id}/performance`}>
-                          <Button variant="ghost" size="sm" className="text-primary text-xs">
-                            Performance
-                          </Button>
-                        </Link>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
+    <AdminUsersClient
+      users={users.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt.toISOString(),
+        completedEnrollments: user.enrollments.filter((enrollment) => enrollment.paymentStatus === "completed").length,
+        pendingEnrollments: user.enrollments.filter((enrollment) => enrollment.paymentStatus === "pending").length,
+        disabledReason:
+          user.id === admin.id
+            ? "You cannot delete your own administrator account."
+            : isSuperAdmin(user.role)
+              ? "SUPER_ADMIN accounts cannot be deleted here."
+              : undefined,
+        canViewPerformance: !isAdminRole(user.role),
+      }))}
+    />
   );
 }

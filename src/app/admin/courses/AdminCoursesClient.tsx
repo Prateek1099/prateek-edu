@@ -82,6 +82,7 @@ export default function AdminCoursesClient({
   const [selectedCourse, setSelectedCourse] = useState<CourseRow | null>(null);
   const [loading, setLoading] = useState(false);
   const [tableSearch, setTableSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -149,8 +150,10 @@ export default function AdminCoursesClient({
 
   const filteredCourses = useMemo(() => {
     const q = tableSearch.trim().toLowerCase();
-    if (!q) return courses;
     return courses.filter((c) => {
+      if (statusFilter === "published" && !c.isPublished) return false;
+      if (statusFilter === "draft" && c.isPublished) return false;
+      if (!q) return true;
       const sub = `${c.subject.name} ${c.subject.code ?? ""} ${c.subject.qualification.title}`.toLowerCase();
       return (
         c.title.toLowerCase().includes(q) ||
@@ -159,7 +162,7 @@ export default function AdminCoursesClient({
         String(c.price).includes(q)
       );
     });
-  }, [courses, tableSearch]);
+  }, [courses, statusFilter, tableSearch]);
 
   const SubjectSelect = ({ id }: { id: string }) => (
     <div className="space-y-2">
@@ -280,41 +283,83 @@ export default function AdminCoursesClient({
     Boolean(selectedCourse?.isPublished) || selectedCourseHasHistory;
 
   const formFields = (idPrefix: "add-course" | "edit-course") => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="space-y-5">
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div>
+          <h3 className="font-semibold">1. Basic details</h3>
+          <p className="text-sm text-muted-foreground">The title and copy students see in the course catalog.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-title`}>Title <span className="text-destructive">*</span></Label>
+            <Input
+              id={`${idPrefix}-title`}
+              required
+              value={title}
+              onChange={(e) => {
+                const nextTitle = e.target.value;
+                setTitle(nextTitle);
+                if (isAddOpen) {
+                  setSlug(nextTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
+                }
+              }}
+              placeholder="e.g. IGCSE Computer Science"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-slug`}>Slug <span className="text-destructive">*</span></Label>
+            <Input
+              id={`${idPrefix}-slug`}
+              required
+              value={slug}
+              onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+              placeholder="e.g. igcse-computer-science"
+            />
+            <p className="text-xs text-muted-foreground">Lowercase URL text; changing it changes the public course URL.</p>
+          </div>
+        </div>
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-title`}>Title</Label>
-          <Input
-            id={`${idPrefix}-title`}
-            required
-            value={title}
-            onChange={(e) => {
-              const nextTitle = e.target.value;
-              setTitle(nextTitle);
-              if (isAddOpen) {
-                setSlug(nextTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""));
-              }
-            }}
-            placeholder="e.g. IGCSE Computer Science"
+          <Label htmlFor={`${idPrefix}-short-desc`}>Short description</Label>
+          <Textarea
+            id={`${idPrefix}-short-desc`}
+            className="min-h-24 resize-y"
+            value={shortDescription}
+            onChange={(e) => setShortDescription(e.target.value)}
+            placeholder="Brief summary for catalog cards…"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-slug`}>Slug</Label>
-          <Input
-            id={`${idPrefix}-slug`}
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-            placeholder="e.g. igcse-computer-science"
+          <Label htmlFor={`${idPrefix}-desc`}>Full description</Label>
+          <Textarea
+            id={`${idPrefix}-desc`}
+            className="min-h-36 resize-y"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Full course details for the detail page…"
           />
         </div>
-      </div>
+      </section>
 
-      <SubjectSelect id={`${idPrefix}-subject`} />
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div>
+          <h3 className="font-semibold">2. Board and subject</h3>
+          <p className="text-sm text-muted-foreground">Place the course in the correct academic catalog.</p>
+        </div>
+        <SubjectSelect id={`${idPrefix}-subject`} />
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-price`}>Price (₹)</Label>
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold">3. Pricing</h3>
+            <p className="text-sm text-muted-foreground">Set ₹0 for a free course. Existing payment behavior is unchanged.</p>
+          </div>
+          <Badge variant={Number(price || 0) > 0 ? "default" : "secondary"}>
+            {Number(price || 0) > 0 ? "Paid course" : "Free course"}
+          </Badge>
+        </div>
+        <div className="max-w-sm space-y-2">
+          <Label htmlFor={`${idPrefix}-price`}>Price (₹) <span className="text-destructive">*</span></Label>
           <Input
             id={`${idPrefix}-price`}
             required
@@ -326,104 +371,68 @@ export default function AdminCoursesClient({
             placeholder="0"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-instructor`}>Instructor Name</Label>
-          <Input
-            id={`${idPrefix}-instructor`}
-            value={instructorName}
-            onChange={(e) => setInstructorName(e.target.value)}
-            placeholder="e.g. Jane Doe"
-          />
-        </div>
-      </div>
+      </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-level`}>Level</Label>
-          <Input
-            id={`${idPrefix}-level`}
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-            placeholder="e.g. Beginner, Intermediate"
-          />
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div>
+          <h3 className="font-semibold">4. Instructor and learning details</h3>
+          <p className="text-sm text-muted-foreground">Optional information used on the public detail page.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-instructor`}>Instructor name</Label>
+            <Input id={`${idPrefix}-instructor`} value={instructorName} onChange={(e) => setInstructorName(e.target.value)} placeholder="e.g. Jane Doe" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-level`}>Level</Label>
+            <Input id={`${idPrefix}-level`} value={level} onChange={(e) => setLevel(e.target.value)} placeholder="e.g. Beginner" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-language`}>Language</Label>
+            <Input id={`${idPrefix}-language`} value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="e.g. English" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-outcomes`}>Learning outcomes</Label>
+            <Textarea id={`${idPrefix}-outcomes`} className="min-h-32 resize-y" value={learningOutcomes} onChange={(e) => setLearningOutcomes(e.target.value)} placeholder="What will students learn? One item per line." />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${idPrefix}-requirements`}>Requirements</Label>
+            <Textarea id={`${idPrefix}-requirements`} className="min-h-32 resize-y" value={requirements} onChange={(e) => setRequirements(e.target.value)} placeholder="Prerequisites, one item per line." />
+          </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-language`}>Language</Label>
-          <Input
-            id={`${idPrefix}-language`}
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            placeholder="e.g. English"
-          />
+          <Label htmlFor={`${idPrefix}-audience`}>Target audience</Label>
+          <Textarea id={`${idPrefix}-audience`} className="min-h-24 resize-y" value={targetAudience} onChange={(e) => setTargetAudience(e.target.value)} placeholder="Who is this course for?" />
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-short-desc`}>Short Description</Label>
-        <Textarea
-          id={`${idPrefix}-short-desc`}
-          className="min-h-[80px] resize-y"
-          value={shortDescription}
-          onChange={(e) => setShortDescription(e.target.value)}
-          placeholder="Brief summary for catalog cards..."
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-desc`}>Full Description</Label>
-        <Textarea
-          id={`${idPrefix}-desc`}
-          className="min-h-[120px] resize-y"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Full course details for the detail page..."
-        />
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-outcomes`}>Learning Outcomes</Label>
-          <Textarea
-            id={`${idPrefix}-outcomes`}
-            className="min-h-[100px] resize-y"
-            value={learningOutcomes}
-            onChange={(e) => setLearningOutcomes(e.target.value)}
-            placeholder="What will they learn? (one per line)"
-          />
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div>
+          <h3 className="font-semibold">5. Thumbnail</h3>
+          <p className="text-sm text-muted-foreground">Use an existing secure public image URL.</p>
         </div>
         <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-requirements`}>Requirements</Label>
-          <Textarea
-            id={`${idPrefix}-requirements`}
-            className="min-h-[100px] resize-y"
-            value={requirements}
-            onChange={(e) => setRequirements(e.target.value)}
-            placeholder="Prerequisites? (one per line)"
-          />
+          <Label htmlFor={`${idPrefix}-image`}>Thumbnail or image URL</Label>
+          <Input id={`${idPrefix}-image`} type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
         </div>
-      </div>
-      
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-audience`}>Target Audience</Label>
-        <Textarea
-          id={`${idPrefix}-audience`}
-          className="min-h-[80px] resize-y"
-          value={targetAudience}
-          onChange={(e) => setTargetAudience(e.target.value)}
-          placeholder="Who is this course for?"
-        />
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-image`}>Thumbnail/Image URL</Label>
-        <Input
-          id={`${idPrefix}-image`}
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://..."
-        />
-      </div>
+      <section className="space-y-4 rounded-xl border bg-card p-5">
+        <div>
+          <h3 className="font-semibold">6. Publishing</h3>
+          <p className="text-sm text-muted-foreground">Draft courses stay out of the public catalog.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Button type="button" variant={!isPublished ? "default" : "outline"} onClick={() => setIsPublished(false)}>
+            Save as draft
+          </Button>
+          <Button type="button" variant={isPublished ? "default" : "outline"} onClick={() => setIsPublished(true)}>
+            Publish course
+          </Button>
+        </div>
+      </section>
     </div>
   );
 
@@ -471,14 +480,35 @@ export default function AdminCoursesClient({
           <CardTitle className="text-lg">Catalog</CardTitle>
           <CardDescription>Filter by title, description, subject, or price.</CardDescription>
         </CardHeader>
-        <div className="px-6 pb-4 max-w-md">
+        <div className="grid gap-3 px-4 pb-4 sm:px-6 md:max-w-2xl md:grid-cols-[minmax(220px,1fr)_180px]">
           <Input
             placeholder="Filter courses…"
             value={tableSearch}
             onChange={(e) => setTableSearch(e.target.value)}
           />
+          <Select
+            value={statusFilter}
+            onValueChange={(value) =>
+              setStatusFilter((value || "all") as "all" | "published" | "draft")
+            }
+          >
+            <SelectTrigger aria-label="Filter courses by publish status">
+              <SelectValue>
+                {statusFilter === "all"
+                  ? "All statuses"
+                  : statusFilter === "published"
+                    ? "Published"
+                    : "Draft"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <div className="border-t overflow-x-auto">
+        <div className="hidden border-t overflow-x-auto lg:block">
           <Table>
             <TableHeader>
               <TableRow>
@@ -536,19 +566,72 @@ export default function AdminCoursesClient({
             </TableBody>
           </Table>
         </div>
+        <div className="grid gap-4 border-t p-4 sm:grid-cols-2 lg:hidden">
+          {filteredCourses.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground sm:col-span-2">
+              No courses match this filter.
+            </div>
+          ) : (
+            filteredCourses.map((course) => (
+              <article key={course.id} className="space-y-4 rounded-xl border bg-card p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold leading-snug">{course.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {course.subject.name} · {course.subject.qualification.title}
+                    </p>
+                  </div>
+                  <Badge variant={course.isPublished ? "default" : "secondary"}>
+                    {course.isPublished ? "Published" : "Draft"}
+                  </Badge>
+                </div>
+                {course.shortDescription && (
+                  <p className="line-clamp-2 text-sm text-muted-foreground">
+                    {course.shortDescription}
+                  </p>
+                )}
+                <div className="flex items-center justify-between rounded-lg bg-muted/40 p-3">
+                  <span className="font-semibold">₹{course.price.toLocaleString("en-IN")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {course._count.enrollments} enrolled
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleTogglePublish(course)}>
+                    {course.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                    <span className="sr-only">{course.isPublished ? "Unpublish" : "Publish"}</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => openEdit(course)}>
+                    <Pencil className="size-4" />
+                    Edit
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => openDelete(course)}>
+                    <Trash2 className="size-4" />
+                    <span className="sr-only">Delete</span>
+                  </Button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </Card>
 
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[94vh] overflow-y-auto p-0 sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Add course</DialogTitle>
-            <DialogDescription>Create a priced offering tied to one subject.</DialogDescription>
+            <div className="border-b px-6 py-5">
+              <DialogTitle>Add course</DialogTitle>
+              <DialogDescription className="mt-1">Create a catalog offering without changing curriculum or payment logic.</DialogDescription>
+            </div>
           </DialogHeader>
-          <form onSubmit={handleAdd} className="space-y-4">
-            {formFields("add-course")}
-            <DialogFooter>
+          <form onSubmit={handleAdd}>
+            <div className="bg-muted/20 px-4 py-5 sm:px-6">{formFields("add-course")}</div>
+            <DialogFooter className="sticky bottom-0 border-t bg-background/95 px-6 py-4 backdrop-blur">
+              <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)} disabled={loading}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Saving…" : "Save"}
+                {loading ? "Saving…" : isPublished ? "Save and publish" : "Save draft"}
               </Button>
             </DialogFooter>
           </form>
@@ -556,15 +639,21 @@ export default function AdminCoursesClient({
       </Dialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[94vh] overflow-y-auto p-0 sm:max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Edit course</DialogTitle>
+            <div className="border-b px-6 py-5">
+              <DialogTitle>Edit course</DialogTitle>
+              <DialogDescription className="mt-1">Update catalog details, pricing, and publishing state.</DialogDescription>
+            </div>
           </DialogHeader>
-          <form onSubmit={handleEdit} className="space-y-4">
-            {formFields("edit-course")}
-            <DialogFooter>
+          <form onSubmit={handleEdit}>
+            <div className="bg-muted/20 px-4 py-5 sm:px-6">{formFields("edit-course")}</div>
+            <DialogFooter className="sticky bottom-0 border-t bg-background/95 px-6 py-4 backdrop-blur">
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)} disabled={loading}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={loading}>
-                {loading ? "Saving…" : "Update"}
+                {loading ? "Saving…" : "Save changes"}
               </Button>
             </DialogFooter>
           </form>

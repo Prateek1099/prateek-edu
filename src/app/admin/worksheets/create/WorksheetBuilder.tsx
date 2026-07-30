@@ -9,7 +9,24 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
-export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
+type WorksheetTopic = {
+  id: string;
+  topicName: string;
+};
+
+type WorksheetSubject = {
+  id: string;
+  name: string;
+  topics: WorksheetTopic[];
+};
+
+export function WorksheetBuilder({
+  subjects,
+  source,
+}: {
+  subjects: WorksheetSubject[];
+  source: "bank" | "ai";
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +36,6 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
   const [topicId, setTopicId] = useState("all");
   const [difficulty, setDifficulty] = useState("mixed");
   const [questionCount, setQuestionCount] = useState("10");
-  const [source, setSource] = useState("bank");
-
   const selectedSubject = subjects.find(s => s.id === subjectId);
   const topics: { id: string; topicName: string }[] = selectedSubject?.topics || [];
 
@@ -47,16 +62,23 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
       if (!res.ok) throw new Error(data.error || "Failed to generate worksheet");
       
       router.push(`/admin/worksheets/${data.worksheetId}/print`);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to generate worksheet");
       setLoading(false);
     }
   };
 
   return (
-    <Card className="max-w-2xl">
+    <Card>
       <CardHeader>
-        <CardTitle>Worksheet Configuration</CardTitle>
+        <CardTitle>
+          {source === "bank" ? "Generate from Question Bank" : "Generate with AI"}
+        </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {source === "bank"
+            ? "Build a worksheet from existing reviewed questions."
+            : "Generate a worksheet with Gemini. Review the generated material before publishing."}
+        </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleGenerate} className="space-y-6">
@@ -65,7 +87,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Validation Intervention" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Subject</Label>
               <Select value={subjectId} onValueChange={(v) => setSubjectId(v || "")}>
@@ -83,7 +105,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Mixed Topics (Revision)</SelectItem>
-                  {topics.map((t: any) => (
+                  {topics.map((t) => (
                     <SelectItem key={t.id} value={t.id}>{t.topicName}</SelectItem>
                   ))}
                 </SelectContent>
@@ -91,7 +113,7 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Difficulty</Label>
               <Select value={difficulty} onValueChange={(v) => setDifficulty(v || "mixed")}>
@@ -119,17 +141,11 @@ export function WorksheetBuilder({ subjects }: { subjects: any[] }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Generation Source</Label>
-            <Select value={source} onValueChange={(v) => setSource(v || "bank")}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bank">Existing Question Bank (Recommended)</SelectItem>
-                <SelectItem value="ai">AI Generated (Gemini)</SelectItem>
-              </SelectContent>
-            </Select>
-            {source === "ai" && <p className="text-xs text-muted-foreground mt-1">AI generation takes slightly longer and may produce varied formatting.</p>}
-          </div>
+          {source === "ai" && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
+              AI generation may take longer and can produce varied formatting. This phase does not add a new draft-first workflow.
+            </div>
+          )}
 
           {error && <div className="text-sm text-destructive">{error}</div>}
 

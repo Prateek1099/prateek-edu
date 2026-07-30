@@ -13,13 +13,32 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { parseQuestions, type ParseResult } from "@/lib/parseQuestions";
 import { appendBankQuestions, deleteBankQuestion } from "@/app/actions/admin";
-import { Database, Plus, Trash2, Upload, AlertCircle, FileText } from "lucide-react";
+import { Trash2, Upload, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { useAdminBoard } from "@/components/AdminBoardContext";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
+type BankQuestion = {
+  id: string;
+  subjectId: string;
+  topicId: string | null;
+  questionText: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: string;
+  difficulty: string;
+  marks: number;
+  topicTag: string | null;
+  subject: {
+    name: string;
+    qualification: { board: { name: string } };
+  };
+  topic: { topicName: string } | null;
+};
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 bg-emerald-500/10",
@@ -32,7 +51,7 @@ export default function AdminBankClient({
   subjectOptions,
   topicOptions,
 }: {
-  initialQuestions: any[];
+  initialQuestions: BankQuestion[];
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
 }) {
@@ -57,6 +76,7 @@ export default function AdminBankClient({
   const [importText, setImportText] = useState("");
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [importing, setImporting] = useState(false);
+  const [expandedQuestionId, setExpandedQuestionId] = useState<string | null>(null);
 
   // Derived options
   const filteredTopicOptions = useMemo(() => {
@@ -106,7 +126,7 @@ export default function AdminBankClient({
       } else {
         toast.error(res.error || "Failed to import");
       }
-    } catch (e) {
+    } catch {
       toast.error("Failed to import");
     } finally {
       setImporting(false);
@@ -128,16 +148,23 @@ export default function AdminBankClient({
     <div className="space-y-6">
       
       {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium">
+            {filteredQuestions.length} of {questions.length} questions
+          </p>
+          <Button onClick={() => setImportOpen(true)} className="w-full gap-2 sm:w-auto">
+            <Upload className="h-4 w-4" /> Bulk import
+          </Button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_minmax(190px,260px)_minmax(180px,240px)_150px]">
           <Input 
-            placeholder="Search questions..." 
+            placeholder="Search question text or topic tag…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-64"
           />
           <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v || "all"); setTopicFilter("all"); }}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="All Subjects" />
             </SelectTrigger>
             <SelectContent>
@@ -148,7 +175,7 @@ export default function AdminBankClient({
             </SelectContent>
           </Select>
           <Select value={topicFilter} onValueChange={(v) => setTopicFilter(v || "all")} disabled={subjectFilter === "all"}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="All Topics" />
             </SelectTrigger>
             <SelectContent>
@@ -159,7 +186,7 @@ export default function AdminBankClient({
             </SelectContent>
           </Select>
           <Select value={difficultyFilter} onValueChange={(v) => setDifficultyFilter(v || "all")}>
-            <SelectTrigger className="w-full sm:w-32">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Difficulty" />
             </SelectTrigger>
             <SelectContent>
@@ -170,15 +197,11 @@ export default function AdminBankClient({
             </SelectContent>
           </Select>
         </div>
-        
-        <Button onClick={() => setImportOpen(true)} className="w-full sm:w-auto gap-2">
-          <Upload className="h-4 w-4" /> Bulk Import
-        </Button>
       </div>
 
       {/* Data Table */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="overflow-x-auto p-0">
           <Table>
             <TableHeader>
               <TableRow>
@@ -199,12 +222,12 @@ export default function AdminBankClient({
                 filteredQuestions.map(q => (
                   <TableRow key={q.id}>
                     <TableCell>
-                      <p className="font-medium line-clamp-2">{q.questionText}</p>
-                      <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
-                        <span className={q.correctAnswer === 'A' ? "text-emerald-500 font-bold" : ""}>A: {q.optionA}</span>
-                        <span className={q.correctAnswer === 'B' ? "text-emerald-500 font-bold" : ""}>B: {q.optionB}</span>
-                        <span className={q.correctAnswer === 'C' ? "text-emerald-500 font-bold" : ""}>C: {q.optionC}</span>
-                        <span className={q.correctAnswer === 'D' ? "text-emerald-500 font-bold" : ""}>D: {q.optionD}</span>
+                      <p className={cn("font-medium", expandedQuestionId === q.id ? "" : "line-clamp-2")}>{q.questionText}</p>
+                      <div className={cn("mt-3 grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2", expandedQuestionId === q.id ? "" : "hidden")}>
+                        <span className={q.correctAnswer === "A" ? "font-semibold text-emerald-600" : ""}>A: {q.optionA}</span>
+                        <span className={q.correctAnswer === "B" ? "font-semibold text-emerald-600" : ""}>B: {q.optionB}</span>
+                        <span className={q.correctAnswer === "C" ? "font-semibold text-emerald-600" : ""}>C: {q.optionC}</span>
+                        <span className={q.correctAnswer === "D" ? "font-semibold text-emerald-600" : ""}>D: {q.optionD}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -223,9 +246,21 @@ export default function AdminBankClient({
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(q.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
+                      <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setExpandedQuestionId((current) => current === q.id ? null : q.id)}
+                        title={expandedQuestionId === q.id ? "Hide preview" : "Preview question"}
+                      >
+                        {expandedQuestionId === q.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        <span className="sr-only">{expandedQuestionId === q.id ? "Hide preview" : "Preview question"}</span>
                       </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(q.id)} className="text-destructive hover:bg-destructive/10 hover:text-destructive" title="Delete question">
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete question</span>
+                      </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -237,13 +272,13 @@ export default function AdminBankClient({
 
       {/* Import Dialog */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Bulk Import Questions</DialogTitle>
             <DialogDescription>Paste questions in the required format to add them to the Bank.</DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Subject</Label>
               <Select value={importSubject} onValueChange={(v) => { setImportSubject(v || ""); setImportTopic("none"); }}>
@@ -269,6 +304,16 @@ export default function AdminBankClient({
             </div>
           </div>
 
+          <div className="rounded-xl border bg-muted/30 p-4 text-sm">
+            <p className="font-medium">Import format</p>
+            <p className="mt-1 text-muted-foreground">
+              Separate questions with <code className="rounded bg-background px-1 py-0.5">---</code>. Each question needs QUESTION, options A–D, and ANSWER. Explanation, topic, difficulty, and marks are optional.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Parse first. Nothing is written to the Question Bank until the preview has no errors and you confirm the import.
+            </p>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Raw Question Data</Label>
@@ -287,7 +332,7 @@ export default function AdminBankClient({
               {parseResult.errors.length > 0 && (
                 <div className="p-4 bg-destructive/10 text-destructive rounded-lg space-y-2">
                   <div className="font-bold flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" /> Parsing Errors
+                    <AlertCircle className="h-5 w-5" /> Parsing errors — import blocked
                   </div>
                   <ul className="list-disc pl-5 text-sm">
                     {parseResult.errors.map((e, i) => (
@@ -299,7 +344,7 @@ export default function AdminBankClient({
               
               {parseResult.questions.length > 0 && (
                 <div className="p-4 bg-emerald-500/10 text-emerald-600 rounded-lg space-y-2">
-                  <div className="font-bold">Successfully parsed {parseResult.questions.length} questions!</div>
+                  <div className="font-bold">Ready to import {parseResult.questions.length} questions</div>
                   <Button onClick={handleImport} disabled={importing || parseResult.errors.length > 0} className="bg-emerald-600 hover:bg-emerald-700 text-white w-full">
                     {importing ? "Importing..." : "Confirm Import to Question Bank"}
                   </Button>

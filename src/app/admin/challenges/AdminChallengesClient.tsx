@@ -96,11 +96,47 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
     if (selectedBoard === "all") return subjectOptions;
     return subjectOptions.filter(s => s.board === selectedBoard);
   }, [subjectOptions, selectedBoard]);
-  
+
+  const [search, setSearch] = useState("");
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  const [topicFilter, setTopicFilter] = useState("all");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "published" | "draft">("all");
+
+  const filterTopics = useMemo(() => {
+    if (subjectFilter === "all") return [];
+    return topicOptions.filter((topic) => topic.subjectId === subjectFilter);
+  }, [subjectFilter, topicOptions]);
+
   const filteredChallenges = useMemo(() => {
-    if (selectedBoard === "all") return challenges;
-    return challenges.filter(c => c.subject.qualification.board.name === selectedBoard);
-  }, [challenges, selectedBoard]);
+    const query = search.trim().toLowerCase();
+    return challenges.filter((challenge) => {
+      if (
+        selectedBoard !== "all" &&
+        challenge.subject.qualification.board.name !== selectedBoard
+      ) return false;
+      if (subjectFilter !== "all" && challenge.subjectId !== subjectFilter) return false;
+      if (topicFilter !== "all" && challenge.topicId !== topicFilter) return false;
+      if (difficultyFilter !== "all" && challenge.difficulty !== difficultyFilter) return false;
+      if (statusFilter === "published" && !challenge.isPublished) return false;
+      if (statusFilter === "draft" && challenge.isPublished) return false;
+      if (
+        query &&
+        !`${challenge.title} ${challenge.subject.name} ${challenge.topic?.topicName ?? ""}`
+          .toLowerCase()
+          .includes(query)
+      ) return false;
+      return true;
+    });
+  }, [
+    challenges,
+    difficultyFilter,
+    search,
+    selectedBoard,
+    statusFilter,
+    subjectFilter,
+    topicFilter,
+  ]);
 
   // Dialog states
   const [showCreate, setShowCreate] = useState(false);
@@ -269,24 +305,96 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
   return (
     <div className="space-y-6">
       {/* Top bar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {filteredChallenges.length} challenge{filteredChallenges.length !== 1 ? "s" : ""}
-        </p>
-        <Button onClick={() => { resetForm(); setShowCreate(true); }}>
-          <Plus className="h-4 w-4 mr-2" /> Create Challenge
-        </Button>
+      <div className="rounded-xl border bg-card p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-medium">
+            {filteredChallenges.length} of {challenges.length} challenges
+          </p>
+          <Button onClick={() => { resetForm(); setShowCreate(true); }} className="w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" /> Create challenge
+          </Button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search challenges…"
+            aria-label="Search challenges"
+          />
+          <Select
+            value={subjectFilter}
+            onValueChange={(value) => {
+              setSubjectFilter(value || "all");
+              setTopicFilter("all");
+            }}
+          >
+            <SelectTrigger aria-label="Filter challenges by subject">
+              <SelectValue placeholder="All subjects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All subjects</SelectItem>
+              {filteredSubjectOptions.map((subject) => (
+                <SelectItem key={subject.id} value={subject.id}>{subject.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={topicFilter} onValueChange={(value) => setTopicFilter(value || "all")} disabled={subjectFilter === "all"}>
+            <SelectTrigger aria-label="Filter challenges by topic">
+              <SelectValue placeholder="All topics" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All topics</SelectItem>
+              {filterTopics.map((topic) => (
+                <SelectItem key={topic.id} value={topic.id}>{topic.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={difficultyFilter} onValueChange={(value) => setDifficultyFilter(value || "all")}>
+            <SelectTrigger aria-label="Filter challenges by difficulty">
+              <SelectValue placeholder="All difficulties" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All difficulties</SelectItem>
+              {DIFFICULTY_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) =>
+              setStatusFilter((value || "all") as "all" | "published" | "draft")
+            }
+          >
+            <SelectTrigger aria-label="Filter challenges by publish status">
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Table */}
       {filteredChallenges.length === 0 ? (
         <div className="text-center py-20 bg-muted/20 rounded-xl border border-dashed">
           <Trophy className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-semibold">No challenges yet</h3>
-          <p className="text-muted-foreground mb-4">Create your first challenge with bulk import.</p>
-          <Button onClick={() => { resetForm(); setShowCreate(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Create Challenge
-          </Button>
+          <h3 className="text-lg font-semibold">
+            {challenges.length === 0 ? "No challenges yet" : "No matching challenges"}
+          </h3>
+          <p className="mb-4 text-muted-foreground">
+            {challenges.length === 0
+              ? "Create your first challenge with bulk import."
+              : "Adjust the search or filters to see more results."}
+          </p>
+          {challenges.length === 0 && (
+            <Button onClick={() => { resetForm(); setShowCreate(true); }}>
+              <Plus className="mr-2 h-4 w-4" /> Create challenge
+            </Button>
+          )}
         </div>
       ) : (
         <Card className="shadow-sm overflow-hidden">
@@ -352,7 +460,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
 
       {/* CREATE DIALOG */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Create Challenge</DialogTitle>
             <DialogDescription>Set up the challenge and paste your questions below.</DialogDescription>
@@ -479,7 +587,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
 
       {/* EDIT DIALOG */}
       <Dialog open={showEdit} onOpenChange={setShowEdit}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Challenge</DialogTitle>
             <DialogDescription>Update challenge details. Questions are not modified here.</DialogDescription>
@@ -543,7 +651,7 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
 
       {/* APPEND QUESTIONS DIALOG */}
       <Dialog open={showAppend} onOpenChange={setShowAppend}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>Add Questions to: {editing?.title}</DialogTitle>
             <DialogDescription>

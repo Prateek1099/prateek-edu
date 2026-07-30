@@ -105,7 +105,7 @@ export function PdfWorksheetUploader({ subjects }: { subjects: WorksheetSubject[
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Databases Practice Worksheet" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Subject</Label>
               <Select value={subjectId} onValueChange={(v) => setSubjectId(v || "")}>

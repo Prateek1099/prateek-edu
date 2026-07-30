@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   LayoutDashboard,
   BookOpen,
@@ -18,12 +19,19 @@ import {
   Layers,
   ListTree,
   Briefcase,
+  Menu,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdminBoard } from "./AdminBoardContext";
-
-
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; match: "exact" | "prefix" };
 
@@ -56,13 +64,22 @@ function linkActive(pathname: string, href: string, match: "exact" | "prefix") {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+}) {
   const active = linkActive(pathname, item.href, item.match);
   return (
     <Link
       href={item.href}
+      onClick={onNavigate}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
           ? "bg-primary/10 text-primary"
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -82,15 +99,24 @@ function SectionLabel({ label }: { label: string }) {
   );
 }
 
-export function AdminSidebar({ boards }: { boards: { value: string, label: string }[] }) {
-  const pathname = usePathname() || "";
+function SidebarContent({
+  boards,
+  pathname,
+  onNavigate,
+  className,
+}: {
+  boards: { value: string; label: string }[];
+  pathname: string;
+  onNavigate?: () => void;
+  className?: string;
+}) {
   const { selectedBoard, setSelectedBoard } = useAdminBoard();
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-border/60 bg-card">
+    <div className={cn("flex h-full min-h-0 flex-col bg-card", className)}>
       {/* Header */}
       <div className="border-b border-border/60 p-5">
-        <Link href="/admin" className="block">
+        <Link href="/admin" className="block" onClick={onNavigate}>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
             Vexa
           </p>
@@ -126,8 +152,9 @@ export function AdminSidebar({ boards }: { boards: { value: string, label: strin
         {/* Dashboard */}
         <Link
           href="/admin"
+          onClick={onNavigate}
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
             pathname === "/admin"
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -141,7 +168,7 @@ export function AdminSidebar({ boards }: { boards: { value: string, label: strin
         <SectionLabel label="Content" />
         <div className="flex flex-col gap-0.5">
           {contentNav.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </div>
 
@@ -149,7 +176,7 @@ export function AdminSidebar({ boards }: { boards: { value: string, label: strin
         <SectionLabel label="Administration" />
         <div className="flex flex-col gap-0.5">
           {adminNav.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </div>
 
@@ -157,7 +184,7 @@ export function AdminSidebar({ boards }: { boards: { value: string, label: strin
         <SectionLabel label="Academic Structure" />
         <div className="flex flex-col gap-0.5">
           {structureNav.map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
           ))}
         </div>
       </nav>
@@ -166,12 +193,53 @@ export function AdminSidebar({ boards }: { boards: { value: string, label: strin
       <div className="border-t border-border/60 p-3">
         <Link
           href="/api/auth/signout"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
+          className="flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
         >
           <LogOut className="size-4 shrink-0" />
           Sign out
         </Link>
       </div>
-    </aside>
+    </div>
+  );
+}
+
+export function AdminSidebar({ boards }: { boards: { value: string; label: string }[] }) {
+  const pathname = usePathname() || "";
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border/60 bg-card lg:block">
+        <SidebarContent boards={boards} pathname={pathname} />
+      </aside>
+
+      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-4 backdrop-blur lg:hidden">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Vexa
+          </p>
+          <p className="font-semibold tracking-tight">Admin Panel</p>
+        </div>
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetTrigger
+            className="inline-flex size-10 items-center justify-center rounded-lg border bg-card text-foreground hover:bg-muted"
+            aria-label="Open admin navigation"
+          >
+            <Menu className="size-5" />
+          </SheetTrigger>
+          <SheetContent side="left" className="w-[19rem] max-w-[88vw] gap-0 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Admin navigation</SheetTitle>
+              <SheetDescription>Navigate Vexa administration pages.</SheetDescription>
+            </SheetHeader>
+            <SidebarContent
+              boards={boards}
+              pathname={pathname}
+              onNavigate={() => setMobileOpen(false)}
+            />
+          </SheetContent>
+        </Sheet>
+      </div>
+    </>
   );
 }
