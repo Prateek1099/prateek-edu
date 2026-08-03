@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ import {
   AlertCircle,
   Trophy,
   Upload,
+  LibraryBig,
 } from "lucide-react";
 
 import { useAdminBoard } from "@/components/AdminBoardContext";
@@ -310,9 +312,19 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
           <p className="text-sm font-medium">
             {filteredChallenges.length} of {challenges.length} challenges
           </p>
-          <Button onClick={() => { resetForm(); setShowCreate(true); }} className="w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> Create challenge
-          </Button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/admin/challenges/create-from-bank" />}
+              className="w-full sm:w-auto"
+            >
+              <LibraryBig className="mr-2 h-4 w-4" /> Create from Question Bank
+            </Button>
+            <Button onClick={() => { resetForm(); setShowCreate(true); }} className="w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" /> Create manually
+            </Button>
+          </div>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <Input
@@ -387,13 +399,22 @@ export default function AdminChallengesClient({ challenges, subjectOptions, topi
           </h3>
           <p className="mb-4 text-muted-foreground">
             {challenges.length === 0
-              ? "Create your first challenge with bulk import."
+              ? "Create your first challenge manually or from reviewed Question Bank questions."
               : "Adjust the search or filters to see more results."}
           </p>
           {challenges.length === 0 && (
-            <Button onClick={() => { resetForm(); setShowCreate(true); }}>
-              <Plus className="mr-2 h-4 w-4" /> Create challenge
-            </Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/admin/challenges/create-from-bank" />}
+              >
+                <LibraryBig className="mr-2 h-4 w-4" /> Create from Question Bank
+              </Button>
+              <Button onClick={() => { resetForm(); setShowCreate(true); }}>
+                <Plus className="mr-2 h-4 w-4" /> Create manually
+              </Button>
+            </div>
           )}
         </div>
       ) : (

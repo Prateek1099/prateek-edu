@@ -347,6 +347,162 @@ export async function createChallenge(data: {
   }
 }
 
+export async function createChallengeFromBank(data: {
+  title: string;
+  subjectId: string;
+  topicId: string | null;
+  difficulty: string;
+  questionDifficulty: string;
+  estimatedTime: number;
+  isPublished: boolean;
+  questionIds: string[];
+}) {
+  const denied = await forbidIfNeeded();
+  if (denied) return { success: false as const, error: denied };
+
+  const title = typeof data.title === "string" ? data.title.trim() : "";
+  const allowedDifficulties = new Set(["easy", "medium", "hard", "mixed"]);
+  const allowedQuestionDifficulties = new Set(["all", "easy", "medium", "hard"]);
+  const questionIds = [
+    ...new Set(
+      (Array.isArray(data.questionIds) ? data.questionIds : []).filter(
+        (id): id is string => typeof id === "string" && Boolean(id),
+      ),
+    ),
+  ];
+
+  if (!title) return { success: false as const, error: "Challenge title is required." };
+  if (title.length > 200) return { success: false as const, error: "Challenge title is too long." };
+  if (typeof data.subjectId !== "string" || !data.subjectId) {
+    return { success: false as const, error: "Subject is required." };
+  }
+  if (data.topicId !== null && typeof data.topicId !== "string") {
+    return { success: false as const, error: "Choose a valid topic." };
+  }
+  if (typeof data.isPublished !== "boolean") {
+    return { success: false as const, error: "Choose a valid visibility." };
+  }
+  if (!allowedDifficulties.has(data.difficulty)) {
+    return { success: false as const, error: "Choose a valid challenge difficulty." };
+  }
+  if (!allowedQuestionDifficulties.has(data.questionDifficulty)) {
+    return { success: false as const, error: "Choose a valid Question Bank difficulty filter." };
+  }
+  if (!Number.isInteger(data.estimatedTime) || data.estimatedTime < 1 || data.estimatedTime > 300) {
+    return { success: false as const, error: "Duration must be between 1 and 300 minutes." };
+  }
+  if (questionIds.length === 0) {
+    return { success: false as const, error: "Select at least one Question Bank question." };
+  }
+  if (questionIds.length > 100) {
+    return { success: false as const, error: "A challenge can contain at most 100 questions." };
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const subject = await tx.subject.findUnique({
+        where: { id: data.subjectId },
+        select: { id: true },
+      });
+      if (!subject) {
+        return { success: false as const, error: "Selected subject was not found." };
+      }
+
+      if (data.topicId) {
+        const topic = await tx.topic.findFirst({
+          where: { id: data.topicId, subjectId: data.subjectId },
+          select: { id: true },
+        });
+        if (!topic) {
+          return {
+            success: false as const,
+            error: "Selected topic does not belong to the chosen subject.",
+          };
+        }
+      }
+
+      const questions = await tx.bankQuestion.findMany({
+        where: {
+          id: { in: questionIds },
+          subjectId: data.subjectId,
+          workspaceId: null,
+          ...(data.topicId ? { topicId: data.topicId } : {}),
+          ...(data.questionDifficulty !== "all"
+            ? { difficulty: data.questionDifficulty }
+            : {}),
+        },
+      });
+
+      if (questions.length !== questionIds.length) {
+        return {
+          success: false as const,
+          error:
+            "One or more selected questions are missing, workspace-owned, or outside the chosen subject, topic, or difficulty filter.",
+        };
+      }
+
+      const questionById = new Map(questions.map((question) => [question.id, question]));
+      const orderedQuestions = questionIds.map((id) => questionById.get(id)!);
+      const invalidQuestion = orderedQuestions.find(
+        (question) =>
+          !question.questionText.trim() ||
+          !question.optionA.trim() ||
+          !question.optionB.trim() ||
+          !question.optionC.trim() ||
+          !question.optionD.trim() ||
+          !["A", "B", "C", "D"].includes(question.correctAnswer.trim().toUpperCase()) ||
+          question.marks < 1,
+      );
+      if (invalidQuestion) {
+        return {
+          success: false as const,
+          error: "A selected Question Bank question is incomplete or invalid.",
+        };
+      }
+
+      const challenge = await tx.challenge.create({
+        data: {
+          title,
+          subjectId: data.subjectId,
+          topicId: data.topicId,
+          difficulty: data.difficulty,
+          estimatedTime: data.estimatedTime,
+          isPublished: data.isPublished,
+          type: "CHALLENGE",
+          workspaceId: null,
+          questions: {
+            create: orderedQuestions.map((question, index) => ({
+              questionText: question.questionText,
+              optionA: question.optionA,
+              optionB: question.optionB,
+              optionC: question.optionC,
+              optionD: question.optionD,
+              correctAnswer: question.correctAnswer.trim().toUpperCase(),
+              explanation: question.explanation,
+              topicTag: question.topicTag,
+              difficulty: question.difficulty,
+              marks: question.marks,
+              sortOrder: index,
+            })),
+          },
+        },
+        select: { id: true },
+      });
+
+      return { success: true as const, challengeId: challenge.id };
+    });
+
+    if (!result.success) return result;
+    revalidateChallengeRelated();
+    return result;
+  } catch (error: unknown) {
+    return {
+      success: false as const,
+      error: error instanceof Error ? error.message : "Failed to create challenge from Question Bank.",
+    };
+  }
+}
+
 export async function updateChallenge(id: string, data: {
   title: string;
   subjectId: string;

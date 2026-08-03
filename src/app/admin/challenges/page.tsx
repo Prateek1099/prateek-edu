@@ -54,7 +54,7 @@ export default async function AdminChallengesPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Topic Challenges</h1>
         <p className="text-muted-foreground mt-1">
-          Create and manage topic challenges with bulk question import.
+          Create and manage topic challenges manually or from reviewed Question Bank questions.
         </p>
       </div>
       <AdminChallengesClient
