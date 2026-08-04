@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -89,6 +89,20 @@ export default function SubjectTabsClient({
   });
   const notebookNotes = notes.filter((note) => note.noteType === "NOTEBOOK_WORK");
   const studyNotes = notes.filter((note) => note.noteType === "STUDY_NOTES");
+  const orderedTopicals = useMemo(() => {
+    const topicOrder = new Map(topics.map((topic, index) => [topic.id, index]));
+
+    return [...topicals].sort((left, right) => {
+      const leftOrder = left.topic
+        ? (topicOrder.get(left.topic.id) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      const rightOrder = right.topic
+        ? (topicOrder.get(right.topic.id) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+
+      return leftOrder - rightOrder || left.title.localeCompare(right.title, undefined, { numeric: true });
+    });
+  }, [topicals, topics]);
 
   const renderNoteSection = (
     sectionNotes: Note[],
@@ -237,7 +251,7 @@ export default function SubjectTabsClient({
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {topicals.map((resource) => (
+              {orderedTopicals.map((resource) => (
                 <article key={resource.id} className="flex min-h-64 flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:ring-primary/35 sm:p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">Questions PDF</Badge>
