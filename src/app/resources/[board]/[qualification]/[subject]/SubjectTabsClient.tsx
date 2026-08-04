@@ -57,6 +57,11 @@ function noteExcerpt(note: Note) {
     : "Detailed explanations and revision support for this topic.";
 }
 
+function chapterOrderFromTitle(title: string) {
+  const match = title.match(/\b(?:chapter|ch)\s*[-.:]?\s*(\d+)/i);
+  return match ? Number.parseInt(match[1], 10) - 1 : Number.MAX_SAFE_INTEGER;
+}
+
 export default function SubjectTabsClient({
   topics,
   notes,
@@ -94,11 +99,11 @@ export default function SubjectTabsClient({
 
     return [...topicals].sort((left, right) => {
       const leftOrder = left.topic
-        ? (topicOrder.get(left.topic.id) ?? Number.MAX_SAFE_INTEGER)
-        : Number.MAX_SAFE_INTEGER;
+        ? (topicOrder.get(left.topic.id) ?? chapterOrderFromTitle(left.title))
+        : chapterOrderFromTitle(left.title);
       const rightOrder = right.topic
-        ? (topicOrder.get(right.topic.id) ?? Number.MAX_SAFE_INTEGER)
-        : Number.MAX_SAFE_INTEGER;
+        ? (topicOrder.get(right.topic.id) ?? chapterOrderFromTitle(right.title))
+        : chapterOrderFromTitle(right.title);
 
       return leftOrder - rightOrder || left.title.localeCompare(right.title, undefined, { numeric: true });
     });
