@@ -176,6 +176,7 @@ model Subject {
   qualification    Qualification      @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
   papers           Paper[]
   notes            Note[]
+  topicalQuestions TopicalQuestion[]
   topics           Topic[]
   courses          Course[] // Add course relation here to link courses to subjects properly
   challenges       Challenge[]
@@ -291,6 +292,7 @@ model Topic {
   subject          Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   userProgress     UserTopicProgress[]
   notes            Note[]
+  topicalQuestions TopicalQuestion[]
   challenges       Challenge[]
   bankQuestions    BankQuestion[]
   studentReflections StudentReflection[]
@@ -316,6 +318,26 @@ model Note {
   @@index([subjectId])
   @@index([topicId])
   @@map("notes")
+}
+
+model TopicalQuestion {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?  @db.Text
+  subjectId       String   @map("subject_id")
+  topicId         String?  @map("topic_id")
+  questionsPdfUrl String   @map("questions_pdf_url")
+  answersPdfUrl   String?  @map("answers_pdf_url")
+  isPublished     Boolean  @default(false) @map("is_published")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@index([subjectId, isPublished])
+  @@index([topicId])
+  @@map("topical_questions")
 }
 
 model UserTopicProgress {

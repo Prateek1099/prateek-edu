@@ -29,6 +29,11 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
         include: { topic: true },
         orderBy: [{ topicId: "asc" }, { title: "asc" }],
       },
+      topicalQuestions: {
+        where: { isPublished: true },
+        include: { topic: true },
+        orderBy: [{ topicId: "asc" }, { title: "asc" }],
+      },
       challenges: {
         where: { 
           isPublished: true,
@@ -75,7 +80,20 @@ export default async function SubjectDashboardPage({ params }: { params: Promise
       <SubjectTabsClient 
         topics={subjectData.topics}
         notes={subjectData.notes}
-        subject={subjectData}
+        topicals={subjectData.topicalQuestions.map((resource) => ({
+          id: resource.id,
+          title: resource.title,
+          description: resource.description,
+          hasSolutions: Boolean(resource.answersPdfUrl),
+          topic: resource.topic
+            ? { id: resource.topic.id, topicName: resource.topic.topicName }
+            : null,
+        }))}
+        subject={{
+          slug: subjectData.slug,
+          name: subjectData.name,
+          syllabusPdfUrl: subjectData.syllabusPdfUrl,
+        }}
         challenges={subjectData.challenges}
         board={board}
         qualification={qualification}

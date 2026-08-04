@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowRight, BookMarked, BookOpen, BookOpenCheck, ClipboardCheck, Clock, Download, FileText, ListChecks, NotebookPen, ScrollText, Target, Trophy, Zap } from "lucide-react";
+import { ArrowRight, BookMarked, BookOpen, BookOpenCheck, ClipboardCheck, Clock, Download, FileQuestion, FileText, ListChecks, NotebookPen, ScrollText, Target, Trophy, Zap } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,13 @@ type Note = {
 };
 type Topic = { id: string; topicName: string };
 type Subject = { slug: string; name: string; syllabusPdfUrl: string | null };
+type TopicalQuestion = {
+  id: string;
+  title: string;
+  description: string | null;
+  hasSolutions: boolean;
+  topic: Topic | null;
+};
 type Challenge = {
   id: string;
   title: string;
@@ -53,6 +60,7 @@ function noteExcerpt(note: Note) {
 export default function SubjectTabsClient({
   topics,
   notes,
+  topicals,
   subject,
   challenges = [],
   board = "",
@@ -60,6 +68,7 @@ export default function SubjectTabsClient({
 }: {
   topics: Topic[];
   notes: Note[];
+  topicals: TopicalQuestion[];
   subject: Subject;
   challenges?: Challenge[];
   board?: string;
@@ -176,6 +185,7 @@ export default function SubjectTabsClient({
           <Zap className="h-4 w-4" /> Practice
         </TabsTrigger>
         <TabsTrigger value="notes" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
+        <TabsTrigger value="topicals" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><FileQuestion className="h-4 w-4" /> Topical Questions</TabsTrigger>
         <TabsTrigger value="syllabus" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
       </TabsList>
       
@@ -205,6 +215,54 @@ export default function SubjectTabsClient({
             {renderNoteSection(studyNotes, "STUDY_NOTES")}
           </div>
         )}
+      </TabsContent>
+
+      <TabsContent value="topicals" className="mt-0">
+        <div className="space-y-8">
+          <header className="max-w-2xl">
+            <p className="text-sm font-semibold text-primary">Topical Questions</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Practise one chapter at a time.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
+              Open focused question packs by topic, then use the separate solutions document when you are ready to check your work.
+            </p>
+          </header>
+
+          {topicals.length === 0 ? (
+            <div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-14 text-center">
+              <FileQuestion className="mx-auto size-10 text-muted-foreground" />
+              <h3 className="mt-4 text-lg font-semibold">No topical questions available</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                Published chapter-wise question packs for this subject will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {topicals.map((resource) => (
+                <article key={resource.id} className="flex min-h-64 flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:ring-primary/35 sm:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">Questions PDF</Badge>
+                    {resource.hasSolutions && <Badge variant="outline">Solutions included</Badge>}
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold tracking-tight">{resource.title}</h3>
+                  <p className="mt-1 text-sm font-medium text-primary/80">{resource.topic?.topicName || "Whole subject"}</p>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                    {resource.description || "A focused set of questions for practising this topic."}
+                  </p>
+                  <div className="mt-auto flex flex-col gap-2 pt-6 sm:flex-row">
+                    <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}`} className={cn(buttonVariants({ size: "lg" }), "h-11 flex-1 gap-2")}>
+                      <FileQuestion className="size-4" /> Open Questions
+                    </Link>
+                    {resource.hasSolutions && (
+                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}?document=solutions`} className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 flex-1 gap-2")}>
+                        <BookOpenCheck className="size-4" /> View Solutions
+                      </Link>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
       </TabsContent>
 
       <TabsContent value="practice" className="mt-0">

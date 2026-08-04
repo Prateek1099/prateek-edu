@@ -2,58 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isAdminRole } from "@/lib/roles";
+import { isAdminRole, isSuperAdmin } from "@/lib/roles";
+import { isPrivateOrLocalHostname, isTrustedDocumentHost } from "@/lib/document-security";
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 15_000;
-
-function isPrivateOrLocalHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host.endsWith(".internal") ||
-    host.endsWith(".home.arpa") ||
-    host === "::" ||
-    host === "::1" ||
-    host.startsWith("fc") ||
-    host.startsWith("fd") ||
-    /^fe[89ab]/.test(host)
-  ) {
-    return true;
-  }
-
-  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!ipv4) return host.startsWith("::ffff:");
-
-  const octets = ipv4.slice(1).map(Number);
-  if (octets.some((octet) => octet > 255)) return true;
-  const [first, second] = octets;
-  return (
-    first === 0 ||
-    first === 10 ||
-    first === 127 ||
-    first >= 224 ||
-    (first === 169 && second === 254) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    (first === 192 && second === 168)
-  );
-}
-
-function isTrustedDocumentHost(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  const configuredHosts = (process.env.PDF_ALLOWED_HOSTS || "")
-    .split(",")
-    .map((value) => value.trim().toLowerCase())
-    .filter(Boolean);
-
-  return (
-    host === "blob.vercel-storage.com" ||
-    host.endsWith(".blob.vercel-storage.com") ||
-    configuredHosts.includes(host)
-  );
-}
 
 async function readPdfWithLimit(response: Response): Promise<Uint8Array | null> {
   if (!response.body) return null;
@@ -92,23 +45,49 @@ function hasPdfSignature(bytes: Uint8Array): boolean {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const url = searchParams.get("url");
+    const requestedUrl = searchParams.get("url");
+    const topicalId = searchParams.get("topicalId");
+    const topicalDocument = searchParams.get("document") || "questions";
     const download = searchParams.get("download") === "true";
     const requestedAsNote = searchParams.get("isNote") === "true";
 
-    if (!url) {
-      return new NextResponse("Missing URL", { status: 400 });
+    if (topicalId && topicalDocument !== "questions" && topicalDocument !== "solutions") {
+      return new NextResponse("Invalid topical document type", { status: 400 });
     }
 
+    let url = requestedUrl;
+    if (topicalId) {
+      const topical = await prisma.topicalQuestion.findUnique({
+        where: { id: topicalId },
+        select: { questionsPdfUrl: true, answersPdfUrl: true, isPublished: true },
+      });
+      if (!topical) return new NextResponse("Topical resource not found", { status: 404 });
+
+      if (!topical.isPublished) {
+        const session = await getServerSession(authOptions);
+        const user = session?.user as { role?: string } | undefined;
+        if (!isSuperAdmin(user?.role)) {
+          return new NextResponse("Topical resource not found", { status: 404 });
+        }
+      }
+
+      url = topicalDocument === "solutions" ? topical.answersPdfUrl : topical.questionsPdfUrl;
+      if (!url) return new NextResponse("Topical document not found", { status: 404 });
+    }
+
+    if (!url) return new NextResponse("Missing URL", { status: 400 });
+
     const urlWithEncodedSpaces = url.replace(/ /g, "%20");
-    const note = await prisma.note.findFirst({
-      where: {
-        pdfUrl: {
-          in: Array.from(new Set([url, urlWithEncodedSpaces])),
-        },
-      },
-      select: { isPublished: true },
-    });
+    const note = topicalId
+      ? null
+      : await prisma.note.findFirst({
+          where: {
+            pdfUrl: {
+              in: Array.from(new Set([url, urlWithEncodedSpaces])),
+            },
+          },
+          select: { isPublished: true },
+        });
 
     // Never trust a public query flag to turn an arbitrary URL into a note.
     if (requestedAsNote && !note) {

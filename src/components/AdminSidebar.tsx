@@ -11,6 +11,7 @@ import {
   MessageSquare,
   LogOut,
   StickyNote,
+  FileQuestion,
   Trophy,
   ClipboardList,
   Database,
@@ -38,6 +39,7 @@ type NavItem = { href: string; label: string; icon: LucideIcon; match: "exact" |
 const contentNav: NavItem[] = [
   { href: "/admin/notes", label: "Revision Notes", icon: StickyNote, match: "prefix" },
   { href: "/admin/syllabus", label: "Syllabus", icon: GraduationCap, match: "prefix" },
+  { href: "/admin/topical-questions", label: "Topical Questions", icon: FileQuestion, match: "prefix" },
   { href: "/admin/question-bank", label: "Question Bank", icon: Database, match: "prefix" },
   { href: "/admin/challenges", label: "Challenges", icon: Trophy, match: "prefix" },
   { href: "/admin/worksheets", label: "Worksheets", icon: ClipboardList, match: "prefix" },

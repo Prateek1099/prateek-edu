@@ -12,9 +12,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/b
 
 type NotePdfViewerProps = {
   url: string;
+  loadingLabel?: string;
 };
 
-export default function NotePdfViewer({ url }: NotePdfViewerProps) {
+export default function NotePdfViewer({ url, loadingLabel = "Loading note…" }: NotePdfViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [numPages, setNumPages] = useState<number | undefined>(undefined);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -120,7 +121,7 @@ export default function NotePdfViewer({ url }: NotePdfViewerProps) {
             file={url}
             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
             className="flex flex-col items-center"
-            loading={<div className="p-8 text-muted-foreground animate-pulse">Loading note…</div>}
+            loading={<div className="p-8 text-muted-foreground animate-pulse">{loadingLabel}</div>}
           >
             <Page
               pageNumber={pageNumber}
@@ -135,4 +136,3 @@ export default function NotePdfViewer({ url }: NotePdfViewerProps) {
     </div>
   );
 }
-
