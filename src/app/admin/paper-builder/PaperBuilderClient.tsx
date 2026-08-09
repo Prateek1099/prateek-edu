@@ -1,0 +1,623 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  CheckCircle2,
+  CircleAlert,
+  Eye,
+  FileCheck2,
+  ListChecks,
+  Plus,
+  Printer,
+  RefreshCw,
+  Search,
+  Shuffle,
+  Trash2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { PaperAnswerKeyDocument, PaperQuestionDocument } from "@/components/paper-builder/PaperBuilderDocuments";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+import {
+  calculatePatternMarks,
+  findDuplicateSelection,
+  normalizeQuestionText,
+  shuffled,
+  uniqueEligibleQuestions,
+} from "@/lib/paper-builder/rules";
+import {
+  PAPER_DIFFICULTIES,
+  PAPER_TEST_TYPES,
+  type PaperBuilderQuestion,
+  type PaperBuilderSubject,
+  type PaperBuilderTopic,
+  type PaperDetails,
+  type PaperPatternRow,
+  type PaperValidationInput,
+  type ValidatedPaper,
+} from "@/lib/paper-builder/types";
+
+import { validatePaperBuilderSelection } from "./actions";
+
+type Props = {
+  subjects: PaperBuilderSubject[];
+  topics: PaperBuilderTopic[];
+  questions: PaperBuilderQuestion[];
+};
+
+type PreviewTab = "questions" | "answers";
+type PrintMode = "questions" | "answers" | "both";
+
+const initialDetails: PaperDetails = {
+  title: "",
+  testType: "Class Test",
+  durationMinutes: 30,
+  targetMarks: 10,
+  instructions: "Attempt all questions. Select the single best answer for each question.",
+};
+
+function createPattern(index: number): PaperPatternRow {
+  return {
+    id: `pattern-${Date.now()}-${index}`,
+    questionCount: 5,
+    marksPerQuestion: 1,
+    difficulty: "medium",
+  };
+}
+
+export default function PaperBuilderClient({ subjects, topics, questions }: Props) {
+  const [details, setDetails] = useState<PaperDetails>(initialDetails);
+  const [boardId, setBoardId] = useState("");
+  const [qualificationId, setQualificationId] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [topicIds, setTopicIds] = useState<string[]>([]);
+  const [patterns, setPatterns] = useState<PaperPatternRow[]>([createPattern(1)]);
+  const [sections, setSections] = useState<Record<string, string[]>>({});
+  const [manualPatternId, setManualPatternId] = useState<string | null>(null);
+  const [manualSearch, setManualSearch] = useState("");
+  const [validatedPaper, setValidatedPaper] = useState<ValidatedPaper | null>(null);
+  const [validatedSignature, setValidatedSignature] = useState("");
+  const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
+  const [validating, setValidating] = useState(false);
+
+  const boards = useMemo(() => {
+    const values = new Map<string, { id: string; title: string }>();
+    subjects.forEach((subject) => values.set(subject.boardId, { id: subject.boardId, title: subject.boardTitle }));
+    return [...values.values()];
+  }, [subjects]);
+
+  const qualifications = useMemo(() => {
+    const values = new Map<string, { id: string; title: string }>();
+    subjects
+      .filter((subject) => subject.boardId === boardId)
+      .forEach((subject) => values.set(subject.qualificationId, {
+        id: subject.qualificationId,
+        title: subject.qualificationTitle,
+      }));
+    return [...values.values()];
+  }, [boardId, subjects]);
+
+  const availableSubjects = useMemo(
+    () => subjects.filter((subject) => subject.qualificationId === qualificationId),
+    [qualificationId, subjects],
+  );
+  const availableTopics = useMemo(
+    () => topics.filter((topic) => topic.subjectId === subjectId),
+    [subjectId, topics],
+  );
+  const questionById = useMemo(
+    () => new Map(questions.map((question) => [question.id, question])),
+    [questions],
+  );
+
+  const eligibleByPattern = useMemo(() => {
+    return new Map(
+      patterns.map((pattern) => [
+        pattern.id,
+        uniqueEligibleQuestions(questions, subjectId, topicIds, pattern),
+      ]),
+    );
+  }, [patterns, questions, subjectId, topicIds]);
+
+  const selectedQuestions = useMemo(
+    () => patterns.flatMap((pattern) =>
+      (sections[pattern.id] ?? [])
+        .map((id) => questionById.get(id))
+        .filter((question): question is PaperBuilderQuestion => Boolean(question)),
+    ),
+    [patterns, questionById, sections],
+  );
+  const patternMarks = calculatePatternMarks(patterns);
+  const selectedMarks = selectedQuestions.reduce((total, question) => total + question.marks, 0);
+  const duplicateError = findDuplicateSelection(selectedQuestions);
+  const selectionComplete = patterns.every(
+    (pattern) => (sections[pattern.id]?.length ?? 0) === pattern.questionCount,
+  );
+  const availabilityOkay = patterns.every(
+    (pattern) => (eligibleByPattern.get(pattern.id)?.length ?? 0) >= pattern.questionCount,
+  );
+
+  const validationInput: PaperValidationInput = {
+    details,
+    subjectId,
+    topicIds,
+    patterns,
+    sections: patterns.map((pattern) => ({
+      patternId: pattern.id,
+      questionIds: sections[pattern.id] ?? [],
+    })),
+  };
+  const currentSignature = JSON.stringify(validationInput);
+  const previewIsCurrent = Boolean(validatedPaper) && validatedSignature === currentSignature;
+
+  const canValidate =
+    Boolean(details.title.trim()) &&
+    details.durationMinutes > 0 &&
+    details.targetMarks > 0 &&
+    Boolean(subjectId) &&
+    topicIds.length > 0 &&
+    patterns.length > 0 &&
+    patternMarks === details.targetMarks &&
+    selectedMarks === details.targetMarks &&
+    selectionComplete &&
+    availabilityOkay &&
+    !duplicateError;
+
+  const invalidatePreview = () => {
+    setValidatedPaper(null);
+    setValidatedSignature("");
+  };
+
+  const resetSelections = () => {
+    setSections({});
+    setManualPatternId(null);
+    invalidatePreview();
+  };
+
+  const updateDetails = <K extends keyof PaperDetails>(key: K, value: PaperDetails[K]) => {
+    setDetails((current) => ({ ...current, [key]: value }));
+    invalidatePreview();
+  };
+
+  const updatePattern = (patternId: string, patch: Partial<PaperPatternRow>) => {
+    setPatterns((current) =>
+      current.map((pattern) => (pattern.id === patternId ? { ...pattern, ...patch } : pattern)),
+    );
+    setSections((current) => ({ ...current, [patternId]: [] }));
+    invalidatePreview();
+  };
+
+  const addPattern = () => {
+    setPatterns((current) => [...current, createPattern(current.length + 1)]);
+    invalidatePreview();
+  };
+
+  const removePattern = (patternId: string) => {
+    setPatterns((current) => current.filter((pattern) => pattern.id !== patternId));
+    setSections((current) => {
+      const next = { ...current };
+      delete next[patternId];
+      return next;
+    });
+    if (manualPatternId === patternId) setManualPatternId(null);
+    invalidatePreview();
+  };
+
+  const questionsUsedOutside = (
+    patternId: string,
+    exceptQuestionId?: string,
+    excludeCurrentSection = false,
+  ) => {
+    const usedIds = new Set<string>();
+    const usedText = new Set<string>();
+    for (const pattern of patterns) {
+      if (excludeCurrentSection && pattern.id === patternId) continue;
+      for (const id of sections[pattern.id] ?? []) {
+        if (pattern.id === patternId && id === exceptQuestionId) continue;
+        const question = questionById.get(id);
+        if (!question) continue;
+        usedIds.add(id);
+        usedText.add(normalizeQuestionText(question.questionText));
+      }
+    }
+    return { usedIds, usedText };
+  };
+
+  const candidatesForPattern = (
+    patternId: string,
+    exceptQuestionId?: string,
+    excludeCurrentSection = false,
+  ) => {
+    const { usedIds, usedText } = questionsUsedOutside(
+      patternId,
+      exceptQuestionId,
+      excludeCurrentSection,
+    );
+    return (eligibleByPattern.get(patternId) ?? []).filter(
+      (question) =>
+        !usedIds.has(question.id) &&
+        !usedText.has(normalizeQuestionText(question.questionText)),
+    );
+  };
+
+  const regenerateSection = (pattern: PaperPatternRow) => {
+    const candidates = candidatesForPattern(pattern.id, undefined, true);
+    if (candidates.length < pattern.questionCount) {
+      toast.error(`Only ${candidates.length} unused matching questions remain for this section.`);
+      return;
+    }
+    setSections((current) => ({
+      ...current,
+      [pattern.id]: shuffled(candidates).slice(0, pattern.questionCount).map((question) => question.id),
+    }));
+    invalidatePreview();
+  };
+
+  const generateAllRandomly = () => {
+    const nextSections: Record<string, string[]> = {};
+    const usedIds = new Set<string>();
+    const usedText = new Set<string>();
+
+    for (const pattern of patterns) {
+      const candidates = shuffled(eligibleByPattern.get(pattern.id) ?? []).filter((question) => {
+        const normalized = normalizeQuestionText(question.questionText);
+        return !usedIds.has(question.id) && !usedText.has(normalized);
+      });
+      if (candidates.length < pattern.questionCount) {
+        toast.error(`Pattern row ${patterns.indexOf(pattern) + 1} has only ${candidates.length} unique unused matches.`);
+        return;
+      }
+      const selected = candidates.slice(0, pattern.questionCount);
+      nextSections[pattern.id] = selected.map((question) => question.id);
+      selected.forEach((question) => {
+        usedIds.add(question.id);
+        usedText.add(normalizeQuestionText(question.questionText));
+      });
+    }
+
+    setSections(nextSections);
+    invalidatePreview();
+    toast.success("Random paper assembled. Review and replace questions as needed.");
+  };
+
+  const toggleManualQuestion = (pattern: PaperPatternRow, question: PaperBuilderQuestion) => {
+    const currentIds = sections[pattern.id] ?? [];
+    if (currentIds.includes(question.id)) {
+      setSections((current) => ({
+        ...current,
+        [pattern.id]: currentIds.filter((id) => id !== question.id),
+      }));
+      invalidatePreview();
+      return;
+    }
+    if (currentIds.length >= pattern.questionCount) {
+      toast.error(`This section already has ${pattern.questionCount} questions.`);
+      return;
+    }
+    const { usedIds, usedText } = questionsUsedOutside(pattern.id);
+    if (usedIds.has(question.id) || usedText.has(normalizeQuestionText(question.questionText))) {
+      toast.error("That question or equivalent normalized text is already used in the paper.");
+      return;
+    }
+    setSections((current) => ({ ...current, [pattern.id]: [...currentIds, question.id] }));
+    invalidatePreview();
+  };
+
+  const replaceQuestion = (pattern: PaperPatternRow, questionId: string) => {
+    const currentIds = sections[pattern.id] ?? [];
+    const candidates = candidatesForPattern(pattern.id, questionId).filter(
+      (question) => question.id !== questionId,
+    );
+    if (candidates.length === 0) {
+      toast.error("No unused replacement question matches this section.");
+      return;
+    }
+    const replacement = shuffled(candidates)[0];
+    setSections((current) => ({
+      ...current,
+      [pattern.id]: currentIds.map((id) => (id === questionId ? replacement.id : id)),
+    }));
+    invalidatePreview();
+  };
+
+  const removeQuestion = (patternId: string, questionId: string) => {
+    setSections((current) => ({
+      ...current,
+      [patternId]: (current[patternId] ?? []).filter((id) => id !== questionId),
+    }));
+    invalidatePreview();
+  };
+
+  const moveQuestion = (patternId: string, index: number, direction: -1 | 1) => {
+    const ids = [...(sections[patternId] ?? [])];
+    const target = index + direction;
+    if (target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    setSections((current) => ({ ...current, [patternId]: ids }));
+    invalidatePreview();
+  };
+
+  const validateAndPreview = async () => {
+    setValidating(true);
+    try {
+      const result = await validatePaperBuilderSelection(validationInput);
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      setValidatedPaper(result.paper);
+      setValidatedSignature(currentSignature);
+      setPreviewTab("questions");
+      toast.success("Server validation passed. Paper is ready to preview and print.");
+      requestAnimationFrame(() => document.getElementById("paper-preview")?.scrollIntoView({ behavior: "smooth" }));
+    } catch {
+      toast.error("Could not validate the paper. Please try again.");
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const printPaper = (mode: PrintMode) => {
+    if (!previewIsCurrent) {
+      toast.error("Validate the current paper before printing.");
+      return;
+    }
+    document.documentElement.dataset.paperPrintMode = mode;
+    const cleanup = () => {
+      delete document.documentElement.dataset.paperPrintMode;
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    requestAnimationFrame(() => window.print());
+  };
+
+  const manualPattern = patterns.find((pattern) => pattern.id === manualPatternId) ?? null;
+  const manualCandidates = manualPattern
+    ? (eligibleByPattern.get(manualPattern.id) ?? []).filter((question) =>
+        `${question.questionText} ${question.topicTag ?? ""}`
+          .toLowerCase()
+          .includes(manualSearch.trim().toLowerCase()),
+      )
+    : [];
+
+  return (
+    <div className="space-y-6">
+      <div className="paper-builder-screen-only space-y-6">
+      <Card>
+        <CardHeader>
+          <StepHeader step="1" title="Paper details" description="Set the test identity, timing, marks, and printable instructions." />
+        </CardHeader>
+        <CardContent className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <Field label="Paper title" className="md:col-span-2 xl:col-span-2">
+            <Input value={details.title} maxLength={200} onChange={(event) => updateDetails("title", event.target.value)} placeholder="e.g. SQL Chapter Test" />
+          </Field>
+          <Field label="Test type">
+            <Select value={details.testType} onValueChange={(value) => updateDetails("testType", (value || "Class Test") as PaperDetails["testType"])}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{PAPER_TEST_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+            </Select>
+          </Field>
+          <Field label="Duration (minutes)">
+            <Input type="number" min={1} max={300} value={details.durationMinutes} onChange={(event) => updateDetails("durationMinutes", Number(event.target.value))} />
+          </Field>
+          <Field label="Target marks">
+            <Input type="number" min={1} max={1000} value={details.targetMarks} onChange={(event) => updateDetails("targetMarks", Number(event.target.value))} />
+          </Field>
+          <Field label="Instructions" className="md:col-span-2 xl:col-span-3">
+            <Textarea value={details.instructions} maxLength={3000} rows={3} onChange={(event) => updateDetails("instructions", event.target.value)} />
+          </Field>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <StepHeader step="2" title="Academic scope" description="Choose one subject and one or more syllabus topics. Only global Vexa questions are available." />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <FilterSelect label="Board" value={boardId} placeholder="Select board" options={boards.map((board) => ({ value: board.id, label: board.title }))} onChange={(value) => { setBoardId(value); setQualificationId(""); setSubjectId(""); setTopicIds([]); resetSelections(); }} />
+            <FilterSelect label="Qualification / class" value={qualificationId} placeholder="Select qualification" disabled={!boardId} options={qualifications.map((item) => ({ value: item.id, label: item.title }))} onChange={(value) => { setQualificationId(value); setSubjectId(""); setTopicIds([]); resetSelections(); }} />
+            <FilterSelect label="Subject" value={subjectId} placeholder="Select subject" disabled={!qualificationId} options={availableSubjects.map((subject) => ({ value: subject.id, label: subject.code ? `${subject.name} (${subject.code})` : subject.name }))} onChange={(value) => { setSubjectId(value); setTopicIds([]); resetSelections(); }} />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <Label>Topics / chapters</Label>
+              {availableTopics.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => { setTopicIds(topicIds.length === availableTopics.length ? [] : availableTopics.map((topic) => topic.id)); resetSelections(); }}>
+                  {topicIds.length === availableTopics.length ? "Clear topics" : "Select all topics"}
+                </Button>
+              )}
+            </div>
+            {!subjectId ? (
+              <EmptyState message="Choose a subject to load its topics." />
+            ) : availableTopics.length === 0 ? (
+              <EmptyState message="This subject has no topics available for Paper Builder." />
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {availableTopics.map((topic) => (
+                  <label key={topic.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border bg-card px-3 py-2.5 text-sm font-medium hover:bg-muted/40">
+                    <Checkbox checked={topicIds.includes(topic.id)} onCheckedChange={() => { setTopicIds((current) => current.includes(topic.id) ? current.filter((id) => id !== topic.id) : [...current, topic.id]); resetSelections(); }} />
+                    {topic.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <StepHeader step="3" title="Paper pattern" description="Every row is an MCQ section matched by difficulty and marks in Question Bank." />
+            <Button type="button" variant="outline" onClick={addPattern}><Plus className="size-4" /> Add pattern row</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {patterns.map((pattern, index) => {
+            const available = eligibleByPattern.get(pattern.id)?.length ?? 0;
+            const insufficient = available < pattern.questionCount;
+            return (
+              <div key={pattern.id} className="rounded-2xl border bg-muted/15 p-4">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[auto_1fr_1fr_1fr_1fr_auto] xl:items-end">
+                  <div className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</div>
+                  <Field label="Questions"><Input type="number" min={1} max={100} value={pattern.questionCount} onChange={(event) => updatePattern(pattern.id, { questionCount: Number(event.target.value) })} /></Field>
+                  <Field label="Marks each"><Input type="number" min={1} max={100} value={pattern.marksPerQuestion} onChange={(event) => updatePattern(pattern.id, { marksPerQuestion: Number(event.target.value) })} /></Field>
+                  <Field label="Difficulty"><Select value={pattern.difficulty} onValueChange={(value) => updatePattern(pattern.id, { difficulty: (value || "any") as PaperPatternRow["difficulty"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PAPER_DIFFICULTIES.map((difficulty) => <SelectItem key={difficulty} value={difficulty} className="capitalize">{difficulty === "any" ? "Any difficulty" : difficulty}</SelectItem>)}</SelectContent></Select></Field>
+                  <Field label="Question type"><div className="flex h-10 items-center rounded-lg border bg-background px-3 text-sm font-medium">MCQ</div></Field>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove pattern row ${index + 1}`} disabled={patterns.length === 1} onClick={() => removePattern(pattern.id)}><Trash2 className="size-4" /></Button>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  <Badge variant={insufficient ? "destructive" : "secondary"}>{available} unique matching available</Badge>
+                  <span className="text-muted-foreground">Section marks: {pattern.questionCount * pattern.marksPerQuestion}</span>
+                  {insufficient && <span className="text-destructive">Need {pattern.questionCount - available} more matching questions.</span>}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4", patternMarks === details.targetMarks ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10")}>
+            <div><p className="font-semibold">Pattern total: {patternMarks} marks</p><p className="text-sm text-muted-foreground">Target: {details.targetMarks} marks</p></div>
+            {patternMarks === details.targetMarks ? <Badge className="bg-emerald-600">Marks match</Badge> : <Badge variant="destructive">Adjust by {Math.abs(details.targetMarks - patternMarks)} marks</Badge>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <StepHeader step="4" title="Select questions" description="Choose manually or assemble random sections, then replace, remove, or reorder individual questions." />
+            <Button type="button" onClick={generateAllRandomly} disabled={!subjectId || topicIds.length === 0 || !availabilityOkay}><Shuffle className="size-4" /> Randomly fill all sections</Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {!subjectId || topicIds.length === 0 ? (
+            <EmptyState message="Choose a subject and at least one topic before selecting questions." />
+          ) : patterns.map((pattern, patternIndex) => {
+            const ids = sections[pattern.id] ?? [];
+            return (
+              <section key={pattern.id} className="rounded-2xl border p-4 sm:p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div><h3 className="font-semibold">Section {String.fromCharCode(65 + patternIndex)}</h3><p className="mt-1 text-sm text-muted-foreground">{ids.length} of {pattern.questionCount} selected · {pattern.marksPerQuestion} mark{pattern.marksPerQuestion === 1 ? "" : "s"} each · {pattern.difficulty === "any" ? "any difficulty" : pattern.difficulty}</p></div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setManualPatternId(manualPatternId === pattern.id ? null : pattern.id); setManualSearch(""); }}><ListChecks className="size-4" /> Manual selection</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => regenerateSection(pattern)}><RefreshCw className="size-4" /> Regenerate section</Button>
+                  </div>
+                </div>
+
+                {manualPatternId === pattern.id && (
+                  <div className="mt-4 rounded-xl bg-muted/35 p-4">
+                    <div className="relative mb-3"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={manualSearch} onChange={(event) => setManualSearch(event.target.value)} placeholder="Search matching questions…" className="pl-9" /></div>
+                    <div className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">
+                      {manualCandidates.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No matching questions.</p> : manualCandidates.map((question) => {
+                        const checked = ids.includes(question.id);
+                        const { usedIds, usedText } = questionsUsedOutside(pattern.id);
+                        const duplicateElsewhere = !checked && (usedIds.has(question.id) || usedText.has(normalizeQuestionText(question.questionText)));
+                        return (
+                          <label key={question.id} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-background p-3", duplicateElsewhere && "cursor-not-allowed opacity-50")}>
+                            <Checkbox checked={checked} disabled={duplicateElsewhere} onCheckedChange={() => toggleManualQuestion(pattern, question)} />
+                            <span className="min-w-0 flex-1"><span className="line-clamp-2 text-sm font-medium">{question.questionText}</span><span className="mt-1 block text-xs text-muted-foreground">{question.topicName ?? question.topicTag ?? "Topic"} · {question.difficulty} · {question.marks} mark{question.marks === 1 ? "" : "s"}</span></span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4 space-y-2">
+                  {ids.length === 0 ? <EmptyState message="No questions selected for this section." compact /> : ids.map((id, index) => {
+                    const question = questionById.get(id);
+                    if (!question) return null;
+                    return (
+                      <div key={id} className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-start">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</div>
+                        <div className="min-w-0 flex-1"><p className="text-sm font-medium leading-6">{question.questionText}</p><p className="mt-1 text-xs text-muted-foreground">{question.topicName ?? question.topicTag ?? "Topic"} · {question.difficulty} · {question.marks} mark{question.marks === 1 ? "" : "s"}</p></div>
+                        <div className="flex shrink-0 flex-wrap gap-1">
+                          <Button type="button" variant="ghost" size="icon" aria-label="Move question up" disabled={index === 0} onClick={() => moveQuestion(pattern.id, index, -1)}><ArrowUp className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" aria-label="Move question down" disabled={index === ids.length - 1} onClick={() => moveQuestion(pattern.id, index, 1)}><ArrowDown className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => replaceQuestion(pattern, id)}><RefreshCw className="size-4" /> Replace</Button>
+                          <Button type="button" variant="ghost" size="icon" aria-label="Remove question" onClick={() => removeQuestion(pattern.id, id)}><X className="size-4" /></Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><StepHeader step="5" title="Validate and preview" description="The server rechecks authorization, ownership, scope, difficulty, marks, MCQ completeness, and duplicates." /></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatusItem good={patternMarks === details.targetMarks} label={`Pattern ${patternMarks}/${details.targetMarks} marks`} />
+            <StatusItem good={selectionComplete} label={selectionComplete ? "All sections complete" : "Selections incomplete"} />
+            <StatusItem good={selectedMarks === details.targetMarks} label={`Selected ${selectedMarks}/${details.targetMarks} marks`} />
+            <StatusItem good={!duplicateError} label={duplicateError ?? "No duplicate IDs or text"} />
+          </div>
+          {!availabilityOkay && <Warning message="At least one pattern row does not have enough matching Question Bank records." />}
+          <Button type="button" size="lg" className="h-12 w-full sm:w-auto" onClick={validateAndPreview} disabled={!canValidate || validating}><FileCheck2 className="size-5" /> {validating ? "Validating…" : "Validate and open preview"}</Button>
+        </CardContent>
+      </Card>
+      </div>
+
+      {validatedPaper && (
+        <section id="paper-preview" className="space-y-5 pt-4">
+          {!previewIsCurrent && <Warning message="The builder changed after validation. Validate again before printing." />}
+          <div className="paper-builder-screen-only flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div><h2 className="text-xl font-semibold">Paper preview</h2><p className="mt-1 text-sm text-muted-foreground">Validated from current global Question Bank records. Nothing has been saved.</p></div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => setPreviewTab("questions")}><Eye className="size-4" /> Student paper</Button>
+              <Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => setPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button>
+            </div>
+          </div>
+          <div className="paper-builder-screen-only flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => printPaper("questions")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print question paper</Button>
+            <Button type="button" variant="outline" onClick={() => printPaper("answers")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print answer key</Button>
+            <Button type="button" onClick={() => printPaper("both")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print both</Button>
+          </div>
+          <div className={cn(previewTab !== "questions" && "paper-builder-preview-hidden")}><PaperQuestionDocument paper={validatedPaper} /></div>
+          <div className={cn(previewTab !== "answers" && "paper-builder-preview-hidden")}><PaperAnswerKeyDocument paper={validatedPaper} /></div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function StepHeader({ step, title, description }: { step: string; title: string; description: string }) {
+  return <div className="flex items-start gap-3"><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">{step}</div><div><CardTitle>{title}</CardTitle><CardDescription className="mt-1 leading-6">{description}</CardDescription></div></div>;
+}
+
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return <div className={cn("space-y-2", className)}><Label>{label}</Label>{children}</div>;
+}
+
+function FilterSelect({ label, value, options, onChange, placeholder, disabled }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; placeholder: string; disabled?: boolean }) {
+  return <Field label={label}><Select value={value} onValueChange={(next) => onChange(next || "")} disabled={disabled}><SelectTrigger className="w-full"><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></Field>;
+}
+
+function EmptyState({ message, compact = false }: { message: string; compact?: boolean }) {
+  return <div className={cn("rounded-xl border border-dashed bg-muted/20 px-4 text-center text-sm text-muted-foreground", compact ? "py-6" : "py-10")}>{message}</div>;
+}
+
+function StatusItem({ good, label }: { good: boolean; label: string }) {
+  return <div className={cn("flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium", good ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200" : "border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200")}>{good ? <CheckCircle2 className="size-4 shrink-0" /> : <CircleAlert className="size-4 shrink-0" />}<span className="line-clamp-2">{label}</span></div>;
+}
+
+function Warning({ message }: { message: string }) {
+  return <div className="flex gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200"><CircleAlert className="mt-0.5 size-4 shrink-0" /><span>{message}</span></div>;
+}
