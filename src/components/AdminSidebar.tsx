@@ -12,6 +12,7 @@ import {
   LogOut,
   StickyNote,
   FileQuestion,
+  FileStack,
   Trophy,
   ClipboardList,
   Database,
@@ -41,6 +42,7 @@ const contentNav: NavItem[] = [
   { href: "/admin/syllabus", label: "Syllabus", icon: GraduationCap, match: "prefix" },
   { href: "/admin/topical-questions", label: "Topical Questions", icon: FileQuestion, match: "prefix" },
   { href: "/admin/question-bank", label: "Question Bank", icon: Database, match: "prefix" },
+  { href: "/admin/paper-builder", label: "Paper Builder", icon: FileStack, match: "prefix" },
   { href: "/admin/challenges", label: "Challenges", icon: Trophy, match: "prefix" },
   { href: "/admin/worksheets", label: "Worksheets", icon: ClipboardList, match: "prefix" },
 ];

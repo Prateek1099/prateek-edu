@@ -129,6 +129,12 @@
   }
 }
 
+@media screen {
+  .paper-builder-preview-hidden {
+    display: none;
+  }
+}
+
 @media print {
   body:has(.worksheet-print-root) > header,
   body:has(.worksheet-print-root) > footer,
@@ -144,5 +150,34 @@
 
   .worksheet-print-root {
     break-after: page;
+  }
+
+  body:has(.paper-builder-print-root) > header,
+  body:has(.paper-builder-print-root) > footer,
+  body:has(.paper-builder-print-root) .paper-builder-screen-only {
+    display: none !important;
+  }
+
+  body:has(.paper-builder-print-root),
+  body:has(.paper-builder-print-root) main {
+    background: white !important;
+    color: black !important;
+  }
+
+  body:has(.paper-builder-print-root) main {
+    padding: 0 !important;
+  }
+
+  html[data-paper-print-mode="questions"] .paper-print-answer,
+  html[data-paper-print-mode="answers"] .paper-print-question {
+    display: none !important;
+  }
+
+  html[data-paper-print-mode="both"] .paper-print-answer {
+    break-before: page;
+  }
+
+  .paper-builder-preview-hidden {
+    display: block !important;
   }
 }
