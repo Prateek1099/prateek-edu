@@ -25,6 +25,16 @@ enum NoteType {
   STUDY_NOTES
 }
 
+enum BankQuestionType {
+  MCQ
+  TRUE_FALSE
+  FILL_BLANK
+  ASSERTION_REASON
+  VERY_SHORT_ANSWER
+  SHORT_ANSWER
+  LONG_ANSWER
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -562,22 +572,25 @@ model WorksheetAssignment {
 }
 
 model BankQuestion {
-  id            String   @id @default(cuid())
-  subjectId     String   @map("subject_id")
-  topicId       String?  @map("topic_id")
-  questionText  String   @map("question_text") @db.Text
-  optionA       String   @map("option_a")
-  optionB       String   @map("option_b")
-  optionC       String   @map("option_c")
-  optionD       String   @map("option_d")
-  correctAnswer String   @map("correct_answer")
-  explanation   String?  @db.Text
-  topicTag      String?  @map("topic_tag")
-  difficulty    String   @default("medium") // easy, medium, hard
-  marks         Int      @default(1)
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  workspaceId   String?  @map("workspace_id")
+  id            String           @id @default(cuid())
+  subjectId     String           @map("subject_id")
+  topicId       String?          @map("topic_id")
+  questionType  BankQuestionType @default(MCQ) @map("question_type")
+  questionText  String           @map("question_text") @db.Text
+  optionA       String?          @map("option_a")
+  optionB       String?          @map("option_b")
+  optionC       String?          @map("option_c")
+  optionD       String?          @map("option_d")
+  correctAnswer String?          @map("correct_answer")
+  modelAnswer   String?          @map("model_answer") @db.Text
+  explanation   String?          @db.Text
+  source        String?          @db.Text
+  topicTag      String?          @map("topic_tag")
+  difficulty    String           @default("medium") // easy, medium, hard
+  marks         Int              @default(1)
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  workspaceId   String?          @map("workspace_id")
 
   subject            Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   topic              Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
@@ -587,6 +600,7 @@ model BankQuestion {
   @@index([workspaceId])
   @@index([subjectId])
   @@index([topicId])
+  @@index([questionType])
   @@map("bank_questions")
 }
 

@@ -28,7 +28,7 @@ export default async function CreateChallengeFromBankPage() {
       orderBy: [{ sortOrder: "asc" }, { topicName: "asc" }],
     }),
     prisma.bankQuestion.findMany({
-      where: { workspaceId: null },
+      where: { workspaceId: null, questionType: "MCQ" },
       select: {
         id: true,
         subjectId: true,
@@ -90,7 +90,14 @@ export default async function CreateChallengeFromBankPage() {
       <CreateChallengeFromBankClient
         subjectOptions={subjectOptions}
         topicOptions={topicOptions}
-        bankQuestions={questions}
+        bankQuestions={questions.map((question) => ({
+          ...question,
+          optionA: question.optionA ?? "",
+          optionB: question.optionB ?? "",
+          optionC: question.optionC ?? "",
+          optionD: question.optionD ?? "",
+          correctAnswer: question.correctAnswer ?? "",
+        }))}
       />
     </div>
   );

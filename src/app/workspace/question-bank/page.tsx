@@ -10,6 +10,7 @@ export default async function WorkspaceBankPage() {
   const [questions, subjects, topics] = await Promise.all([
     prisma.bankQuestion.findMany({
       where: {
+        questionType: "MCQ",
         OR: [
           { workspaceId: null },
           { workspaceId: user.workspaceId }

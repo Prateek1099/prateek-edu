@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import { isMcqCompatibleQuestion } from "@/lib/bank-questions";
 
 export async function createWorksheet(data: {
   title: string;
@@ -15,16 +16,24 @@ export async function createWorksheet(data: {
   
   // Verify questions exist and get their details
   const questions = await prisma.bankQuestion.findMany({
-    where: { id: { in: data.questionIds } }
+    where: {
+      id: { in: data.questionIds },
+      subjectId: data.subjectId,
+      questionType: "MCQ",
+      OR: [{ workspaceId: null }, { workspaceId: user.workspaceId }],
+      ...(data.topicId ? { topicId: data.topicId } : {}),
+    }
   });
   
   if (questions.length !== data.questionIds.length) {
     throw new Error("One or more selected questions could not be found.");
   }
+  if (questions.some((question) => !isMcqCompatibleQuestion(question))) {
+    throw new Error("Worksheets can currently use complete MCQ questions only.");
+  }
   
   // Calculate difficulty based on questions
   const hardCount = questions.filter(q => q.difficulty === 'hard').length;
-  const mediumCount = questions.filter(q => q.difficulty === 'medium').length;
   const easyCount = questions.filter(q => q.difficulty === 'easy').length;
   
   let difficulty = "medium";
@@ -47,11 +56,11 @@ export async function createWorksheet(data: {
           const bq = questions.find(q => q.id === bankQuestionId)!;
           return {
             questionText: bq.questionText,
-            optionA: bq.optionA,
-            optionB: bq.optionB,
-            optionC: bq.optionC,
-            optionD: bq.optionD,
-            correctAnswer: bq.correctAnswer,
+            optionA: bq.optionA!,
+            optionB: bq.optionB!,
+            optionC: bq.optionC!,
+            optionD: bq.optionD!,
+            correctAnswer: bq.correctAnswer!,
             explanation: bq.explanation,
             topicTag: bq.topicTag,
             difficulty: bq.difficulty,
@@ -78,16 +87,24 @@ export async function createQuickPractice(data: {
   
   // Verify questions exist and get their details
   const questions = await prisma.bankQuestion.findMany({
-    where: { id: { in: data.questionIds } }
+    where: {
+      id: { in: data.questionIds },
+      subjectId: data.subjectId,
+      questionType: "MCQ",
+      OR: [{ workspaceId: null }, { workspaceId: user.workspaceId }],
+      ...(data.topicId ? { topicId: data.topicId } : {}),
+    }
   });
   
   if (questions.length !== data.questionIds.length) {
     throw new Error("One or more selected questions could not be found.");
   }
+  if (questions.some((question) => !isMcqCompatibleQuestion(question))) {
+    throw new Error("Quick Practice can currently use complete MCQ questions only.");
+  }
   
   // Calculate difficulty based on questions
   const hardCount = questions.filter(q => q.difficulty === 'hard').length;
-  const mediumCount = questions.filter(q => q.difficulty === 'medium').length;
   const easyCount = questions.filter(q => q.difficulty === 'easy').length;
   
   let difficulty = "medium";
@@ -110,11 +127,11 @@ export async function createQuickPractice(data: {
           const bq = questions.find(q => q.id === bankQuestionId)!;
           return {
             questionText: bq.questionText,
-            optionA: bq.optionA,
-            optionB: bq.optionB,
-            optionC: bq.optionC,
-            optionD: bq.optionD,
-            correctAnswer: bq.correctAnswer,
+            optionA: bq.optionA!,
+            optionB: bq.optionB!,
+            optionC: bq.optionC!,
+            optionD: bq.optionD!,
+            correctAnswer: bq.correctAnswer!,
             explanation: bq.explanation,
             topicTag: bq.topicTag,
             difficulty: bq.difficulty,

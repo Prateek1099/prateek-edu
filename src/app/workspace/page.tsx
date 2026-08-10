@@ -106,7 +106,7 @@ export default async function WorkspaceDashboardPage() {
   // Temporarily query global BankQuestion count filtered by active subjects taught by this teacher.
   // In the future, this will be filtered by Workspace ID if the Question Bank becomes tenant-scoped.
   const questionBankSize = mySubjectIds.length > 0 ? await prisma.bankQuestion.count({
-    where: { subjectId: { in: mySubjectIds } }
+    where: { subjectId: { in: mySubjectIds }, questionType: "MCQ" }
   }) : 0;
 
   // Merge and sort timeline

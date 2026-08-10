@@ -52,12 +52,23 @@ export async function POST(req: Request) {
       const dbQuestions = await prisma.bankQuestion.findMany({
         where: {
           subjectId,
+          workspaceId: null,
+          questionType: "MCQ",
           ...(topicId ? { topicId } : {}),
           ...(difficulty !== "mixed" ? { difficulty } : {}),
         }
       });
-      
-      const shuffled = dbQuestions.sort(() => 0.5 - Math.random());
+
+      const completeMcqs = dbQuestions.filter(
+        (question) =>
+          question.optionA?.trim() &&
+          question.optionB?.trim() &&
+          question.optionC?.trim() &&
+          question.optionD?.trim() &&
+          question.correctAnswer &&
+          ["A", "B", "C", "D"].includes(question.correctAnswer.trim().toUpperCase()),
+      );
+      const shuffled = completeMcqs.sort(() => 0.5 - Math.random());
       const selected = shuffled.slice(0, questionCount);
       
       if (selected.length === 0) {
@@ -66,11 +77,11 @@ export async function POST(req: Request) {
       
       newQuestions = selected.map((q, i) => ({
         questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctAnswer: q.correctAnswer,
+        optionA: q.optionA!,
+        optionB: q.optionB!,
+        optionC: q.optionC!,
+        optionD: q.optionD!,
+        correctAnswer: q.correctAnswer!,
         explanation: q.explanation,
         topicTag: q.topicTag,
         bankQuestionId: q.id,
