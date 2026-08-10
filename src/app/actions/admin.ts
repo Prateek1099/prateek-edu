@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { validateBankQuestionInput } from "@/lib/bank-questions";
 import { rejectIfNotAdmin } from "@/lib/require-admin";
 import { requireSuperAdmin } from "@/lib/require-role";
 import { revalidatePath } from "next/cache";
@@ -426,6 +427,7 @@ export async function createChallengeFromBank(data: {
           id: { in: questionIds },
           subjectId: data.subjectId,
           workspaceId: null,
+          questionType: "MCQ",
           ...(data.topicId ? { topicId: data.topicId } : {}),
           ...(data.questionDifficulty !== "all"
             ? { difficulty: data.questionDifficulty }
@@ -446,10 +448,11 @@ export async function createChallengeFromBank(data: {
       const invalidQuestion = orderedQuestions.find(
         (question) =>
           !question.questionText.trim() ||
-          !question.optionA.trim() ||
-          !question.optionB.trim() ||
-          !question.optionC.trim() ||
-          !question.optionD.trim() ||
+          !question.optionA?.trim() ||
+          !question.optionB?.trim() ||
+          !question.optionC?.trim() ||
+          !question.optionD?.trim() ||
+          !question.correctAnswer ||
           !["A", "B", "C", "D"].includes(question.correctAnswer.trim().toUpperCase()) ||
           question.marks < 1,
       );
@@ -473,11 +476,11 @@ export async function createChallengeFromBank(data: {
           questions: {
             create: orderedQuestions.map((question, index) => ({
               questionText: question.questionText,
-              optionA: question.optionA,
-              optionB: question.optionB,
-              optionC: question.optionC,
-              optionD: question.optionD,
-              correctAnswer: question.correctAnswer.trim().toUpperCase(),
+              optionA: question.optionA!,
+              optionB: question.optionB!,
+              optionC: question.optionC!,
+              optionD: question.optionD!,
+              correctAnswer: question.correctAnswer!.trim().toUpperCase(),
               explanation: question.explanation,
               topicTag: question.topicTag,
               difficulty: question.difficulty,
@@ -806,21 +809,36 @@ export async function appendBankQuestions(subjectId: string, topicId: string | n
   const denied = await forbidIfNeeded();
   if (denied) return { success: false as const, error: denied };
   try {
-    await prisma.bankQuestion.createMany({
-      data: questions.map((q) => ({
+    const subject = await prisma.subject.findUnique({ where: { id: subjectId }, select: { id: true } });
+    if (!subject) return { success: false as const, error: "Selected subject was not found." };
+    if (topicId) {
+      const topic = await prisma.topic.findFirst({
+        where: { id: topicId, subjectId },
+        select: { id: true },
+      });
+      if (!topic) return { success: false as const, error: "Selected topic does not belong to the subject." };
+    }
+
+    const validated = questions.map((question) =>
+      validateBankQuestionInput({
+        ...question,
         subjectId,
-        topicId: topicId || null,
-        questionText: q.questionText,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || null,
-        topicTag: q.topicTag || null,
-        difficulty: q.difficulty || "medium",
-        marks: q.marks || 1,
-      })),
+        topicId,
+        questionType: "MCQ",
+        difficulty: question.difficulty || "medium",
+        marks: question.marks ?? 1,
+      }),
+    );
+    const invalid = validated.find((result) => !result.success);
+    if (invalid && !invalid.success) {
+      return { success: false as const, error: invalid.errors.join(" ") };
+    }
+
+    await prisma.bankQuestion.createMany({
+      data: validated.map((result) => {
+        if (!result.success) throw new Error("Question validation failed.");
+        return { ...result.data, workspaceId: null };
+      }),
     });
     revalidatePath("/admin/question-bank");
     return { success: true as const };

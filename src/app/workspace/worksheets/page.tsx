@@ -29,6 +29,7 @@ export default async function WorkspaceWorksheetsPage() {
     }),
     prisma.bankQuestion.findMany({
       where: {
+        questionType: "MCQ",
         OR: [
           { workspaceId: null },
           { workspaceId: user.workspaceId }

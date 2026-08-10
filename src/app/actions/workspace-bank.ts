@@ -1,10 +1,13 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import { validateBankQuestionInput } from "@/lib/bank-questions";
 
-export async function createWorkspaceQuestion(data: {
+type WorkspaceQuestionInput = {
   subjectId: string;
   topicId?: string | null;
   questionText: string;
@@ -17,24 +20,38 @@ export async function createWorkspaceQuestion(data: {
   topicTag?: string | null;
   difficulty?: string;
   marks?: number;
-}) {
+};
+
+async function validateWorkspaceMcq(data: WorkspaceQuestionInput) {
+  const validation = validateBankQuestionInput({
+    ...data,
+    topicId: data.topicId ?? null,
+    questionType: "MCQ",
+    difficulty: data.difficulty || "medium",
+    marks: data.marks ?? 1,
+  });
+  if (!validation.success) throw new Error(validation.errors.join(" "));
+
+  const subject = await prisma.subject.findUnique({ where: { id: validation.data.subjectId }, select: { id: true } });
+  if (!subject) throw new Error("Selected subject was not found.");
+  if (validation.data.topicId) {
+    const topic = await prisma.topic.findFirst({
+      where: { id: validation.data.topicId, subjectId: validation.data.subjectId },
+      select: { id: true },
+    });
+    if (!topic) throw new Error("Selected topic does not belong to the subject.");
+  }
+  return validation.data;
+}
+
+export async function createWorkspaceQuestion(data: WorkspaceQuestionInput) {
   const user = await requireActiveWorkspace();
-  
+  const validated = await validateWorkspaceMcq(data);
+
   const question = await prisma.bankQuestion.create({
     data: {
+      ...validated,
       workspaceId: user.workspaceId,
-      subjectId: data.subjectId,
-      topicId: data.topicId || null,
-      questionText: data.questionText,
-      optionA: data.optionA,
-      optionB: data.optionB,
-      optionC: data.optionC,
-      optionD: data.optionD,
-      correctAnswer: data.correctAnswer,
-      explanation: data.explanation || null,
-      topicTag: data.topicTag || null,
-      difficulty: data.difficulty || "medium",
-      marks: data.marks || 1,
     },
   });
 
@@ -42,9 +59,10 @@ export async function createWorkspaceQuestion(data: {
   return question;
 }
 
-export async function updateWorkspaceQuestion(id: string, data: any) {
+export async function updateWorkspaceQuestion(id: string, data: WorkspaceQuestionInput) {
   const user = await requireActiveWorkspace();
-  
+  const validated = await validateWorkspaceMcq(data);
+
   const existing = await prisma.bankQuestion.findUnique({
     where: { id },
   });
@@ -55,20 +73,7 @@ export async function updateWorkspaceQuestion(id: string, data: any) {
 
   const updated = await prisma.bankQuestion.update({
     where: { id },
-    data: {
-      subjectId: data.subjectId,
-      topicId: data.topicId || null,
-      questionText: data.questionText,
-      optionA: data.optionA,
-      optionB: data.optionB,
-      optionC: data.optionC,
-      optionD: data.optionD,
-      correctAnswer: data.correctAnswer,
-      explanation: data.explanation || null,
-      topicTag: data.topicTag || null,
-      difficulty: data.difficulty || "medium",
-      marks: data.marks || 1,
-    },
+    data: validated,
   });
 
   revalidatePath("/workspace/question-bank");
@@ -96,7 +101,7 @@ export async function deleteWorkspaceQuestion(id: string) {
 export async function getWorkspaceQuestions(filters?: { subjectId?: string, topicId?: string, view?: 'all' | 'my' | 'vexa' }) {
   const user = await requireActiveWorkspace();
   
-  const where: any = {};
+  const where: Prisma.BankQuestionWhereInput = { questionType: "MCQ" };
   
   if (filters?.subjectId && filters.subjectId !== "all") {
     where.subjectId = filters.subjectId;

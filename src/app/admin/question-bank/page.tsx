@@ -1,17 +1,11 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { requireSuperAdmin } from "@/lib/require-role";
 import AdminBankClient from "./AdminBankClient";
-import { isAdminRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBankPage() {
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user || !isAdminRole((session.user as { role?: string }).role)) {
-    redirect("/dashboard");
-  }
+  await requireSuperAdmin();
 
   const [questions, subjects, topics] = await Promise.all([
     prisma.bankQuestion.findMany({
@@ -32,10 +26,15 @@ export default async function AdminBankPage() {
 
   const subjectOptions = subjects.map((s) => ({
     id: s.id,
+    name: s.name,
     label: s.code
       ? `${s.name} (${s.code}) · ${s.qualification.title} · ${s.qualification.board.title}`
       : `${s.name} · ${s.qualification.title} · ${s.qualification.board.title}`,
     board: s.qualification.board.name,
+    boardId: s.qualification.board.id,
+    boardTitle: s.qualification.board.title,
+    qualificationId: s.qualification.id,
+    qualificationTitle: s.qualification.title,
   }));
 
   const topicOptions = topics.map((t) => ({
@@ -49,7 +48,7 @@ export default async function AdminBankPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Question Bank</h1>
         <p className="text-muted-foreground mt-1">
-          The central repository for all multiple choice questions.
+          Create and review mixed question types for Vexa assessments and printable papers.
         </p>
       </div>
       <AdminBankClient
