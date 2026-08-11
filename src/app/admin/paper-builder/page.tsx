@@ -1,5 +1,3 @@
-import { FileStack } from "lucide-react";
-
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/require-role";
 
@@ -50,10 +48,6 @@ export default async function AdminPaperBuilderPage() {
   return (
     <div className="paper-builder-page space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
-        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
-          <FileStack className="size-4" />
-          Temporary print builder
-        </div>
         <h1 className="text-3xl font-bold tracking-tight">Paper Builder</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
           Assemble printable mixed-format class tests from reviewed global Vexa Question Bank records. Papers
