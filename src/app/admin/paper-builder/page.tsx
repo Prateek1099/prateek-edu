@@ -24,17 +24,19 @@ export default async function AdminPaperBuilderPage() {
       orderBy: [{ sortOrder: "asc" }, { topicName: "asc" }],
     }),
     prisma.bankQuestion.findMany({
-      where: { workspaceId: null, questionType: "MCQ" },
+      where: { workspaceId: null },
       select: {
         id: true,
         subjectId: true,
         topicId: true,
+        questionType: true,
         questionText: true,
         optionA: true,
         optionB: true,
         optionC: true,
         optionD: true,
         correctAnswer: true,
+        modelAnswer: true,
         explanation: true,
         topicTag: true,
         difficulty: true,
@@ -46,15 +48,15 @@ export default async function AdminPaperBuilderPage() {
   ]);
 
   return (
-    <div className="space-y-8">
-      <header className="max-w-4xl">
+    <div className="paper-builder-page space-y-8">
+      <header className="paper-builder-screen-only max-w-4xl">
         <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
           <FileStack className="size-4" />
           Temporary print builder
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Paper Builder</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Assemble printable MCQ class tests from reviewed global Vexa Question Bank records. Papers
+          Assemble printable mixed-format class tests from reviewed global Vexa Question Bank records. Papers
           stay in this browser session and are not saved to the database.
         </p>
       </header>
@@ -81,12 +83,14 @@ export default async function AdminPaperBuilderPage() {
           id: question.id,
           subjectId: question.subjectId,
           topicId: question.topicId,
+          questionType: question.questionType,
           questionText: question.questionText,
-          optionA: question.optionA ?? "",
-          optionB: question.optionB ?? "",
-          optionC: question.optionC ?? "",
-          optionD: question.optionD ?? "",
-          correctAnswer: question.correctAnswer ?? "",
+          optionA: question.optionA,
+          optionB: question.optionB,
+          optionC: question.optionC,
+          optionD: question.optionD,
+          correctAnswer: question.correctAnswer,
+          modelAnswer: question.modelAnswer,
           explanation: question.explanation,
           topicTag: question.topicTag,
           difficulty: question.difficulty,

@@ -1,36 +1,43 @@
-import type { ValidatedPaper } from "@/lib/paper-builder/types";
+import { BANK_QUESTION_TYPE_LABELS } from "@/lib/bank-questions";
+import type {
+  PaperBuilderQuestion,
+  ValidatedPaper,
+  ValidatedPaperSection,
+} from "@/lib/paper-builder/types";
 
 function PaperHeader({ paper, answerKey = false }: { paper: ValidatedPaper; answerKey?: boolean }) {
+  const blankLine = "__________________";
+
   return (
     <header className="mb-8 border-b-2 border-black pb-5">
       <div className="flex items-start justify-between gap-6">
         <div>
-          <p className="text-2xl font-black uppercase tracking-tight">Vexa</p>
+          <p className="text-2xl font-black uppercase tracking-tight">{paper.details.institutionName}</p>
           <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
-            {answerKey ? "Teacher answer key" : paper.details.testType}
+            {answerKey ? `${paper.details.examLabel} · Teacher answer key` : paper.details.examLabel}
           </p>
         </div>
         <div className="text-right">
           <h1 className="text-xl font-bold">{paper.details.title}</h1>
-          <p className="mt-1 text-sm text-gray-700">
-            {paper.subjectName} · {paper.qualificationTitle} · {paper.boardTitle}
-          </p>
-          <p className="mt-1 text-xs text-gray-500">{paper.topicNames.join(" · ")}</p>
+          <p className="mt-1 text-sm text-gray-700">{paper.details.courseLine}</p>
+          {paper.details.topicLine && <p className="mt-1 text-xs text-gray-500">{paper.details.topicLine}</p>}
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div><span className="font-semibold">Duration:</span> {paper.details.durationMinutes} minutes</div>
         <div><span className="font-semibold">Maximum marks:</span> {paper.totalMarks}</div>
-        <div><span className="font-semibold">Date:</span> __________________</div>
-        <div><span className="font-semibold">Class:</span> __________________</div>
+        <div><span className="font-semibold">Date:</span> {paper.details.dateText || blankLine}</div>
+        <div><span className="font-semibold">Class:</span> {paper.details.classText || blankLine}</div>
       </div>
     </header>
   );
 }
 
-function sectionTitle(index: number, count: number, marks: number, difficulty: string) {
-  const difficultyLabel = difficulty === "any" ? "Mixed difficulty" : `${difficulty[0].toUpperCase()}${difficulty.slice(1)}`;
-  return `Section ${String.fromCharCode(65 + index)} · ${count} × ${marks} mark${marks === 1 ? "" : "s"} · ${difficultyLabel}`;
+function sectionTitle(section: ValidatedPaperSection) {
+  const difficultyLabel = section.difficulty === "any"
+    ? "Mixed difficulty"
+    : `${section.difficulty[0].toUpperCase()}${section.difficulty.slice(1)}`;
+  return `${section.label} · ${BANK_QUESTION_TYPE_LABELS[section.questionType]} · ${section.questionCount} × ${section.marksPerQuestion} mark${section.marksPerQuestion === 1 ? "" : "s"} · ${difficultyLabel}`;
 }
 
 function numberedSections(paper: ValidatedPaper) {
@@ -49,66 +56,95 @@ function numberedSections(paper: ValidatedPaper) {
   });
 }
 
+function optionRows(question: PaperBuilderQuestion) {
+  return [
+    ["A", question.optionA],
+    ["B", question.optionB],
+    ["C", question.optionC],
+    ["D", question.optionD],
+  ] as const;
+}
+
+function WrittenAnswerSpace({ question }: { question: PaperBuilderQuestion }) {
+  const lineCount = question.questionType === "LONG_ANSWER"
+    ? 7
+    : question.questionType === "SHORT_ANSWER"
+      ? 4
+      : question.questionType === "VERY_SHORT_ANSWER"
+        ? 2
+        : 0;
+
+  if (lineCount === 0) return null;
+  return (
+    <div className="mt-4 space-y-5" aria-label="Answer space">
+      {Array.from({ length: lineCount }, (_, index) => <div key={index} className="border-b border-gray-300" />)}
+    </div>
+  );
+}
+
+function answerFor(question: PaperBuilderQuestion) {
+  if (question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON") {
+    const option = optionRows(question).find(([label]) => label === question.correctAnswer)?.[1];
+    return option ? `${question.correctAnswer}. ${option}` : question.correctAnswer;
+  }
+  if (question.questionType === "TRUE_FALSE" || question.questionType === "FILL_BLANK") {
+    return question.correctAnswer;
+  }
+  return question.modelAnswer;
+}
+
 export function PaperQuestionDocument({ paper }: { paper: ValidatedPaper }) {
   const sections = numberedSections(paper);
+  const showStudentDetails = paper.details.showStudentName || paper.details.showRollNumber;
 
   return (
     <article className="paper-print-question paper-builder-print-root rounded-2xl border bg-white p-6 text-black shadow-sm sm:p-10 print:rounded-none print:border-0 print:p-0 print:shadow-none">
       <PaperHeader paper={paper} />
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-[minmax(0,1fr)_15rem]">
+      <div className={showStudentDetails ? "mb-8 grid gap-4 sm:grid-cols-[minmax(0,1fr)_15rem]" : "mb-8"}>
         <div>
           <p className="text-sm font-bold">Instructions</p>
-          {paper.details.instructions ? (
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
-              {paper.details.instructions}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm leading-6 text-gray-700">
-              Attempt all questions. Select the single best answer for each question.
-            </p>
-          )}
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+            {paper.details.instructions || "Attempt all questions."}
+          </p>
         </div>
-        <div className="space-y-4 text-sm">
-          <div className="border-b border-black pb-1"><span className="font-semibold">Student name:</span></div>
-          <div className="border-b border-black pb-1"><span className="font-semibold">Roll number:</span></div>
-        </div>
+        {showStudentDetails && (
+          <div className="space-y-4 text-sm">
+            {paper.details.showStudentName && <div className="border-b border-black pb-1"><span className="font-semibold">Student name:</span></div>}
+            {paper.details.showRollNumber && <div className="border-b border-black pb-1"><span className="font-semibold">Roll number:</span></div>}
+          </div>
+        )}
       </div>
 
       <div className="space-y-9">
-        {sections.map(({ section, questions }, sectionIndex) => (
+        {sections.map(({ section, questions }) => (
           <section key={section.patternId}>
             <h2 className="mb-5 border-b border-gray-300 pb-2 text-sm font-bold uppercase tracking-wide">
-              {sectionTitle(sectionIndex, section.questionCount, section.marksPerQuestion, section.difficulty)}
+              {sectionTitle(section)}
             </h2>
             <div className="space-y-8">
               {questions.map(({ question, number }) => {
+                const showsOptions = question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON";
                 return (
                   <div key={question.id} className="break-inside-avoid">
                     <div className="flex items-start gap-3">
                       <span className="w-7 shrink-0 font-bold">{number}.</span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-4">
-                          <p className="whitespace-pre-wrap text-sm font-medium leading-6 sm:text-base">
-                            {question.questionText}
-                          </p>
-                          <span className="shrink-0 text-xs text-gray-500">
-                            [{question.marks} mark{question.marks === 1 ? "" : "s"}]
-                          </span>
+                          <p className="whitespace-pre-wrap text-sm font-medium leading-6 sm:text-base">{question.questionText}</p>
+                          <span className="shrink-0 text-xs text-gray-500">[{question.marks} mark{question.marks === 1 ? "" : "s"}]</span>
                         </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          {[
-                            ["A", question.optionA],
-                            ["B", question.optionB],
-                            ["C", question.optionC],
-                            ["D", question.optionD],
-                          ].map(([label, option]) => (
-                            <div key={label} className="flex items-start gap-2 text-sm">
-                              <span className="mt-0.5 size-5 shrink-0 rounded-full border border-black" aria-hidden />
-                              <span><strong>{label}.</strong> {option}</span>
-                            </div>
-                          ))}
-                        </div>
+                        {showsOptions && (
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            {optionRows(question).map(([label, option]) => (
+                              <div key={label} className="flex items-start gap-2 text-sm">
+                                <span className="mt-0.5 size-5 shrink-0 rounded-full border border-black" aria-hidden />
+                                <span><strong>{label}.</strong> {option}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <WrittenAnswerSpace question={question} />
                       </div>
                     </div>
                   </div>
@@ -129,32 +165,29 @@ export function PaperAnswerKeyDocument({ paper }: { paper: ValidatedPaper }) {
     <article className="paper-print-answer paper-builder-print-root rounded-2xl border bg-white p-6 text-black shadow-sm sm:p-10 print:rounded-none print:border-0 print:p-0 print:shadow-none">
       <PaperHeader paper={paper} answerKey />
       <div className="space-y-7">
-        {sections.map(({ section, questions }, sectionIndex) => (
+        {sections.map(({ section, questions }) => (
           <section key={section.patternId}>
             <h2 className="mb-4 border-b border-gray-300 pb-2 text-sm font-bold uppercase tracking-wide">
-              {sectionTitle(sectionIndex, section.questionCount, section.marksPerQuestion, section.difficulty)}
+              {sectionTitle(section)}
             </h2>
             <div className="space-y-4">
-              {questions.map(({ question, number }) => {
-                return (
-                  <div key={question.id} className="break-inside-avoid rounded-lg border border-gray-200 p-4">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="font-semibold">
-                        {number}. Answer {question.correctAnswer}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {question.topicName ?? question.topicTag ?? "Selected topic"} · {question.marks} mark{question.marks === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <p className="mt-2 text-sm text-gray-700">{question.questionText}</p>
-                    {question.explanation && (
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-600">
-                        <span className="font-semibold text-gray-800">Explanation:</span> {question.explanation}
-                      </p>
-                    )}
+              {questions.map(({ question, number }) => (
+                <div key={question.id} className="break-inside-avoid rounded-lg border border-gray-200 p-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-semibold">{number}. {BANK_QUESTION_TYPE_LABELS[question.questionType]}</p>
+                    <p className="text-xs text-gray-500">{question.topicName ?? question.topicTag ?? "Selected topic"} · {question.marks} mark{question.marks === 1 ? "" : "s"}</p>
                   </div>
-                );
-              })}
+                  <p className="mt-2 text-sm text-gray-700">{question.questionText}</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-800">
+                    <span className="font-semibold">Answer:</span> {answerFor(question)}
+                  </p>
+                  {question.explanation && (
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-600">
+                      <span className="font-semibold text-gray-800">Explanation:</span> {question.explanation}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         ))}

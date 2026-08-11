@@ -2,8 +2,7 @@ import type {
   PaperBuilderQuestion,
   PaperPatternRow,
 } from "./types";
-
-const VALID_ANSWERS = new Set(["A", "B", "C", "D"]);
+import { validateBankQuestionInput } from "@/lib/bank-questions";
 
 export function normalizeQuestionText(value: string) {
   return value
@@ -20,17 +19,23 @@ export function calculatePatternMarks(patterns: PaperPatternRow[]) {
   );
 }
 
-export function isCompleteMcq(question: PaperBuilderQuestion) {
-  return (
-    Boolean(question.questionText.trim()) &&
-    Boolean(question.optionA.trim()) &&
-    Boolean(question.optionB.trim()) &&
-    Boolean(question.optionC.trim()) &&
-    Boolean(question.optionD.trim()) &&
-    VALID_ANSWERS.has(question.correctAnswer.trim().toUpperCase()) &&
-    Number.isInteger(question.marks) &&
-    question.marks > 0
-  );
+export function isCompletePaperQuestion(question: PaperBuilderQuestion) {
+  return validateBankQuestionInput({
+    subjectId: question.subjectId,
+    topicId: question.topicId,
+    questionType: question.questionType,
+    questionText: question.questionText,
+    optionA: question.optionA,
+    optionB: question.optionB,
+    optionC: question.optionC,
+    optionD: question.optionD,
+    correctAnswer: question.correctAnswer,
+    modelAnswer: question.modelAnswer,
+    explanation: question.explanation,
+    topicTag: question.topicTag,
+    difficulty: question.difficulty,
+    marks: question.marks,
+  }).success;
 }
 
 export function questionMatchesPattern(
@@ -43,9 +48,10 @@ export function questionMatchesPattern(
     question.subjectId === subjectId &&
     Boolean(question.topicId) &&
     topicIds.includes(question.topicId as string) &&
+    question.questionType === pattern.questionType &&
     question.marks === pattern.marksPerQuestion &&
     (pattern.difficulty === "any" || question.difficulty === pattern.difficulty) &&
-    isCompleteMcq(question)
+    isCompletePaperQuestion(question)
   );
 }
 

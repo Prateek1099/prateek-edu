@@ -1,31 +1,32 @@
-export const PAPER_TEST_TYPES = [
-  "Tuesday Test",
-  "Friday Test",
-  "Class Test",
-  "Revision Test",
-] as const;
+import {
+  BANK_QUESTION_TYPES,
+  type BankQuestionTypeValue,
+} from "@/lib/bank-questions";
 
+export const PAPER_QUESTION_TYPES = BANK_QUESTION_TYPES;
 export const PAPER_DIFFICULTIES = ["any", "easy", "medium", "hard"] as const;
 
-export type PaperTestType = (typeof PAPER_TEST_TYPES)[number];
 export type PaperDifficulty = (typeof PAPER_DIFFICULTIES)[number];
 
 export type PaperBuilderQuestion = {
   id: string;
   subjectId: string;
   topicId: string | null;
+  questionType: BankQuestionTypeValue;
   questionText: string;
-  optionA: string;
-  optionB: string;
-  optionC: string;
-  optionD: string;
-  correctAnswer: string;
+  optionA: string | null;
+  optionB: string | null;
+  optionC: string | null;
+  optionD: string | null;
+  correctAnswer: string | null;
+  modelAnswer: string | null;
   explanation: string | null;
   topicTag: string | null;
   difficulty: string;
   marks: number;
   topicName: string | null;
 };
+
 export type PaperBuilderSubject = {
   id: string;
   name: string;
@@ -47,16 +48,24 @@ export type PaperBuilderTopic = {
 
 export type PaperPatternRow = {
   id: string;
+  label: string;
+  questionType: BankQuestionTypeValue;
   questionCount: number;
   marksPerQuestion: number;
   difficulty: PaperDifficulty;
 };
 
 export type PaperDetails = {
+  institutionName: string;
+  examLabel: string;
   title: string;
-  testType: PaperTestType;
+  courseLine: string;
+  topicLine: string;
   durationMinutes: number;
-  targetMarks: number;
+  dateText: string;
+  classText: string;
+  showStudentName: boolean;
+  showRollNumber: boolean;
   instructions: string;
 };
 
@@ -75,6 +84,8 @@ export type PaperValidationInput = {
 
 export type ValidatedPaperSection = {
   patternId: string;
+  label: string;
+  questionType: BankQuestionTypeValue;
   questionCount: number;
   marksPerQuestion: number;
   difficulty: PaperDifficulty;

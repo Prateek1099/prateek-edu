@@ -25,10 +25,10 @@ export default async function AdminLayout({
 
   return (
     <AdminBoardProvider>
-      <div className="min-h-screen bg-muted/40 lg:flex">
+      <div className="admin-shell min-h-screen bg-muted/40 lg:flex">
         <AdminSidebar boards={boards} />
-        <main className="min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 md:py-8 lg:px-8 xl:px-10">
-          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+        <main className="admin-content min-w-0 flex-1 overflow-x-hidden px-4 py-6 sm:px-6 md:py-8 lg:px-8 xl:px-10">
+          <div className="admin-content-inner mx-auto w-full max-w-[1600px]">{children}</div>
         </main>
       </div>
     </AdminBoardProvider>

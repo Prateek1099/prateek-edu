@@ -213,11 +213,11 @@ export function AdminSidebar({ boards }: { boards: { value: string; label: strin
 
   return (
     <>
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border/60 bg-card lg:block">
+      <aside className="admin-navigation sticky top-0 hidden h-screen w-64 shrink-0 border-r border-border/60 bg-card lg:block">
         <SidebarContent boards={boards} pathname={pathname} />
       </aside>
 
-      <div className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-4 backdrop-blur lg:hidden">
+      <div className="admin-navigation sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border/70 bg-background/95 px-4 backdrop-blur lg:hidden">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Vexa
