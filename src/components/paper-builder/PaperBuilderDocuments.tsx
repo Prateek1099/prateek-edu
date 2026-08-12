@@ -7,21 +7,20 @@ import type {
 
 function PaperHeader({ paper, answerKey = false }: { paper: ValidatedPaper; answerKey?: boolean }) {
   const blankLine = "__________________";
+  const identityLine = [paper.details.examLabel, paper.details.courseLine]
+    .filter((value) => value.trim())
+    .join(" · ");
 
   return (
     <header className="mb-8 border-b-2 border-black pb-5">
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <p className="text-2xl font-black uppercase tracking-tight">{paper.details.institutionName}</p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-gray-600">
-            {answerKey ? `${paper.details.examLabel} · Teacher answer key` : paper.details.examLabel}
-          </p>
-        </div>
-        <div className="text-right">
-          <h1 className="text-xl font-bold">{paper.details.title}</h1>
-          <p className="mt-1 text-sm text-gray-700">{paper.details.courseLine}</p>
-          {paper.details.topicLine && <p className="mt-1 text-xs text-gray-500">{paper.details.topicLine}</p>}
-        </div>
+      <div className="text-center">
+        <p className="text-2xl font-black uppercase tracking-tight">{paper.details.institutionName}</p>
+        <p className="mt-2 text-sm font-bold uppercase tracking-wide text-gray-700">
+          {identityLine}
+        </p>
+        {answerKey && <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-gray-500">Teacher answer key</p>}
+        {paper.details.title && <h1 className="mt-3 text-xl font-bold">{paper.details.title}</h1>}
+        {paper.details.topicLine && <p className="mt-1 text-sm text-gray-600">{paper.details.topicLine}</p>}
       </div>
       <div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div><span className="font-semibold">Duration:</span> {paper.details.durationMinutes} minutes</div>
@@ -34,10 +33,7 @@ function PaperHeader({ paper, answerKey = false }: { paper: ValidatedPaper; answ
 }
 
 function sectionTitle(section: ValidatedPaperSection) {
-  const difficultyLabel = section.difficulty === "any"
-    ? "Mixed difficulty"
-    : `${section.difficulty[0].toUpperCase()}${section.difficulty.slice(1)}`;
-  return `${section.label} · ${BANK_QUESTION_TYPE_LABELS[section.questionType]} · ${section.questionCount} × ${section.marksPerQuestion} mark${section.marksPerQuestion === 1 ? "" : "s"} · ${difficultyLabel}`;
+  return `${section.label} · ${BANK_QUESTION_TYPE_LABELS[section.questionType]} · ${section.questionCount} × ${section.marksPerQuestion} mark${section.marksPerQuestion === 1 ? "" : "s"}`;
 }
 
 function numberedSections(paper: ValidatedPaper) {

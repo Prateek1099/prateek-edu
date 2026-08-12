@@ -46,9 +46,6 @@ export async function validatePaperBuilderSelection(
     if (!examLabel) {
       return { success: false, error: "Add an exam label." };
     }
-    if (!title) {
-      return { success: false, error: "Add a paper title." };
-    }
     if (!Number.isInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > 300) {
       return { success: false, error: "Duration must be between 1 and 300 minutes." };
     }
@@ -265,7 +262,6 @@ export async function validatePaperBuilderSelection(
     }
 
     const defaultCourseLine = `${subject.name} · ${subject.qualification.title} · ${subject.qualification.board.title}`;
-    const defaultTopicLine = topics.map((topic) => topic.topicName).join(" · ");
 
     return {
       success: true,
@@ -275,7 +271,7 @@ export async function validatePaperBuilderSelection(
           examLabel,
           title,
           courseLine: courseLineInput || defaultCourseLine,
-          topicLine: topicLineInput || defaultTopicLine,
+          topicLine: topicLineInput,
           durationMinutes,
           dateText,
           classText,

@@ -185,7 +185,6 @@ export default function PaperBuilderClient({ subjects, topics, questions, header
   const canValidate =
     Boolean(details.institutionName.trim()) &&
     Boolean(details.examLabel.trim()) &&
-    Boolean(details.title.trim()) &&
     details.durationMinutes > 0 &&
     Boolean(subjectId) &&
     topicIds.length > 0 &&
@@ -539,13 +538,13 @@ export default function PaperBuilderClient({ subjects, topics, questions, header
           <Field label="Exam label">
             <Input value={details.examLabel} maxLength={200} onChange={(event) => updateDetails("examLabel", event.target.value)} placeholder="Class Test" />
           </Field>
-          <Field label="Paper title">
+          <Field label="Paper title (optional)">
             <Input value={details.title} maxLength={200} onChange={(event) => updateDetails("title", event.target.value)} placeholder="e.g. SQL" />
           </Field>
           <Field label="Course / class / board line" className="md:col-span-2">
             <Input value={details.courseLine} maxLength={500} onChange={(event) => updateDetails("courseLine", event.target.value)} placeholder="Filled from the selected subject" />
           </Field>
-          <Field label="Topic / subtitle line" className="md:col-span-2">
+          <Field label="Topic / subtitle line (optional)" className="md:col-span-2">
             <Input value={details.topicLine} maxLength={1000} onChange={(event) => updateDetails("topicLine", event.target.value)} placeholder="Filled from selected topics" />
           </Field>
           <Field label="Duration (minutes)">
