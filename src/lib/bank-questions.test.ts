@@ -94,3 +94,45 @@ test("accepts ChapterID and quoted mixed-type CSV content", () => {
   assert.equal(result.rows[0].questionType, "TRUE_FALSE");
   assert.equal(result.rows[1].questionType, "VERY_SHORT_ANSWER");
 });
+
+test("resolves preferred ChapterCode and reports the supplied reference", () => {
+  const result = parseBankQuestionCsv(
+    [
+      "ChapterCode,QuestionType,Question,OptionA,OptionB,OptionC,OptionD,Answer,ModelAnswer,Explanation,Difficulty,Marks,Source",
+      '101,MCQ,"What does SQL stand for?",A,B,C,D,A,,,easy,1,Textbook',
+    ].join("\n"),
+    "subject-1",
+    [{ id: "topic-internal-id", subjectId: "subject-1", name: "Querying and SQL Functions", importCode: "101" }],
+  );
+
+  assert.equal(result.canImport, true);
+  assert.equal(result.rows[0].topicId, "topic-internal-id");
+  assert.equal(result.rows[0].topicName, "Querying and SQL Functions");
+  assert.equal(result.rows[0].suppliedTopicReference, "ChapterCode: 101");
+});
+
+test("keeps TopicID support and lets ChapterID fall back to import code", () => {
+  const topics = [{ id: "topic-internal-id", subjectId: "subject-1", name: "SQL", importCode: "103" }];
+  const header = "QuestionType,Question,OptionA,OptionB,OptionC,OptionD,Answer,ModelAnswer,Explanation,Difficulty,Marks,Source";
+  const data = 'MCQ,"What is SQL?",A,B,C,D,A,,,easy,1,Textbook';
+  const byId = parseBankQuestionCsv(`TopicID,${header}\ntopic-internal-id,${data}`, "subject-1", topics);
+  const byChapterAlias = parseBankQuestionCsv(`ChapterID,${header}\n103,${data}`, "subject-1", topics);
+
+  assert.equal(byId.canImport, true);
+  assert.equal(byChapterAlias.canImport, true);
+  assert.equal(byChapterAlias.rows[0].topicId, "topic-internal-id");
+});
+
+test("gives a row-level error for an unknown ChapterCode", () => {
+  const result = parseBankQuestionCsv(
+    [
+      "ChapterCode,QuestionType,Question,OptionA,OptionB,OptionC,OptionD,Answer,ModelAnswer,Explanation,Difficulty,Marks,Source",
+      '999,MCQ,"What is SQL?",A,B,C,D,A,,,easy,1,Textbook',
+    ].join("\n"),
+    "subject-1",
+    [{ id: "topic-1", subjectId: "subject-1", name: "SQL", importCode: "101" }],
+  );
+
+  assert.equal(result.canImport, false);
+  assert.match(result.rows[0].errors.join(" "), /ChapterCode 999 does not match any topic in the selected subject/);
+});

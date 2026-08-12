@@ -100,6 +100,7 @@ model User {
   mistakeEntries       MistakeEntry[]
   revisionPlan         RevisionPlan?
   worksheetAssignments WorksheetAssignment[]
+  paperHeaderTemplates PaperHeaderTemplate[]
   workspace            Workspace?            @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
   ownedWorkspace       Workspace?            @relation("WorkspaceOwner")
   classEnrollments     ClassStudent[]
@@ -298,18 +299,42 @@ model Topic {
   sortOrder   Int     @default(0) @map("sort_order") // syllabus sequence; seeded for ICT (0417)
   status      String  @default("PUBLISHED")
   description String? @db.Text
+  importCode  String? @map("import_code")
 
-  subject          Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  userProgress     UserTopicProgress[]
-  notes            Note[]
-  topicalQuestions TopicalQuestion[]
-  challenges       Challenge[]
-  bankQuestions    BankQuestion[]
+  subject            Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userProgress       UserTopicProgress[]
+  notes              Note[]
+  topicalQuestions   TopicalQuestion[]
+  challenges         Challenge[]
+  bankQuestions      BankQuestion[]
   studentReflections StudentReflection[]
-  workspaceContent WorkspaceContent[]
+  workspaceContent   WorkspaceContent[]
 
+  @@unique([subjectId, importCode])
   @@index([subjectId])
   @@map("topics")
+}
+
+model PaperHeaderTemplate {
+  id                  String   @id @default(cuid())
+  name                String   @unique
+  institutionName     String   @map("institution_name")
+  examLabel           String   @map("exam_label")
+  courseLine          String   @map("course_line")
+  defaultDuration     Int      @default(30) @map("default_duration")
+  defaultInstructions String   @default("Attempt all questions.") @map("default_instructions") @db.Text
+  showStudentName     Boolean  @default(true) @map("show_student_name")
+  showRollNumber      Boolean  @default(true) @map("show_roll_number")
+  defaultClassLine    String?  @map("default_class_line")
+  defaultTopicLine    String?  @map("default_topic_line")
+  createdById         String   @map("created_by_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdById])
+  @@map("paper_header_templates")
 }
 
 model Note {

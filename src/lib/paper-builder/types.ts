@@ -69,6 +69,22 @@ export type PaperDetails = {
   instructions: string;
 };
 
+export type PaperHeaderTemplate = {
+  id: string;
+  name: string;
+  institutionName: string;
+  examLabel: string;
+  courseLine: string;
+  defaultDuration: number;
+  defaultInstructions: string;
+  showStudentName: boolean;
+  showRollNumber: boolean;
+  defaultClassLine: string | null;
+  defaultTopicLine: string | null;
+};
+
+export type PaperHeaderTemplateInput = Omit<PaperHeaderTemplate, "id">;
+
 export type PaperSectionSelection = {
   patternId: string;
   questionIds: string[];

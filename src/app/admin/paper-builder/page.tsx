@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPaperBuilderPage() {
   await requireSuperAdmin();
 
-  const [subjects, topics, questions] = await Promise.all([
+  const [subjects, topics, questions, headerTemplates] = await Promise.all([
     prisma.subject.findMany({
       include: { qualification: { include: { board: true } } },
       orderBy: [
@@ -43,6 +43,7 @@ export default async function AdminPaperBuilderPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.paperHeaderTemplate.findMany({ orderBy: [{ name: "asc" }] }),
   ]);
 
   return (
@@ -56,6 +57,19 @@ export default async function AdminPaperBuilderPage() {
       </header>
 
       <PaperBuilderClient
+        headerTemplates={headerTemplates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          institutionName: template.institutionName,
+          examLabel: template.examLabel,
+          courseLine: template.courseLine,
+          defaultDuration: template.defaultDuration,
+          defaultInstructions: template.defaultInstructions,
+          showStudentName: template.showStudentName,
+          showRollNumber: template.showRollNumber,
+          defaultClassLine: template.defaultClassLine,
+          defaultTopicLine: template.defaultTopicLine,
+        }))}
         subjects={subjects.map((subject) => ({
           id: subject.id,
           name: subject.name,

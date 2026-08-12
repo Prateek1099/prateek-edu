@@ -10,6 +10,7 @@ export type CsvTopicOption = {
   id: string;
   subjectId: string;
   name: string;
+  importCode?: string | null;
 };
 
 export type BankQuestionCsvRow = {
@@ -17,6 +18,7 @@ export type BankQuestionCsvRow = {
   questionType: BankQuestionTypeValue | null;
   questionText: string;
   topicId: string;
+  suppliedTopicReference: string;
   topicName: string;
   difficulty: string;
   marks: number | null;
@@ -34,6 +36,8 @@ export type BankQuestionCsvResult = {
 const HEADER_ALIASES: Record<string, string> = {
   TOPICID: "topicId",
   CHAPTERID: "chapterId",
+  TOPICCODE: "topicCode",
+  CHAPTERCODE: "chapterCode",
   QUESTIONTYPE: "questionType",
   TYPE: "questionType",
   QUESTION: "questionText",
@@ -120,13 +124,26 @@ export function parseBankQuestionCsv(
   const fields = headers.map((header) => HEADER_ALIASES[header] ?? null);
   const hasTopicId = fields.includes("topicId");
   const hasChapterId = fields.includes("chapterId");
-  if (!hasTopicId && !hasChapterId) fileErrors.push("CSV needs a TopicID or ChapterID column.");
+  const hasTopicCode = fields.includes("topicCode");
+  const hasChapterCode = fields.includes("chapterCode");
+  if (!hasTopicId && !hasChapterId && !hasTopicCode && !hasChapterCode) {
+    fileErrors.push("CSV needs a ChapterCode, TopicCode, TopicID, or ChapterID column.");
+  }
   for (const required of ["questionType", "questionText", "difficulty", "marks"]) {
     if (!fields.includes(required)) fileErrors.push(`CSV is missing the ${required} column.`);
   }
   if (parsed.records.length > 1_001) fileErrors.push("CSV imports are limited to 1,000 questions at a time.");
 
-  const topicById = new Map(topics.map((topic) => [topic.id, topic]));
+  const scopedTopics = topics.filter((topic) => topic.subjectId === subjectId);
+  const topicById = new Map(scopedTopics.map((topic) => [topic.id, topic]));
+  const topicByCode = new Map<string, CsvTopicOption>();
+  const duplicateCodes = new Set<string>();
+  for (const topic of scopedTopics) {
+    const code = topic.importCode?.trim();
+    if (!code) continue;
+    if (topicByCode.has(code)) duplicateCodes.add(code);
+    else topicByCode.set(code, topic);
+  }
   const rows = parsed.records.slice(1, 1_001).map((values, rowIndex): BankQuestionCsvRow => {
     const raw: Record<string, string> = {};
     fields.forEach((fieldName, columnIndex) => {
@@ -135,14 +152,46 @@ export function parseBankQuestionCsv(
 
     const warnings: string[] = [];
     const errors: string[] = [];
-    const rawTopicId = raw.topicId || raw.chapterId || "";
-    if (raw.topicId && raw.chapterId && raw.topicId !== raw.chapterId) {
-      errors.push("TopicID and ChapterID refer to different values.");
+    const references = [
+      { label: "TopicID", value: raw.topicId, mode: "id" as const },
+      { label: "ChapterID", value: raw.chapterId, mode: "id-or-code" as const },
+      { label: "TopicCode", value: raw.topicCode, mode: "code" as const },
+      { label: "ChapterCode", value: raw.chapterCode, mode: "code" as const },
+    ].filter((reference) => Boolean(reference.value));
+    const suppliedTopicReference = references
+      .map((reference) => `${reference.label}: ${reference.value}`)
+      .join(" · ");
+    const resolvedTopics: CsvTopicOption[] = [];
+    for (const reference of references) {
+      let resolved: CsvTopicOption | undefined;
+      if (reference.mode === "id") {
+        resolved = topicById.get(reference.value);
+      } else if (reference.mode === "code") {
+        if (duplicateCodes.has(reference.value)) {
+          errors.push(`${reference.label} ${reference.value} is duplicated within the selected subject.`);
+          continue;
+        }
+        resolved = topicByCode.get(reference.value);
+      } else {
+        resolved = topicById.get(reference.value);
+        if (!resolved) {
+          if (duplicateCodes.has(reference.value)) {
+            errors.push(`${reference.label} ${reference.value} matches a duplicated topic code in the selected subject.`);
+            continue;
+          }
+          resolved = topicByCode.get(reference.value);
+        }
+      }
+      if (!resolved) {
+        errors.push(`${reference.label} ${reference.value} does not match any topic in the selected subject.`);
+      } else {
+        resolvedTopics.push(resolved);
+      }
     }
-    const topic = topicById.get(rawTopicId);
-    if (!rawTopicId) errors.push("TopicID is required.");
-    else if (!topic) errors.push("TopicID does not match an existing Vexa topic.");
-    else if (topic.subjectId !== subjectId) errors.push("Topic does not belong to the selected subject.");
+    const resolvedTopicIds = new Set(resolvedTopics.map((topic) => topic.id));
+    if (resolvedTopicIds.size > 1) errors.push("Topic/chapter identifier columns resolve to different topics.");
+    const topic = resolvedTopics[0];
+    if (references.length === 0) errors.push("A ChapterCode, TopicCode, TopicID, or ChapterID value is required.");
 
     if (raw.importance) {
       warnings.push(`Importance “${raw.importance}” is unsupported and will not be stored.`);
@@ -154,7 +203,7 @@ export function parseBankQuestionCsv(
     const parsedMarks = Number(raw.marks);
     const input: BankQuestionInput = {
       subjectId,
-      topicId: topic?.id ?? (rawTopicId || null),
+      topicId: topic?.id ?? null,
       questionType: questionType ?? (raw.questionType as BankQuestionTypeValue),
       questionText: raw.questionText ?? "",
       optionA: raw.optionA,
@@ -175,7 +224,8 @@ export function parseBankQuestionCsv(
       rowNumber: rowIndex + 2,
       questionType,
       questionText: raw.questionText ?? "",
-      topicId: topic?.id ?? rawTopicId,
+      topicId: topic?.id ?? "",
+      suppliedTopicReference,
       topicName: topic?.name ?? "Unknown topic",
       difficulty: raw.difficulty ?? "",
       marks: Number.isFinite(parsedMarks) ? parsedMarks : null,

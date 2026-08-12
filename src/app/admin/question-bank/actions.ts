@@ -77,12 +77,12 @@ export async function importAdminBankQuestionCsv(
 
   const topics = await prisma.topic.findMany({
     where: { subjectId },
-    select: { id: true, subjectId: true, topicName: true },
+    select: { id: true, subjectId: true, topicName: true, importCode: true },
   });
   const parsed = parseBankQuestionCsv(
     csvText,
     subjectId,
-    topics.map((topic) => ({ id: topic.id, subjectId: topic.subjectId, name: topic.topicName })),
+    topics.map((topic) => ({ id: topic.id, subjectId: topic.subjectId, name: topic.topicName, importCode: topic.importCode })),
   );
   if (!parsed.canImport) {
     const errors = [

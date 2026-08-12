@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -14,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, ListTree, UploadCloud } from "lucide-react";
+import { Copy, Plus, Pencil, ListTree, UploadCloud } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +40,7 @@ type TopicWithRelations = {
   status: string;
   sortOrder: number;
   description: string | null;
+  importCode: string | null;
   subjectId: string;
   subject: { name: string; iconType: string | null; iconValue: string | null; qualification: { title: string; board: { name: string; title: string } } };
   _count: { notes: number; challenges: number; bankQuestions: number };
@@ -59,7 +59,6 @@ export default function AdminTopicsClient({
   topics: TopicWithRelations[];
   subjects: SubjectOption[];
 }) {
-  const router = useRouter();
   const { selectedBoard } = useAdminBoard();
   
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -75,6 +74,7 @@ export default function AdminTopicsClient({
   const [subjectId, setSubjectId] = useState("");
   const [topicName, setTopicName] = useState("");
   const [description, setDescription] = useState("");
+  const [importCode, setImportCode] = useState("");
   const [status, setStatus] = useState("PUBLISHED");
   const [sortOrder, setSortOrder] = useState("0");
   
@@ -102,6 +102,7 @@ export default function AdminTopicsClient({
     setSubjectId(filteredSubjects[0]?.id || "");
     setTopicName("");
     setDescription("");
+    setImportCode("");
     setStatus("PUBLISHED");
     setSortOrder("0");
     setSelectedTopic(null);
@@ -117,6 +118,7 @@ export default function AdminTopicsClient({
     setSubjectId(topic.subjectId);
     setTopicName(topic.topicName);
     setDescription(topic.description || "");
+    setImportCode(topic.importCode || "");
     setStatus(topic.status);
     setSortOrder(topic.sortOrder.toString());
     setIsEditOpen(true);
@@ -137,6 +139,7 @@ export default function AdminTopicsClient({
       await createTopic({
         subjectId,
         topicName,
+        importCode,
         description: description || undefined,
         status,
         sortOrder: parseInt(sortOrder, 10),
@@ -144,8 +147,8 @@ export default function AdminTopicsClient({
       toast.success("Topic added");
       setIsAddOpen(false);
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     } finally {
       setLoading(false);
     }
@@ -158,6 +161,7 @@ export default function AdminTopicsClient({
     try {
       await updateTopic(selectedTopic.id, {
         topicName,
+        importCode,
         description: description || undefined,
         status,
         sortOrder: parseInt(sortOrder, 10),
@@ -165,10 +169,19 @@ export default function AdminTopicsClient({
       toast.success("Topic updated");
       setIsEditOpen(false);
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyValue = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Could not copy ${label.toLowerCase()}.`);
     }
   };
 
@@ -182,8 +195,8 @@ export default function AdminTopicsClient({
       toast.success(`Imported ${res.count} topics successfully!`);
       setIsBulkOpen(false);
       setBulkText("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     } finally {
       setLoading(false);
     }
@@ -241,6 +254,7 @@ export default function AdminTopicsClient({
               <TableRow>
                 <TableHead>Subject</TableHead>
                 <TableHead>Topic Name</TableHead>
+                <TableHead>Import Code</TableHead>
                 <TableHead>Sort Order</TableHead>
                 <TableHead>Content Attached</TableHead>
                 <TableHead>Status</TableHead>
@@ -250,7 +264,7 @@ export default function AdminTopicsClient({
             <TableBody>
               {filteredTopics.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-14">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-14">
                     No topics found matching filters.
                   </TableCell>
                 </TableRow>
@@ -264,6 +278,13 @@ export default function AdminTopicsClient({
                     <TableCell>
                       <div className="font-medium">{t.topicName}</div>
                       {t.description && <div className="text-xs text-muted-foreground truncate max-w-[300px]">{t.description}</div>}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {t.importCode ? <Badge variant="outline" className="font-mono">{t.importCode}</Badge> : <span className="text-xs text-muted-foreground">Not set</span>}
+                        {t.importCode && <Button type="button" variant="ghost" size="icon-sm" aria-label={`Copy import code ${t.importCode}`} onClick={() => copyValue(t.importCode!, "Import code")}><Copy className="size-3.5" /></Button>}
+                        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Copy internal topic ID for ${t.topicName}`} onClick={() => copyValue(t.id, "Topic ID")}><Copy className="size-3.5" /></Button>
+                      </div>
                     </TableCell>
                     <TableCell>{t.sortOrder}</TableCell>
                     <TableCell>
@@ -302,7 +323,7 @@ export default function AdminTopicsClient({
             <div className="space-y-2">
               <Label>Subject</Label>
               <Select value={subjectId} onValueChange={(val) => val && setSubjectId(val)} disabled={isEditOpen}>
-                <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select Subject">{filteredSubjects.find((subject) => subject.id === subjectId) ? `${filteredSubjects.find((subject) => subject.id === subjectId)?.name} (${filteredSubjects.find((subject) => subject.id === subjectId)?.qualification.title})` : undefined}</SelectValue></SelectTrigger>
                 <SelectContent>
                   {filteredSubjects.map(s => (
                     <SelectItem key={s.id} value={s.id}>{s.name} ({s.qualification.title})</SelectItem>
@@ -313,6 +334,11 @@ export default function AdminTopicsClient({
             <div className="space-y-2">
               <Label>Topic Name</Label>
               <Input required value={topicName} onChange={(e) => setTopicName(e.target.value)} placeholder="e.g. Data Representation" />
+            </div>
+            <div className="space-y-2">
+              <Label>CSV Import Code (Optional)</Label>
+              <Input value={importCode} onChange={(e) => setImportCode(e.target.value)} maxLength={64} placeholder="e.g. 101, SQL01, CH1" />
+              <p className="text-xs text-muted-foreground">Use this code in CSV imports instead of the long internal TopicID. It must be unique within this subject.</p>
             </div>
             <div className="space-y-2">
               <Label>Description (Optional)</Label>
@@ -356,7 +382,7 @@ export default function AdminTopicsClient({
               <div className="space-y-2">
                 <Label>Destination Subject</Label>
                 <Select value={subjectId} onValueChange={(val) => val && setSubjectId(val)}>
-                  <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select Subject">{filteredSubjects.find((subject) => subject.id === subjectId) ? `${filteredSubjects.find((subject) => subject.id === subjectId)?.name} (${filteredSubjects.find((subject) => subject.id === subjectId)?.qualification.title})` : undefined}</SelectValue></SelectTrigger>
                   <SelectContent>
                     {filteredSubjects.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name} ({s.qualification.title})</SelectItem>

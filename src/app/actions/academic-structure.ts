@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { rejectIfNotAdmin } from "@/lib/require-role";
+import { Prisma } from "@prisma/client";
 
 // --- BOARDS ---
 
@@ -118,18 +119,55 @@ export async function duplicateSubject(subjectId: string, newQualificationId: st
 
 // --- TOPICS ---
 
-export async function createTopic(data: { subjectId: string; topicName: string; sortOrder: number; description?: string; status: string }) {
+function normalizeTopicImportCode(value?: string | null) {
+  const code = value?.trim() || null;
+  if (code && code.length > 64) throw new Error("Import code must be 64 characters or fewer.");
+  return code;
+}
+
+async function ensureTopicImportCodeAvailable(subjectId: string, importCode: string | null, excludeId?: string) {
+  if (!importCode) return;
+  const duplicate = await prisma.topic.findFirst({
+    where: { subjectId, importCode, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    select: { id: true },
+  });
+  if (duplicate) throw new Error(`Import code “${importCode}” is already used by another topic in this subject.`);
+}
+
+export async function createTopic(data: { subjectId: string; topicName: string; importCode?: string | null; sortOrder: number; description?: string; status: string }) {
   const forbidden = await rejectIfNotAdmin();
   if (forbidden) throw new Error(forbidden);
-  const result = await prisma.topic.create({ data });
+  const importCode = normalizeTopicImportCode(data.importCode);
+  await ensureTopicImportCodeAvailable(data.subjectId, importCode);
+  let result;
+  try {
+    result = await prisma.topic.create({ data: { ...data, importCode } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Import code “${importCode}” is already used by another topic in this subject.`);
+    }
+    throw error;
+  }
   revalidatePath("/admin/academic-structure/topics");
   return result;
 }
 
-export async function updateTopic(id: string, data: { topicName: string; sortOrder: number; description?: string; status: string }) {
+export async function updateTopic(id: string, data: { topicName: string; importCode?: string | null; sortOrder: number; description?: string; status: string }) {
   const forbidden = await rejectIfNotAdmin();
   if (forbidden) throw new Error(forbidden);
-  const result = await prisma.topic.update({ where: { id }, data });
+  const existing = await prisma.topic.findUnique({ where: { id }, select: { subjectId: true } });
+  if (!existing) throw new Error("Topic not found.");
+  const importCode = normalizeTopicImportCode(data.importCode);
+  await ensureTopicImportCodeAvailable(existing.subjectId, importCode, id);
+  let result;
+  try {
+    result = await prisma.topic.update({ where: { id }, data: { ...data, importCode } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error(`Import code “${importCode}” is already used by another topic in this subject.`);
+    }
+    throw error;
+  }
   revalidatePath("/admin/academic-structure/topics");
   return result;
 }

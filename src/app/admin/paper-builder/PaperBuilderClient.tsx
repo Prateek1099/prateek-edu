@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowUp,
@@ -44,6 +45,8 @@ import {
   PAPER_DIFFICULTIES,
   PAPER_QUESTION_TYPES,
   type PaperBuilderQuestion,
+  type PaperHeaderTemplate,
+  type PaperHeaderTemplateInput,
   type PaperBuilderSubject,
   type PaperBuilderTopic,
   type PaperDetails,
@@ -53,11 +56,13 @@ import {
 } from "@/lib/paper-builder/types";
 
 import { validatePaperBuilderSelection } from "./actions";
+import { createPaperHeaderTemplate, deletePaperHeaderTemplate, updatePaperHeaderTemplate } from "./template-actions";
 
 type Props = {
   subjects: PaperBuilderSubject[];
   topics: PaperBuilderTopic[];
   questions: PaperBuilderQuestion[];
+  headerTemplates: PaperHeaderTemplate[];
 };
 
 type PreviewTab = "questions" | "answers";
@@ -88,7 +93,8 @@ function createPattern(index: number): PaperPatternRow {
   };
 }
 
-export default function PaperBuilderClient({ subjects, topics, questions }: Props) {
+export default function PaperBuilderClient({ subjects, topics, questions, headerTemplates }: Props) {
+  const router = useRouter();
   const [details, setDetails] = useState<PaperDetails>(initialDetails);
   const [boardId, setBoardId] = useState("");
   const [qualificationId, setQualificationId] = useState("");
@@ -102,6 +108,9 @@ export default function PaperBuilderClient({ subjects, topics, questions }: Prop
   const [validatedSignature, setValidatedSignature] = useState("");
   const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
   const [validating, setValidating] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [templateName, setTemplateName] = useState("");
+  const [savingTemplate, setSavingTemplate] = useState(false);
 
   const boards = useMemo(() => {
     const values = new Map<string, { id: string; title: string }>();
@@ -201,6 +210,81 @@ export default function PaperBuilderClient({ subjects, topics, questions }: Prop
   const updateDetails = <K extends keyof PaperDetails>(key: K, value: PaperDetails[K]) => {
     setDetails((current) => ({ ...current, [key]: value }));
     invalidatePreview();
+  };
+
+  const currentTemplateInput = (): PaperHeaderTemplateInput => ({
+    name: templateName,
+    institutionName: details.institutionName,
+    examLabel: details.examLabel,
+    courseLine: details.courseLine,
+    defaultDuration: details.durationMinutes,
+    defaultInstructions: details.instructions,
+    showStudentName: details.showStudentName,
+    showRollNumber: details.showRollNumber,
+    defaultClassLine: details.classText || null,
+    defaultTopicLine: details.topicLine || null,
+  });
+
+  const applyTemplate = () => {
+    const template = headerTemplates.find((item) => item.id === selectedTemplateId);
+    if (!template) return toast.error("Choose a header template first.");
+    setTemplateName(template.name);
+    setDetails((current) => ({
+      ...current,
+      institutionName: template.institutionName,
+      examLabel: template.examLabel,
+      courseLine: template.courseLine,
+      durationMinutes: template.defaultDuration,
+      instructions: template.defaultInstructions,
+      showStudentName: template.showStudentName,
+      showRollNumber: template.showRollNumber,
+      classText: template.defaultClassLine ?? "",
+      topicLine: template.defaultTopicLine ?? "",
+    }));
+    invalidatePreview();
+    toast.success(`Applied “${template.name}”. Header fields remain editable.`);
+  };
+
+  const saveTemplate = async () => {
+    setSavingTemplate(true);
+    try {
+      const result = await createPaperHeaderTemplate(currentTemplateInput());
+      if (!result.success) return toast.error(result.error);
+      toast.success("Header template saved.");
+      router.refresh();
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const updateTemplate = async () => {
+    if (!selectedTemplateId) return toast.error("Choose a template to update.");
+    setSavingTemplate(true);
+    try {
+      const result = await updatePaperHeaderTemplate(selectedTemplateId, currentTemplateInput());
+      if (!result.success) return toast.error(result.error);
+      toast.success("Header template updated.");
+      router.refresh();
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const deleteTemplate = async () => {
+    const template = headerTemplates.find((item) => item.id === selectedTemplateId);
+    if (!template) return toast.error("Choose a template to delete.");
+    if (!window.confirm(`Delete header template “${template.name}”?`)) return;
+    setSavingTemplate(true);
+    try {
+      const result = await deletePaperHeaderTemplate(template.id);
+      if (!result.success) return toast.error(result.error);
+      setSelectedTemplateId("");
+      setTemplateName("");
+      toast.success("Header template deleted.");
+      router.refresh();
+    } finally {
+      setSavingTemplate(false);
+    }
   };
 
   const courseLineForSubject = (nextSubjectId: string) => {
@@ -429,6 +513,26 @@ export default function PaperBuilderClient({ subjects, topics, questions }: Prop
           <StepHeader step="1" title="Paper header" description="Customize the printed identity, student fields, timing, and instructions." />
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border bg-muted/20 p-4 md:col-span-2 xl:col-span-4">
+            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
+              <Field label="Header template">
+                <Select value={selectedTemplateId} onValueChange={(value) => { const next = value || ""; setSelectedTemplateId(next); const template = headerTemplates.find((item) => item.id === next); if (template) setTemplateName(template.name); }}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a saved template">{headerTemplates.find((template) => template.id === selectedTemplateId)?.name}</SelectValue></SelectTrigger>
+                  <SelectContent>{headerTemplates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent>
+                </Select>
+              </Field>
+              <Field label="Template name">
+                <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} maxLength={200} placeholder="e.g. Lucky International School - Class Test" />
+              </Field>
+              <Button type="button" variant="outline" onClick={applyTemplate} disabled={!selectedTemplateId}>Apply template</Button>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={saveTemplate} disabled={savingTemplate || !templateName.trim()}>Save current header as template</Button>
+              <Button type="button" size="sm" variant="outline" onClick={updateTemplate} disabled={savingTemplate || !selectedTemplateId || !templateName.trim()}>Update selected</Button>
+              <Button type="button" size="sm" variant="destructive" onClick={deleteTemplate} disabled={savingTemplate || !selectedTemplateId}>Delete selected</Button>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Templates save reusable header defaults only. The generated paper is still temporary and is never saved.</p>
+          </div>
           <Field label="Institution name" className="md:col-span-2">
             <Input value={details.institutionName} maxLength={200} onChange={(event) => updateDetails("institutionName", event.target.value)} placeholder="e.g. Lucky International School" />
           </Field>
@@ -675,7 +779,7 @@ function Field({ label, children, className }: { label: string; children: React.
 }
 
 function FilterSelect({ label, value, options, onChange, placeholder, disabled }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; placeholder: string; disabled?: boolean }) {
-  return <Field label={label}><Select value={value} onValueChange={(next) => onChange(next || "")} disabled={disabled}><SelectTrigger className="w-full"><SelectValue placeholder={placeholder} /></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></Field>;
+  return <Field label={label}><Select value={value} onValueChange={(next) => onChange(next || "")} disabled={disabled}><SelectTrigger className="w-full"><SelectValue placeholder={placeholder}>{options.find((option) => option.value === value)?.label}</SelectValue></SelectTrigger><SelectContent>{options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select></Field>;
 }
 
 function EmptyState({ message, compact = false }: { message: string; compact?: boolean }) {

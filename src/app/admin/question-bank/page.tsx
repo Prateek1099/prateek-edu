@@ -41,6 +41,7 @@ export default async function AdminBankPage() {
     id: t.id,
     label: t.topicName,
     subjectId: t.subjectId,
+    importCode: t.importCode,
   }));
 
   return (
