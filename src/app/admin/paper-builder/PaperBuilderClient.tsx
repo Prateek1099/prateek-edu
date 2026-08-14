@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   CircleAlert,
   Eye,
+  FileDown,
   FileCheck2,
   ListChecks,
   Plus,
@@ -67,6 +68,7 @@ type Props = {
 
 type PreviewTab = "questions" | "answers";
 type PrintMode = "questions" | "answers" | "both";
+type DocxMode = "questions" | "answers" | "both";
 
 const initialDetails: PaperDetails = {
   institutionName: "VEXA",
@@ -108,6 +110,7 @@ export default function PaperBuilderClient({ subjects, topics, questions, header
   const [validatedSignature, setValidatedSignature] = useState("");
   const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
   const [validating, setValidating] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState<DocxMode | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -495,6 +498,23 @@ export default function PaperBuilderClient({ subjects, topics, questions, header
     requestAnimationFrame(() => window.print());
   };
 
+  const downloadDocx = async (mode: DocxMode) => {
+    if (!previewIsCurrent || !validatedPaper) {
+      toast.error("Validate the current paper before downloading DOCX.");
+      return;
+    }
+    setDownloadingDocx(mode);
+    try {
+      const { downloadPaperDocx } = await import("@/lib/paper-builder/docx");
+      await downloadPaperDocx(validatedPaper, mode);
+      toast.success("Editable DOCX downloaded.");
+    } catch {
+      toast.error("Could not generate the DOCX. Please try again.");
+    } finally {
+      setDownloadingDocx(null);
+    }
+  };
+
   const manualPattern = patterns.find((pattern) => pattern.id === manualPatternId) ?? null;
   const manualCandidates = manualPattern
     ? (eligibleByPattern.get(manualPattern.id) ?? []).filter((question) =>
@@ -739,6 +759,11 @@ export default function PaperBuilderClient({ subjects, topics, questions, header
             <Button type="button" variant="outline" onClick={() => printPaper("questions")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print question paper</Button>
             <Button type="button" variant="outline" onClick={() => printPaper("answers")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print answer key</Button>
             <Button type="button" onClick={() => printPaper("both")} disabled={!previewIsCurrent}><Printer className="size-4" /> Print both</Button>
+          </div>
+          <div className="paper-builder-screen-only flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => downloadDocx("questions")} disabled={!previewIsCurrent || downloadingDocx !== null}><FileDown className="size-4" /> {downloadingDocx === "questions" ? "Generating…" : "Download Question Paper DOCX"}</Button>
+            <Button type="button" variant="outline" onClick={() => downloadDocx("answers")} disabled={!previewIsCurrent || downloadingDocx !== null}><FileDown className="size-4" /> {downloadingDocx === "answers" ? "Generating…" : "Download Answer Key DOCX"}</Button>
+            <Button type="button" variant="outline" onClick={() => downloadDocx("both")} disabled={!previewIsCurrent || downloadingDocx !== null}><FileDown className="size-4" /> {downloadingDocx === "both" ? "Generating…" : "Download Both DOCX"}</Button>
           </div>
           <div className={cn(previewTab !== "questions" && "paper-builder-preview-hidden")}><PaperQuestionDocument paper={validatedPaper} /></div>
           <div className={cn(previewTab !== "answers" && "paper-builder-preview-hidden")}><PaperAnswerKeyDocument paper={validatedPaper} /></div>
