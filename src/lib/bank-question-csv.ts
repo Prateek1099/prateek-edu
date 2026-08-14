@@ -30,6 +30,7 @@ export type BankQuestionCsvRow = {
 export type BankQuestionCsvResult = {
   rows: BankQuestionCsvRow[];
   fileErrors: string[];
+  fileWarnings: string[];
   canImport: boolean;
 };
 
@@ -57,6 +58,10 @@ const HEADER_ALIASES: Record<string, string> = {
   MARKS: "marks",
   SOURCE: "source",
   IMPORTANCE: "importance",
+  IMAGEURL: "imageUrl",
+  IMAGEFILE: "imageFile",
+  IMAGECAPTION: "imageCaption",
+  IMAGEALT: "imageAlt",
 };
 
 function normalizeHeader(value: string) {
@@ -112,12 +117,13 @@ export function parseBankQuestionCsv(
   topics: CsvTopicOption[],
 ): BankQuestionCsvResult {
   const fileErrors: string[] = [];
-  if (!text.trim()) return { rows: [], fileErrors: ["Paste CSV data first."], canImport: false };
+  const fileWarnings: string[] = [];
+  if (!text.trim()) return { rows: [], fileErrors: ["Paste CSV data first."], fileWarnings, canImport: false };
 
   const parsed = parseCsvRecords(text);
-  if (parsed.error) return { rows: [], fileErrors: [parsed.error], canImport: false };
+  if (parsed.error) return { rows: [], fileErrors: [parsed.error], fileWarnings, canImport: false };
   if (parsed.records.length < 2) {
-    return { rows: [], fileErrors: ["CSV needs a header and at least one data row."], canImport: false };
+    return { rows: [], fileErrors: ["CSV needs a header and at least one data row."], fileWarnings, canImport: false };
   }
 
   const headers = parsed.records[0].map(normalizeHeader);
@@ -133,6 +139,11 @@ export function parseBankQuestionCsv(
     if (!fields.includes(required)) fileErrors.push(`CSV is missing the ${required} column.`);
   }
   if (parsed.records.length > 1_001) fileErrors.push("CSV imports are limited to 1,000 questions at a time.");
+  if (["imageUrl", "imageFile", "imageCaption", "imageAlt"].some((field) => fields.includes(field))) {
+    fileWarnings.push(
+      "ImageUrl, ImageFile, ImageCaption, and ImageAlt are not imported in Phase 1. Add supporting images manually after the question is created.",
+    );
+  }
 
   const scopedTopics = topics.filter((topic) => topic.subjectId === subjectId);
   const topicById = new Map(scopedTopics.map((topic) => [topic.id, topic]));
@@ -196,6 +207,9 @@ export function parseBankQuestionCsv(
     if (raw.importance) {
       warnings.push(`Importance “${raw.importance}” is unsupported and will not be stored.`);
     }
+    if (raw.imageUrl || raw.imageFile || raw.imageCaption || raw.imageAlt) {
+      warnings.push("Supporting image CSV values are deferred and will not be stored. Upload the image manually after import.");
+    }
 
     const questionType = normalizeBankQuestionType(raw.questionType);
     if (!questionType) errors.push(`Unsupported question type “${raw.questionType || "blank"}”.`);
@@ -238,6 +252,7 @@ export function parseBankQuestionCsv(
   return {
     rows,
     fileErrors,
+    fileWarnings,
     canImport: fileErrors.length === 0 && rows.length > 0 && rows.every((row) => row.errors.length === 0),
   };
 }

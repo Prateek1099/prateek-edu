@@ -2,9 +2,10 @@ import {
   AlignmentType,
   BorderStyle,
   Document,
-  PageBreak,
+  ImageRun,
   Packer,
   Paragraph,
+  SectionType,
   TextRun,
 } from "docx";
 
@@ -21,6 +22,14 @@ const FONT = "Arial";
 const BODY_SIZE = 21;
 const PAGE_WIDTH = 11_906;
 const PAGE_HEIGHT = 16_838;
+
+type PreparedQuestionImage = {
+  data: Uint8Array;
+  width: number;
+  height: number;
+};
+
+type PreparedQuestionImages = Map<string, PreparedQuestionImage>;
 
 function text(value: string, options: { bold?: boolean; size?: number; italics?: boolean } = {}) {
   return new TextRun({
@@ -132,7 +141,37 @@ function answerSpace(question: PaperBuilderQuestion) {
   }));
 }
 
-function questionPaperChildren(paper: ValidatedPaper) {
+function questionImageParagraphs(
+  question: PaperBuilderQuestion,
+  images: PreparedQuestionImages,
+) {
+  const image = images.get(question.id);
+  if (!image) return [];
+
+  const description = question.imageAlt || question.imageCaption || "Supporting visual for this question";
+  const paragraphs = [new Paragraph({
+    alignment: AlignmentType.CENTER,
+    keepNext: Boolean(question.imageCaption),
+    spacing: { before: 80, after: question.imageCaption ? 40 : 120 },
+    children: [new ImageRun({
+      type: "png",
+      data: image.data,
+      transformation: { width: image.width, height: image.height },
+      altText: { name: description, description, title: question.imageCaption ?? undefined },
+    })],
+  })];
+
+  if (question.imageCaption) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+      children: [text(question.imageCaption, { italics: true, size: 18 })],
+    }));
+  }
+  return paragraphs;
+}
+
+function questionPaperChildren(paper: ValidatedPaper, images: PreparedQuestionImages) {
   const children = [...paperHeader(paper, false)];
   children.push(new Paragraph({
     spacing: { after: 80 },
@@ -168,6 +207,7 @@ function questionPaperChildren(paper: ValidatedPaper) {
           text(`  [${question.marks} mark${question.marks === 1 ? "" : "s"}]`, { italics: true, size: 18 }),
         ],
       }));
+      children.push(...questionImageParagraphs(question, images));
       if (question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON") {
         for (const [label, option] of optionRows(question)) {
           children.push(new Paragraph({
@@ -220,11 +260,21 @@ function answerKeyChildren(paper: ValidatedPaper) {
   return children;
 }
 
-export function buildPaperDocx(paper: ValidatedPaper, mode: PaperDocxMode) {
-  const children = mode === "answers" ? answerKeyChildren(paper) : questionPaperChildren(paper);
-  if (mode === "both") {
-    children.push(new Paragraph({ children: [new PageBreak()] }), ...answerKeyChildren(paper));
-  }
+export function buildPaperDocx(
+  paper: ValidatedPaper,
+  mode: PaperDocxMode,
+  images: PreparedQuestionImages = new Map(),
+) {
+  const page = { size: { width: PAGE_WIDTH, height: PAGE_HEIGHT }, margin: { top: 900, right: 900, bottom: 900, left: 900 } };
+  const sections = mode === "both"
+    ? [
+        { properties: { page }, children: questionPaperChildren(paper, images) },
+        { properties: { page, type: SectionType.NEXT_PAGE }, children: answerKeyChildren(paper) },
+      ]
+    : [{
+        properties: { page },
+        children: mode === "answers" ? answerKeyChildren(paper) : questionPaperChildren(paper, images),
+      }];
   return new Document({
     creator: "Vexa Paper Builder",
     title: paper.details.title || `${paper.details.examLabel} - ${paper.subjectName}`,
@@ -234,10 +284,7 @@ export function buildPaperDocx(paper: ValidatedPaper, mode: PaperDocxMode) {
         document: { run: { font: FONT, size: BODY_SIZE }, paragraph: { spacing: { line: 276 } } },
       },
     },
-    sections: [{
-      properties: { page: { size: { width: PAGE_WIDTH, height: PAGE_HEIGHT }, margin: { top: 900, right: 900, bottom: 900, left: 900 } } },
-      children,
-    }],
+    sections,
   });
 }
 
@@ -245,8 +292,48 @@ function slug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80) || "vexa-paper";
 }
 
+async function canvasToPng(canvas: HTMLCanvasElement) {
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((value) => value ? resolve(value) : reject(new Error("Image conversion failed.")), "image/png");
+  });
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+async function prepareQuestionImage(question: PaperBuilderQuestion): Promise<PreparedQuestionImage> {
+  if (!question.imageUrl) throw new Error("Question image URL is missing.");
+  const response = await fetch(question.imageUrl);
+  if (!response.ok) throw new Error("A supporting question image could not be downloaded.");
+
+  const bitmap = await createImageBitmap(await response.blob());
+  try {
+    const scale = Math.min(1, 560 / bitmap.width, 380 / bitmap.height);
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Image conversion is not supported in this browser.");
+    context.drawImage(bitmap, 0, 0, width, height);
+    return { data: await canvasToPng(canvas), width, height };
+  } finally {
+    bitmap.close();
+  }
+}
+
+async function prepareQuestionImages(paper: ValidatedPaper) {
+  const questions = paper.sections
+    .flatMap((section) => section.questions)
+    .filter((question) => Boolean(question.imageUrl));
+  const entries = await Promise.all(
+    questions.map(async (question) => [question.id, await prepareQuestionImage(question)] as const),
+  );
+  return new Map(entries);
+}
+
 export async function downloadPaperDocx(paper: ValidatedPaper, mode: PaperDocxMode) {
-  const blob = await Packer.toBlob(buildPaperDocx(paper, mode));
+  const images = mode === "answers" ? new Map<string, PreparedQuestionImage>() : await prepareQuestionImages(paper);
+  const blob = await Packer.toBlob(buildPaperDocx(paper, mode, images));
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   const suffix = mode === "answers" ? "answer-key" : mode === "both" ? "question-paper-and-answer-key" : "question-paper";

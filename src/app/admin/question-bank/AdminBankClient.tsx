@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertCircle, Eye, EyeOff, FileSpreadsheet, Pencil, Plus, Trash2, Upload } from "lucide-react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useMemo, useRef, useState } from "react";
+import { AlertCircle, Eye, EyeOff, FileImage, FileSpreadsheet, Loader2, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { appendBankQuestions, deleteBankQuestion } from "@/app/actions/admin";
@@ -31,6 +33,7 @@ import {
 } from "@/lib/bank-questions";
 import { parseQuestions, type ParseResult } from "@/lib/parseQuestions";
 import { cn } from "@/lib/utils";
+import { MAX_BANK_QUESTION_IMAGE_BYTES } from "@/lib/question-bank-image";
 
 type SubjectOption = {
   id: string;
@@ -58,6 +61,9 @@ type BankQuestion = {
   modelAnswer: string | null;
   explanation: string | null;
   source: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  imageCaption: string | null;
   difficulty: string;
   marks: number;
   topicTag: string | null;
@@ -85,6 +91,9 @@ const emptyForm: BankQuestionInput = {
   modelAnswer: "",
   explanation: "",
   source: "",
+  imageUrl: null,
+  imageAlt: "",
+  imageCaption: "",
   topicTag: "",
   difficulty: "medium",
   marks: 1,
@@ -180,7 +189,7 @@ export default function AdminBankClient({
                       <p className={cn("font-medium leading-6", !expanded && "line-clamp-2")}>{question.questionText}</p>
                       {expanded && <QuestionPreview question={question} />}
                     </TableCell>
-                    <TableCell className="align-top"><Badge variant="outline">{BANK_QUESTION_TYPE_LABELS[question.questionType]}</Badge>{question.source && <p className="mt-2 max-w-40 text-xs text-muted-foreground">{question.source}</p>}</TableCell>
+                    <TableCell className="align-top"><div className="flex flex-wrap gap-2"><Badge variant="outline">{BANK_QUESTION_TYPE_LABELS[question.questionType]}</Badge>{question.imageUrl && <Badge variant="secondary"><FileImage className="size-3" /> Has image</Badge>}</div>{question.source && <p className="mt-2 max-w-40 text-xs text-muted-foreground">{question.source}</p>}</TableCell>
                     <TableCell className="align-top"><p className="text-sm font-medium">{question.subject.name}</p><p className="text-xs text-muted-foreground">{question.topic?.topicName ?? "No topic"}</p>{question.topicTag && <Badge variant="secondary" className="mt-2">{question.topicTag}</Badge>}</TableCell>
                     <TableCell className="align-top"><div className="flex flex-wrap gap-2"><Badge variant="outline" className={cn("capitalize", difficultyColor[question.difficulty])}>{question.difficulty}</Badge><Badge variant="secondary">{question.marks} mark{question.marks === 1 ? "" : "s"}</Badge></div></TableCell>
                     <TableCell className="align-top text-right">
@@ -208,6 +217,16 @@ function QuestionPreview({ question }: { question: BankQuestion }) {
   const optionType = question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON";
   return (
     <div className="mt-4 space-y-3 rounded-xl bg-muted/35 p-4 text-sm">
+      {question.imageUrl && (
+        <figure className="rounded-xl border bg-background p-3">
+          <img
+            src={question.imageUrl}
+            alt={question.imageAlt || question.imageCaption || "Supporting visual for this question"}
+            className="mx-auto max-h-96 w-auto max-w-full object-contain"
+          />
+          {question.imageCaption && <figcaption className="mt-2 text-center text-xs text-muted-foreground">{question.imageCaption}</figcaption>}
+        </figure>
+      )}
       {optionType && <div className="grid gap-2 sm:grid-cols-2">{[["A", question.optionA], ["B", question.optionB], ["C", question.optionC], ["D", question.optionD]].map(([letter, value]) => <div key={letter} className={cn("rounded-lg bg-background px-3 py-2", question.correctAnswer === letter && "ring-1 ring-emerald-500 text-emerald-700 dark:text-emerald-300")}><strong>{letter}.</strong> {value}</div>)}</div>}
       {question.correctAnswer && <p><strong>Canonical answer:</strong> {question.correctAnswer}</p>}
       {question.modelAnswer && <p className="whitespace-pre-wrap leading-6"><strong>Model answer:</strong> {question.modelAnswer}</p>}
@@ -224,9 +243,12 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
     subjectId: question.subjectId, topicId: question.topicId, questionType: question.questionType, questionText: question.questionText,
     optionA: question.optionA, optionB: question.optionB, optionC: question.optionC, optionD: question.optionD,
     correctAnswer: question.correctAnswer, modelAnswer: question.modelAnswer, explanation: question.explanation,
-    source: question.source, topicTag: question.topicTag, difficulty: question.difficulty, marks: question.marks,
+    source: question.source, imageUrl: question.imageUrl, imageAlt: question.imageAlt, imageCaption: question.imageCaption,
+    topicTag: question.topicTag, difficulty: question.difficulty, marks: question.marks,
   } : emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const boards = [...new Map(subjects.map((subject) => [subject.boardId, { value: subject.boardId, label: subject.boardTitle }])).values()];
   const qualifications = [...new Map(subjects.filter((subject) => subject.boardId === boardId).map((subject) => [subject.qualificationId, { value: subject.qualificationId, label: subject.qualificationTitle }])).values()];
   const availableSubjects = subjects.filter((subject) => subject.qualificationId === qualificationId);
@@ -234,6 +256,32 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
   const optionType = form.questionType === "MCQ" || form.questionType === "ASSERTION_REASON";
   const writtenType = ["VERY_SHORT_ANSWER", "SHORT_ANSWER", "LONG_ANSWER"].includes(form.questionType);
   const set = <K extends keyof BankQuestionInput>(key: K, value: BankQuestionInput[K]) => setForm((current) => ({ ...current, [key]: value }));
+
+  const uploadImage = async (file: File) => {
+    if (file.size < 1 || file.size > MAX_BANK_QUESTION_IMAGE_BYTES) {
+      toast.error("Choose a PNG, JPG, or WebP image up to 5 MB.");
+      return;
+    }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      toast.error("Only PNG, JPG/JPEG, and WebP images are supported.");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const body = new FormData();
+      body.set("image", file);
+      const response = await fetch("/api/admin/question-bank/image", { method: "POST", body });
+      const payload = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !payload.url) throw new Error(payload.error || "Image upload failed.");
+      set("imageUrl", payload.url);
+      toast.success("Supporting image uploaded. Save the question to keep it attached.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Image upload failed.");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -262,6 +310,42 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
           <Field label="Source"><Input value={form.source ?? ""} maxLength={2000} onChange={(event) => set("source", event.target.value)} placeholder="Textbook, exam, ERP, teacher…" /></Field>
           <Field label="Topic tag"><Input value={form.topicTag ?? ""} maxLength={500} onChange={(event) => set("topicTag", event.target.value)} placeholder="Optional granular tag" /></Field>
           <Field label="Question" className="sm:col-span-2"><Textarea rows={5} value={form.questionText} onChange={(event) => set("questionText", event.target.value)} placeholder={form.questionType === "ASSERTION_REASON" ? "Enter the assertion and reason statements…" : "Enter the question…"} /></Field>
+          <div className="space-y-4 rounded-2xl border bg-muted/20 p-4 sm:col-span-2">
+            <div>
+              <p className="font-medium">Supporting image <span className="font-normal text-muted-foreground">(optional)</span></p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Upload one PNG, JPG/JPEG, or WebP image up to 5 MB. SVG and external image URLs are not accepted.</p>
+            </div>
+            {form.imageUrl && (
+              <figure className="rounded-xl border bg-background p-3">
+                <img src={form.imageUrl} alt={form.imageAlt || form.imageCaption || "Supporting image preview"} className="mx-auto max-h-80 w-auto max-w-full object-contain" />
+                {form.imageCaption && <figcaption className="mt-2 text-center text-xs text-muted-foreground">{form.imageCaption}</figcaption>}
+              </figure>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()}>
+                {uploadingImage ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                {uploadingImage ? "Uploading…" : form.imageUrl ? "Replace image" : "Upload image"}
+              </Button>
+              <Input
+                ref={imageInputRef}
+                id={`bank-image-${question?.id ?? "new"}`}
+                className="sr-only"
+                type="file"
+                accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                disabled={uploadingImage}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void uploadImage(file);
+                }}
+              />
+              {form.imageUrl && <Button type="button" variant="ghost" onClick={() => { set("imageUrl", null); set("imageAlt", null); set("imageCaption", null); }}><X className="size-4" /> Remove image</Button>}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Image alt text"><Input value={form.imageAlt ?? ""} maxLength={500} disabled={!form.imageUrl} onChange={(event) => set("imageAlt", event.target.value)} placeholder="Describe the graph, table, or diagram" /></Field>
+              <Field label="Image caption"><Input value={form.imageCaption ?? ""} maxLength={1000} disabled={!form.imageUrl} onChange={(event) => set("imageCaption", event.target.value)} placeholder="Optional caption shown below the image" /></Field>
+            </div>
+          </div>
           {optionType && (["optionA", "optionB", "optionC", "optionD"] as const).map((key) => <Field key={key} label={`Option ${key.slice(-1)}`}><Textarea rows={2} value={form[key] ?? ""} onChange={(event) => set(key, event.target.value)} /></Field>)}
           {optionType && <Field label="Correct option"><Filter value={form.correctAnswer ?? "A"} label="Correct option" options={["A", "B", "C", "D"].map((value) => ({ value, label: value }))} onChange={(value) => set("correctAnswer", value)} /></Field>}
           {form.questionType === "TRUE_FALSE" && <Field label="Answer"><Filter value={form.correctAnswer ?? "TRUE"} label="Answer" options={[{ value: "TRUE", label: "True" }, { value: "FALSE", label: "False" }]} onChange={(value) => set("correctAnswer", value)} /></Field>}
@@ -269,7 +353,7 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
           {writtenType && <Field label="Model answer / marking guidance" className="sm:col-span-2"><Textarea rows={7} value={form.modelAnswer ?? ""} onChange={(event) => set("modelAnswer", event.target.value)} placeholder={form.questionType === "LONG_ANSWER" ? "Enter a model answer or marking rubric…" : "Enter the expected answer or marking points…"} /></Field>}
           <Field label="Explanation" className="sm:col-span-2"><Textarea rows={4} value={form.explanation ?? ""} onChange={(event) => set("explanation", event.target.value)} placeholder="Optional teaching explanation or reasoning" /></Field>
         </div>
-        <div className="flex justify-end gap-2 border-t pt-4"><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={handleSave} disabled={saving}>{saving ? "Saving…" : question ? "Save changes" : "Add question"}</Button></div>
+        <div className="flex justify-end gap-2 border-t pt-4"><Button variant="outline" onClick={onClose}>Cancel</Button><Button onClick={handleSave} disabled={saving || uploadingImage}>{saving ? "Saving…" : question ? "Save changes" : "Add question"}</Button></div>
       </DialogContent>
     </Dialog>
   );
@@ -334,7 +418,7 @@ function ImportDialog({ open, onClose, subjects, topics }: { open: boolean; onCl
 }
 
 function CsvPreview({ result }: { result: BankQuestionCsvResult }) {
-  return <div className="space-y-3"><div className={cn("rounded-xl border p-3 text-sm", result.canImport ? "border-emerald-500/30 bg-emerald-500/10" : "border-destructive/30 bg-destructive/10")}><p className="font-semibold">{result.rows.length} rows · {result.rows.filter((row) => row.errors.length).length} invalid</p>{result.fileErrors.map((error) => <p key={error} className="text-destructive">{error}</p>)}</div><div className="max-h-80 overflow-auto rounded-xl border"><Table><TableHeader><TableRow><TableHead>Row</TableHead><TableHead>Type / question</TableHead><TableHead>Supplied chapter/topic</TableHead><TableHead>Resolved topic</TableHead><TableHead>Difficulty</TableHead><TableHead>Marks</TableHead><TableHead>Validation</TableHead></TableRow></TableHeader><TableBody>{result.rows.map((row) => <TableRow key={row.rowNumber}><TableCell>{row.rowNumber}</TableCell><TableCell><Badge variant="outline">{row.questionType ? BANK_QUESTION_TYPE_LABELS[row.questionType] : "Unsupported"}</Badge><p className="mt-1 max-w-72 line-clamp-2 text-xs">{row.questionText}</p></TableCell><TableCell className="font-mono text-xs">{row.suppliedTopicReference || "—"}</TableCell><TableCell className="text-xs">{row.topicName}</TableCell><TableCell className="capitalize">{row.difficulty}</TableCell><TableCell>{row.marks ?? "—"}</TableCell><TableCell className="min-w-64">{row.errors.map((error) => <p key={error} className="flex gap-1 text-xs text-destructive"><AlertCircle className="mt-0.5 size-3 shrink-0" />{error}</p>)}{row.warnings.map((warning) => <p key={warning} className="text-xs text-amber-700 dark:text-amber-300">Warning: {warning}</p>)}{row.errors.length === 0 && row.warnings.length === 0 && <span className="text-xs text-emerald-700 dark:text-emerald-300">Ready</span>}</TableCell></TableRow>)}</TableBody></Table></div></div>;
+  return <div className="space-y-3"><div className={cn("rounded-xl border p-3 text-sm", result.canImport ? "border-emerald-500/30 bg-emerald-500/10" : "border-destructive/30 bg-destructive/10")}><p className="font-semibold">{result.rows.length} rows · {result.rows.filter((row) => row.errors.length).length} invalid</p>{result.fileErrors.map((error) => <p key={error} className="text-destructive">{error}</p>)}{result.fileWarnings.map((warning) => <p key={warning} className="text-amber-700 dark:text-amber-300">Warning: {warning}</p>)}</div><div className="max-h-80 overflow-auto rounded-xl border"><Table><TableHeader><TableRow><TableHead>Row</TableHead><TableHead>Type / question</TableHead><TableHead>Supplied chapter/topic</TableHead><TableHead>Resolved topic</TableHead><TableHead>Difficulty</TableHead><TableHead>Marks</TableHead><TableHead>Validation</TableHead></TableRow></TableHeader><TableBody>{result.rows.map((row) => <TableRow key={row.rowNumber}><TableCell>{row.rowNumber}</TableCell><TableCell><Badge variant="outline">{row.questionType ? BANK_QUESTION_TYPE_LABELS[row.questionType] : "Unsupported"}</Badge><p className="mt-1 max-w-72 line-clamp-2 text-xs">{row.questionText}</p></TableCell><TableCell className="font-mono text-xs">{row.suppliedTopicReference || "—"}</TableCell><TableCell className="text-xs">{row.topicName}</TableCell><TableCell className="capitalize">{row.difficulty}</TableCell><TableCell>{row.marks ?? "—"}</TableCell><TableCell className="min-w-64">{row.errors.map((error) => <p key={error} className="flex gap-1 text-xs text-destructive"><AlertCircle className="mt-0.5 size-3 shrink-0" />{error}</p>)}{row.warnings.map((warning) => <p key={warning} className="text-xs text-amber-700 dark:text-amber-300">Warning: {warning}</p>)}{row.errors.length === 0 && row.warnings.length === 0 && <span className="text-xs text-emerald-700 dark:text-emerald-300">Ready</span>}</TableCell></TableRow>)}</TableBody></Table></div></div>;
 }
 
 function Filter({ value, label, options, onChange, disabled }: { value: string; label: string; options: { value: string; label: string }[]; onChange: (value: string) => void; disabled?: boolean }) {

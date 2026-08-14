@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { parseBankQuestionCsv } from "./bank-question-csv";
 import { normalizeBankQuestionType, validateBankQuestionInput } from "./bank-questions";
+import { validateBankQuestionImageFile } from "./question-bank-image";
 
 test("normalizes supported question type aliases without guessing unknown types", () => {
   assert.equal(normalizeBankQuestionType("TRUE/FALSE"), "TRUE_FALSE");
@@ -135,4 +136,68 @@ test("gives a row-level error for an unknown ChapterCode", () => {
 
   assert.equal(result.canImport, false);
   assert.match(result.rows[0].errors.join(" "), /ChapterCode 999 does not match any topic in the selected subject/);
+});
+
+test("accepts only trusted Vexa Blob URLs for optional supporting images", () => {
+  const common = {
+    subjectId: "subject-1",
+    topicId: "topic-1",
+    questionType: "SHORT_ANSWER" as const,
+    questionText: "Interpret the graph.",
+    modelAnswer: "The values increase over time.",
+    difficulty: "medium",
+    marks: 3,
+  };
+  const trusted = validateBankQuestionInput({
+    ...common,
+    imageUrl: "https://example.public.blob.vercel-storage.com/question-bank/graph.png",
+    imageAlt: "A line graph with rising values",
+    imageCaption: "Figure 1",
+  });
+  const untrusted = validateBankQuestionInput({
+    ...common,
+    imageUrl: "https://images.example.com/graph.png",
+  });
+
+  assert.equal(trusted.success, true);
+  assert.equal(untrusted.success, false);
+  if (!untrusted.success) assert.match(untrusted.errors.join(" "), /trusted Vexa storage/i);
+});
+
+test("validates image extension, MIME type, size, and binary signature together", () => {
+  const pngBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  assert.equal(validateBankQuestionImageFile({
+    filename: "graph.png",
+    contentType: "image/png",
+    size: pngBytes.length,
+    bytes: pngBytes,
+  }).success, true);
+  assert.equal(validateBankQuestionImageFile({
+    filename: "graph.jpg",
+    contentType: "image/jpeg",
+    size: pngBytes.length,
+    bytes: pngBytes,
+  }).success, false);
+  assert.equal(validateBankQuestionImageFile({
+    filename: "graph.svg",
+    contentType: "image/svg+xml",
+    size: 20,
+    bytes: new TextEncoder().encode("<svg></svg>"),
+  }).success, false);
+});
+
+test("warns explicitly and ignores deferred CSV image columns", () => {
+  const result = parseBankQuestionCsv(
+    [
+      "TopicID,QuestionType,Question,OptionA,OptionB,OptionC,OptionD,Answer,Difficulty,Marks,ImageUrl,ImageCaption,ImageAlt",
+      "topic-1,MCQ,Visual question,A,B,C,D,A,easy,1,https://example.com/image.png,Figure 1,A chart",
+    ].join("\n"),
+    "subject-1",
+    [{ id: "topic-1", subjectId: "subject-1", name: "Chapter 1" }],
+  );
+
+  assert.equal(result.canImport, true);
+  assert.match(result.fileWarnings.join(" "), /not imported/i);
+  assert.match(result.rows[0].warnings.join(" "), /will not be stored/i);
+  assert.equal(result.rows[0].data?.imageUrl, null);
 });

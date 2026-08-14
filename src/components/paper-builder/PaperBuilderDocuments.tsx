@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { BANK_QUESTION_TYPE_LABELS } from "@/lib/bank-questions";
 import type {
   PaperBuilderQuestion,
@@ -78,6 +80,25 @@ function WrittenAnswerSpace({ question }: { question: PaperBuilderQuestion }) {
   );
 }
 
+function QuestionVisual({ question }: { question: PaperBuilderQuestion }) {
+  if (!question.imageUrl) return null;
+
+  return (
+    <figure className="mt-4 break-inside-avoid text-center">
+      <img
+        src={question.imageUrl}
+        alt={question.imageAlt || question.imageCaption || "Supporting visual for this question"}
+        className="mx-auto max-h-[28rem] w-auto max-w-full object-contain print:max-h-[22rem]"
+      />
+      {question.imageCaption && (
+        <figcaption className="mt-2 text-xs leading-5 text-gray-600">
+          {question.imageCaption}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
 function answerFor(question: PaperBuilderQuestion) {
   if (question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON") {
     const option = optionRows(question).find(([label]) => label === question.correctAnswer)?.[1];
@@ -130,6 +151,7 @@ export function PaperQuestionDocument({ paper }: { paper: ValidatedPaper }) {
                           <p className="whitespace-pre-wrap text-sm font-medium leading-6 sm:text-base">{question.questionText}</p>
                           <span className="shrink-0 text-xs text-gray-500">[{question.marks} mark{question.marks === 1 ? "" : "s"}]</span>
                         </div>
+                        <QuestionVisual question={question} />
                         {showsOptions && (
                           <div className="mt-4 grid gap-3 sm:grid-cols-2">
                             {optionRows(question).map(([label, option]) => (

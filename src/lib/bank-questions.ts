@@ -1,3 +1,5 @@
+import { normalizeTrustedQuestionImageUrl } from "./question-bank-image";
+
 export const BANK_QUESTION_TYPES = [
   "MCQ",
   "TRUE_FALSE",
@@ -36,6 +38,9 @@ export type BankQuestionInput = {
   modelAnswer?: string | null;
   explanation?: string | null;
   source?: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  imageCaption?: string | null;
   topicTag?: string | null;
   difficulty: string;
   marks: number;
@@ -54,6 +59,9 @@ export type ValidatedBankQuestion = {
   modelAnswer: string | null;
   explanation: string | null;
   source: string | null;
+  imageUrl: string | null;
+  imageAlt: string | null;
+  imageCaption: string | null;
   topicTag: string | null;
   difficulty: BankQuestionDifficulty;
   marks: number;
@@ -126,6 +134,12 @@ export function validateBankQuestionInput(input: BankQuestionInput): BankQuestio
   let optionD = optionalText(input?.optionD, 10_000);
   let correctAnswer = optionalText(input?.correctAnswer, 10_000);
   let modelAnswer = optionalText(input?.modelAnswer, 50_000);
+  const suppliedImageUrl = optionalText(input?.imageUrl, 5_000);
+  const imageUrl = normalizeTrustedQuestionImageUrl(suppliedImageUrl);
+
+  if (suppliedImageUrl && !imageUrl) {
+    errors.push("Supporting image must be an uploaded PNG, JPG, or WebP file from trusted Vexa storage.");
+  }
 
   if (questionType === "MCQ" || questionType === "ASSERTION_REASON") {
     if (!optionA || !optionB || !optionC || !optionD) {
@@ -183,6 +197,9 @@ export function validateBankQuestionInput(input: BankQuestionInput): BankQuestio
       modelAnswer,
       explanation: optionalText(input?.explanation, 50_000),
       source: optionalText(input?.source, 2_000),
+      imageUrl,
+      imageAlt: imageUrl ? optionalText(input?.imageAlt, 500) : null,
+      imageCaption: imageUrl ? optionalText(input?.imageCaption, 1_000) : null,
       topicTag: optionalText(input?.topicTag, 500),
       difficulty: difficulty as BankQuestionDifficulty,
       marks,

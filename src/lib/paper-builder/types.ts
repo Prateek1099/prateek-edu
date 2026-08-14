@@ -21,6 +21,9 @@ export type PaperBuilderQuestion = {
   correctAnswer: string | null;
   modelAnswer: string | null;
   explanation: string | null;
+  imageUrl?: string | null;
+  imageAlt?: string | null;
+  imageCaption?: string | null;
   topicTag: string | null;
   difficulty: string;
   marks: number;

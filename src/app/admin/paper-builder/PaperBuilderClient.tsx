@@ -10,6 +10,7 @@ import {
   Eye,
   FileDown,
   FileCheck2,
+  ImageIcon,
   ListChecks,
   Plus,
   Printer,
@@ -781,6 +782,7 @@ function QuestionCandidateSummary({ question }: { question: PaperBuilderQuestion
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline">{BANK_QUESTION_TYPE_LABELS[question.questionType]}</Badge>
+        {question.imageUrl && <Badge variant="secondary"><ImageIcon className="size-3" /> Has image</Badge>}
         <span className="text-xs text-muted-foreground">{question.difficulty} · {question.marks} mark{question.marks === 1 ? "" : "s"}</span>
       </div>
       <p className="mt-2 text-sm font-medium leading-6">{question.questionText}</p>

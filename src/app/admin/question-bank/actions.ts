@@ -1,10 +1,13 @@
 "use server";
 
+import { del } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 
 import { parseBankQuestionCsv } from "@/lib/bank-question-csv";
 import { validateBankQuestionInput, type BankQuestionInput } from "@/lib/bank-questions";
+import { resolveBlobReadWriteToken } from "@/lib/blob-token";
 import { prisma } from "@/lib/prisma";
+import { normalizeTrustedQuestionImageUrl } from "@/lib/question-bank-image";
 import { requireSuperAdmin } from "@/lib/require-role";
 
 type ActionResult = { success: true; count?: number } | { success: false; error: string };
@@ -44,7 +47,7 @@ export async function updateAdminBankQuestion(
   }
   const existing = await prisma.bankQuestion.findUnique({
     where: { id: questionId },
-    select: { workspaceId: true },
+    select: { workspaceId: true, imageUrl: true },
   });
   if (!existing || existing.workspaceId !== null) {
     return { success: false, error: "Only global Vexa Question Bank records can be edited here." };
@@ -59,6 +62,17 @@ export async function updateAdminBankQuestion(
     where: { id: questionId },
     data: validation.data,
   });
+  if (existing.imageUrl && existing.imageUrl !== validation.data.imageUrl) {
+    const oldImageUrl = normalizeTrustedQuestionImageUrl(existing.imageUrl);
+    const token = resolveBlobReadWriteToken();
+    if (oldImageUrl && token) {
+      try {
+        await del(oldImageUrl, { token });
+      } catch (error) {
+        console.error("Unable to remove replaced Question Bank image:", error);
+      }
+    }
+  }
   revalidatePath("/admin/question-bank");
   return { success: true };
 }
