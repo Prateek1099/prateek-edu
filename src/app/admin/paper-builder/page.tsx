@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/require-role";
+import { PaperBuilderModeNav } from "@/components/paper-builder/PaperBuilderModeNav";
 
 import PaperBuilderClient from "./PaperBuilderClient";
 
@@ -58,6 +59,8 @@ export default async function AdminPaperBuilderPage() {
           stay in this browser session and are not saved to the database.
         </p>
       </header>
+
+      <PaperBuilderModeNav mode="simple" />
 
       <PaperBuilderClient
         headerTemplates={headerTemplates.map((template) => ({
