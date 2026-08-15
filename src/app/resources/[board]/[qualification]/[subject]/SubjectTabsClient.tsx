@@ -199,13 +199,13 @@ export default function SubjectTabsClient({
 
   return (
     <Tabs defaultValue="practice" className="w-full">
-      <TabsList className="mb-8 flex h-auto w-full max-w-4xl flex-wrap justify-start gap-1 rounded-xl border bg-muted/30 p-1.5">
-        <TabsTrigger value="practice" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm">
+      <TabsList className="mb-8 grid h-auto w-full max-w-4xl grid-cols-2 gap-1 rounded-xl border bg-muted/30 p-1.5 sm:grid-cols-4">
+        <TabsTrigger value="practice" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm">
           <Zap className="h-4 w-4" /> Practice
         </TabsTrigger>
-        <TabsTrigger value="notes" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
-        <TabsTrigger value="topicals" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><FileQuestion className="h-4 w-4" /> Topical Questions</TabsTrigger>
-        <TabsTrigger value="syllabus" className="flex-1 gap-2 px-3 py-2.5 text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
+        <TabsTrigger value="notes" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
+        <TabsTrigger value="topicals" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><FileQuestion className="h-4 w-4" /> Topical Questions</TabsTrigger>
+        <TabsTrigger value="syllabus" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
       </TabsList>
       
       {/* Practice hub */}

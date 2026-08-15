@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Search, BookOpen, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 import {
   CommandDialog,
@@ -27,7 +28,13 @@ interface SubjectResult {
 
 interface SearchResult { subjects: SubjectResult[] }
 
-export function GlobalSearch() {
+export function GlobalSearch({
+  className,
+  onOpen,
+}: {
+  className?: string
+  onOpen?: () => void
+} = {}) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState("")
   const [loading, setLoading] = React.useState(false)
@@ -78,8 +85,14 @@ export function GlobalSearch() {
   return (
     <>
       <button
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-9 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal text-muted-foreground shadow-none sm:pr-12 md:w-64 lg:w-80"
+        onClick={() => {
+          onOpen?.()
+          setOpen(true)
+        }}
+        className={cn(
+          "inline-flex items-center gap-2 whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground px-4 py-2 relative h-9 w-full justify-start rounded-[0.5rem] bg-muted/50 text-sm font-normal text-muted-foreground shadow-none sm:pr-12 md:w-64 lg:w-80",
+          className,
+        )}
       >
         <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
         <span className="inline-flex">Search subjects...</span>

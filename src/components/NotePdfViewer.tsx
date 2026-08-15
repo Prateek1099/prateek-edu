@@ -17,9 +17,11 @@ type NotePdfViewerProps = {
 
 export default function NotePdfViewer({ url, loadingLabel = "Loading note…" }: NotePdfViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const viewerAreaRef = useRef<HTMLDivElement | null>(null);
   const [numPages, setNumPages] = useState<number | undefined>(undefined);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.2);
+  const [scale, setScale] = useState<number>(1);
+  const [pageWidth, setPageWidth] = useState<number>(720);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
@@ -29,6 +31,21 @@ export default function NotePdfViewer({ url, loadingLabel = "Loading note…" }:
     };
     document.addEventListener("fullscreenchange", onFsChange);
     return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
+  useEffect(() => {
+    const viewerArea = viewerAreaRef.current;
+    if (!viewerArea) return;
+
+    const updatePageWidth = () => {
+      const horizontalPadding = viewerArea.clientWidth >= 768 ? 32 : 16;
+      setPageWidth(Math.max(240, Math.min(720, viewerArea.clientWidth - horizontalPadding)));
+    };
+
+    updatePageWidth();
+    const observer = new ResizeObserver(updatePageWidth);
+    observer.observe(viewerArea);
+    return () => observer.disconnect();
   }, []);
 
   const maxPages = useMemo(() => numPages ?? 1, [numPages]);
@@ -110,10 +127,10 @@ export default function NotePdfViewer({ url, loadingLabel = "Loading note…" }:
       </div>
 
       {/* Viewer Area */}
-      <div className="flex-1 overflow-auto w-full flex justify-center p-2 md:p-4">
+      <div ref={viewerAreaRef} className="flex-1 w-full overflow-auto p-2 md:p-4">
         <div
           className={cn(
-            "bg-white shadow-lg rounded-sm overflow-hidden transition-all duration-300",
+            "mx-auto w-fit bg-white shadow-lg rounded-sm overflow-hidden transition-all duration-300",
             "dark:invert-[.9] dark:hue-rotate-180"
           )}
         >
@@ -125,6 +142,7 @@ export default function NotePdfViewer({ url, loadingLabel = "Loading note…" }:
           >
             <Page
               pageNumber={pageNumber}
+              width={pageWidth}
               scale={scale}
               renderTextLayer={false}
               renderAnnotationLayer={false}
