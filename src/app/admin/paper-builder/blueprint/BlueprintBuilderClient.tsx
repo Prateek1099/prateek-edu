@@ -26,14 +26,24 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { BANK_QUESTION_TYPE_LABELS, type BankQuestionTypeValue } from "@/lib/bank-questions";
 import {
+  applyBlueprintCandidate,
+  applyBlueprintRegeneratedRows,
   calculateBlueprintChapterMarks,
   calculateBlueprintPaperMarks,
+  findIncompleteBlueprintRows,
 } from "@/lib/paper-builder/blueprint-rules";
 import type {
   BlueprintAvailability,
@@ -57,7 +67,11 @@ import { cn } from "@/lib/utils";
 
 import {
   generateBlueprintPaper,
+  getBlueprintReplacementCandidates,
+  regenerateBlueprintChapter,
+  regenerateBlueprintRow,
   reviewBlueprintAvailability,
+  selectBlueprintCandidate,
   validateBlueprintSelection,
 } from "./actions";
 
@@ -70,6 +84,12 @@ type Props = {
 type PrintMode = "questions" | "answers" | "both";
 type DocxMode = PrintMode;
 type PreviewTab = "questions" | "answers";
+type CandidateContext = {
+  rowId: string;
+  replaceQuestionId?: string;
+  sectionLabel: string;
+  topicName: string;
+};
 
 const initialDetails: PaperDetails = {
   institutionName: "VEXA",
@@ -119,6 +139,13 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const [validating, setValidating] = useState(false);
   const [downloadingDocx, setDownloadingDocx] = useState<DocxMode | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
+  const [candidateContext, setCandidateContext] = useState<CandidateContext | null>(null);
+  const [candidateQuestions, setCandidateQuestions] = useState<PaperBuilderQuestion[]>([]);
+  const [candidateSearch, setCandidateSearch] = useState("");
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+  const [selectingCandidateId, setSelectingCandidateId] = useState<string | null>(null);
+  const [regeneratingRowId, setRegeneratingRowId] = useState<string | null>(null);
+  const [regeneratingChapterId, setRegeneratingChapterId] = useState<string | null>(null);
 
   const boards = useMemo(() => {
     const values = new Map<string, { id: string; title: string }>();
@@ -149,7 +176,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const errorsByRow = useMemo(() => new Map(rowErrors.map((item) => [item.rowId, item.message])), [rowErrors]);
   const selectedCount = generatedRows.reduce((total, row) => total + row.questions.length, 0);
   const requestedCount = chapters.flatMap((chapter) => chapter.rows).reduce((total, row) => total + row.questionCount, 0);
-  const selectionsComplete = generatedRows.length > 0 && generatedRows.every((row) => row.questions.length === row.questionCount);
+  const incompleteRowIds = useMemo(() => findIncompleteBlueprintRows(generatedRows), [generatedRows]);
+  const selectionsComplete = generatedRows.length > 0 && incompleteRowIds.length === 0;
 
   const draft: BlueprintPaperDraft = {
     version: 1,
@@ -299,6 +327,115 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     });
   };
 
+  const currentSelections = () => generatedRows.map((row) => ({
+    rowId: row.id,
+    questionIds: row.questions.map((question) => question.id),
+  }));
+
+  const closeCandidatePicker = () => {
+    setCandidateContext(null);
+    setCandidateQuestions([]);
+    setCandidateSearch("");
+    setSelectingCandidateId(null);
+  };
+
+  const openCandidatePicker = async (row: BlueprintGeneratedRow, replaceQuestionId?: string) => {
+    const context = {
+      rowId: row.id,
+      replaceQuestionId,
+      sectionLabel: row.sectionLabel,
+      topicName: row.topicName,
+    };
+    setCandidateContext(context);
+    setCandidateQuestions([]);
+    setCandidateSearch("");
+    setLoadingCandidates(true);
+    try {
+      const result = await getBlueprintReplacementCandidates(
+        draft,
+        currentSelections(),
+        row.id,
+        replaceQuestionId,
+      );
+      if (!result.success) {
+        closeCandidatePicker();
+        return toast.error(result.error);
+      }
+      setCandidateQuestions(result.candidates);
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  const chooseCandidate = async (candidateId: string) => {
+    if (!candidateContext) return;
+    setSelectingCandidateId(candidateId);
+    try {
+      const result = await selectBlueprintCandidate(
+        draft,
+        currentSelections(),
+        candidateContext.rowId,
+        candidateId,
+        candidateContext.replaceQuestionId,
+      );
+      if (!result.success) return toast.error(result.error);
+      setGeneratedRows((current) => applyBlueprintCandidate(
+        current,
+        candidateContext.rowId,
+        result.candidate,
+        candidateContext.replaceQuestionId,
+      ));
+      setValidatedPaper(null);
+      setRowErrors((current) => current.filter((item) => item.rowId !== candidateContext.rowId));
+      closeCandidatePicker();
+      toast.success(candidateContext.replaceQuestionId ? "Question replaced." : "Missing question added.");
+    } finally {
+      setSelectingCandidateId(null);
+    }
+  };
+
+  const regenerateRow = async (rowId: string) => {
+    setRegeneratingRowId(rowId);
+    try {
+      const result = await regenerateBlueprintRow(draft, currentSelections(), rowId);
+      if (!result.success) return toast.error(result.error);
+      setGeneratedRows((current) => {
+        const applied = applyBlueprintRegeneratedRows(current, [result.row], [rowId]);
+        return applied.rows;
+      });
+      setValidatedPaper(null);
+      setRowErrors((current) => current.filter((item) => item.rowId !== rowId));
+      toast.success("Blueprint row regenerated. Other rows were preserved.");
+    } finally {
+      setRegeneratingRowId(null);
+    }
+  };
+
+  const regenerateChapter = async (chapterId: string, chapterRowIds: string[]) => {
+    setRegeneratingChapterId(chapterId);
+    try {
+      const result = await regenerateBlueprintChapter(draft, currentSelections(), chapterId);
+      if (!result.success) {
+        setRowErrors((current) => [
+          ...current.filter((item) => !chapterRowIds.includes(item.rowId)),
+          ...result.rowErrors,
+        ]);
+        result.rowErrors.forEach((item) => toast.error(item.message));
+        if (result.rowErrors.length === 0) toast.error(result.error);
+        return;
+      }
+      setGeneratedRows((current) => {
+        const applied = applyBlueprintRegeneratedRows(current, result.rows, chapterRowIds);
+        return applied.rows;
+      });
+      setValidatedPaper(null);
+      setRowErrors((current) => current.filter((item) => !chapterRowIds.includes(item.rowId)));
+      toast.success("Chapter regenerated. Every other chapter was preserved.");
+    } finally {
+      setRegeneratingChapterId(null);
+    }
+  };
+
   const validateReview = async () => {
     setValidating(true);
     try {
@@ -397,13 +534,20 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
 
           {step === 5 && (
             <GeneratedReviewStep
+              chapters={chapters}
               rows={generatedRows}
               requestedCount={requestedCount}
               selectedCount={selectedCount}
+              errorsByRow={errorsByRow}
               onMove={moveQuestion}
               onRemove={(rowId, questionId) => updateGeneratedRow(rowId, (questions) => questions.filter((question) => question.id !== questionId))}
+              onSelectQuestion={openCandidatePicker}
+              onRegenerateRow={regenerateRow}
+              onRegenerateChapter={regenerateChapter}
               onRegenerate={generate}
               generating={generating}
+              regeneratingRowId={regeneratingRowId}
+              regeneratingChapterId={regeneratingChapterId}
             />
           )}
 
@@ -421,6 +565,17 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
 
         <BlueprintSummary chapters={chapters} targetMarks={targetMarks} availability={availability} selectedCount={selectedCount} requestedCount={requestedCount} />
       </div>
+
+      <CandidatePickerDialog
+        context={candidateContext}
+        candidates={candidateQuestions}
+        search={candidateSearch}
+        loading={loadingCandidates}
+        selectingCandidateId={selectingCandidateId}
+        onSearch={setCandidateSearch}
+        onClose={closeCandidatePicker}
+        onSelect={chooseCandidate}
+      />
 
       <div className="paper-builder-screen-only sticky bottom-3 z-20 flex flex-col-reverse gap-2 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
         <Button type="button" variant="outline" disabled={step === 1} onClick={() => setStep((current) => Math.max(1, current - 1))}>
@@ -635,49 +790,152 @@ function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh,
   );
 }
 
-function GeneratedReviewStep({ rows, requestedCount, selectedCount, onMove, onRemove, onRegenerate, generating }: {
+function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId }: {
+  chapters: BlueprintChapterDraft[];
   rows: BlueprintGeneratedRow[];
   requestedCount: number;
   selectedCount: number;
+  errorsByRow: Map<string, string>;
   onMove: (rowId: string, index: number, direction: -1 | 1) => void;
   onRemove: (rowId: string, questionId: string) => void;
+  onSelectQuestion: (row: BlueprintGeneratedRow, replaceQuestionId?: string) => void;
+  onRegenerateRow: (rowId: string) => void;
+  onRegenerateChapter: (chapterId: string, rowIds: string[]) => void;
   onRegenerate: () => void;
   generating: boolean;
+  regeneratingRowId: string | null;
+  regeneratingChapterId: string | null;
 }) {
-  const chapters = new Map<string, BlueprintGeneratedRow[]>();
-  rows.forEach((row) => chapters.set(row.topicName, [...(chapters.get(row.topicName) ?? []), row]));
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
   return (
     <Card>
       <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="5" title="Generated paper review" description="Questions are grouped by their exact blueprint chapter and row. Reordering stays within a row." /><Button type="button" variant="outline" onClick={onRegenerate} disabled={generating}><Shuffle className="size-4" /> {generating ? "Regenerating…" : "Regenerate whole paper"}</Button></div></CardHeader>
       <CardContent className="space-y-5">
         <StatusBanner good={selectedCount === requestedCount} message={`${selectedCount} of ${requestedCount} requested questions selected`} />
-        {[...chapters.entries()].map(([topicName, chapterRows]) => (
-          <section key={topicName} className="rounded-2xl border p-4 sm:p-5">
-            <h3 className="font-semibold">{topicName}</h3>
+        {chapters.map((chapter) => {
+          const chapterRows = chapter.rows.map((row) => rowsById.get(row.id)).filter((row): row is BlueprintGeneratedRow => Boolean(row));
+          const chapterSelectedMarks = chapterRows.reduce((total, row) => total + row.questions.reduce((sum, question) => sum + question.marks, 0), 0);
+          const chapterBusy = regeneratingChapterId === chapter.id;
+          return (
+          <section key={chapter.id} className="rounded-2xl border p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold">{chapter.topicName}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{chapterSelectedMarks} of {calculateBlueprintChapterMarks(chapter)} chapter marks selected</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" disabled={chapterBusy || regeneratingRowId !== null} onClick={() => onRegenerateChapter(chapter.id, chapter.rows.map((row) => row.id))}>
+                <RefreshCw className={cn("size-4", chapterBusy && "animate-spin")} /> {chapterBusy ? "Regenerating…" : "Regenerate chapter"}
+              </Button>
+            </div>
             <div className="mt-4 space-y-5">
-              {chapterRows.map((row) => (
-                <div key={row.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold">{row.sectionLabel} · {BANK_QUESTION_TYPE_LABELS[row.questionType]}</p><Badge variant={row.questions.length === row.questionCount ? "secondary" : "destructive"}>{row.questions.length}/{row.questionCount}</Badge></div>
-                  <div className="mt-2 space-y-2">
+              {chapterRows.map((row) => {
+                const complete = row.questions.length === row.questionCount;
+                const rowBusy = regeneratingRowId === row.id;
+                const rowError = errorsByRow.get(row.id);
+                return (
+                <div key={row.id} className="rounded-xl bg-muted/15 p-3 sm:p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2"><p className="text-sm font-semibold">{row.sectionLabel} · {BANK_QUESTION_TYPE_LABELS[row.questionType]}</p><Badge variant={complete ? "secondary" : "destructive"}>{complete ? "Complete" : "Incomplete"} · {row.questions.length}/{row.questionCount}</Badge></div>
+                      <p className="mt-1 text-xs text-muted-foreground">{row.questionCount} × {row.marksPerQuestion} mark{row.marksPerQuestion === 1 ? "" : "s"} · {row.difficulty === "any" ? "Mixed difficulty" : row.difficulty}</p>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" disabled={rowBusy || regeneratingChapterId !== null} onClick={() => onRegenerateRow(row.id)}>
+                      <RefreshCw className={cn("size-4", rowBusy && "animate-spin")} /> {rowBusy ? "Regenerating…" : "Regenerate row"}
+                    </Button>
+                  </div>
+                  {rowError && <p className="mt-2 text-xs text-destructive">{rowError}</p>}
+                  {!complete && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+                      <p className="text-sm text-amber-900 dark:text-amber-100">This row needs {row.questionCount - row.questions.length} more question{row.questionCount - row.questions.length === 1 ? "" : "s"}. Preview and export remain blocked.</p>
+                      <Button type="button" size="sm" onClick={() => onSelectQuestion(row)}><Plus className="size-4" /> Add replacement</Button>
+                    </div>
+                  )}
+                  <div className="mt-3 space-y-2">
                     {row.questions.map((question, index) => (
-                      <div key={question.id} className="flex flex-col gap-3 rounded-xl border bg-muted/15 p-3 sm:flex-row sm:items-start">
+                      <div key={question.id} className="flex flex-col gap-3 rounded-xl border bg-background p-3 sm:flex-row sm:items-start">
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
                         <QuestionSummary question={question} />
-                        <div className="flex shrink-0 gap-1">
+                        <div className="flex shrink-0 flex-wrap gap-1 sm:max-w-48 sm:justify-end">
+                          <Button type="button" variant="outline" size="sm" onClick={() => onSelectQuestion(row, question.id)}>Replace</Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question up" disabled={index === 0} onClick={() => onMove(row.id, index, -1)}><ArrowUp className="size-4" /></Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question down" disabled={index === row.questions.length - 1} onClick={() => onMove(row.id, index, 1)}><ArrowDown className="size-4" /></Button>
-                          <Button type="button" variant="ghost" size="icon" aria-label="Remove question" onClick={() => onRemove(row.id, question.id)}><X className="size-4" /></Button>
+                          <Button type="button" variant="ghost" size="sm" aria-label="Remove question" onClick={() => onRemove(row.id, question.id)}><X className="size-4" /> Remove</Button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </section>
-        ))}
+        )})}
       </CardContent>
     </Card>
+  );
+}
+
+function CandidatePickerDialog({ context, candidates, search, loading, selectingCandidateId, onSearch, onClose, onSelect }: {
+  context: CandidateContext | null;
+  candidates: PaperBuilderQuestion[];
+  search: string;
+  loading: boolean;
+  selectingCandidateId: string | null;
+  onSearch: (value: string) => void;
+  onClose: () => void;
+  onSelect: (candidateId: string) => void;
+}) {
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filtered = candidates.filter((question) => !normalizedSearch || [
+    question.questionText,
+    question.source ?? "",
+    question.difficulty,
+    BANK_QUESTION_TYPE_LABELS[question.questionType],
+  ].some((value) => value.toLocaleLowerCase().includes(normalizedSearch)));
+  return (
+    <Dialog open={Boolean(context)} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="border-b px-5 pb-4 pt-5 pr-12">
+          <DialogTitle>{context?.replaceQuestionId ? "Replace question" : "Add replacement"}</DialogTitle>
+          <DialogDescription>{context ? `${context.topicName} · ${context.sectionLabel}. Every candidate is revalidated against this exact row.` : "Choose a valid candidate."}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 overflow-y-auto px-5 pb-5">
+          <Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search question text or source…" aria-label="Search replacement candidates" />
+          {loading ? (
+            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">Loading server-validated candidates…</div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{candidates.length === 0 ? "No unused valid candidates are available for this exact row." : "No candidates match your search."}</div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-muted-foreground">{filtered.length} valid candidate{filtered.length === 1 ? "" : "s"}</p>
+              {filtered.map((question) => (
+                <article key={question.id} className="rounded-xl border bg-muted/10 p-4">
+                  <QuestionSummary question={question} />
+                  <CandidateAnswerReview question={question} />
+                  <div className="mt-4 flex justify-end">
+                    <Button type="button" size="sm" disabled={selectingCandidateId !== null} onClick={() => onSelect(question.id)}>
+                      {selectingCandidateId === question.id ? "Selecting…" : context?.replaceQuestionId ? "Use this replacement" : "Add this question"}
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CandidateAnswerReview({ question }: { question: PaperBuilderQuestion }) {
+  const options = [question.optionA, question.optionB, question.optionC, question.optionD];
+  const hasOptions = options.every(Boolean);
+  return (
+    <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+      {hasOptions && <div className="grid gap-1 sm:grid-cols-2">{options.map((option, index) => <p key={`${index}-${option}`}><span className="font-semibold text-foreground">{String.fromCharCode(65 + index)}.</span> {option}</p>)}</div>}
+      {question.modelAnswer && <p><span className="font-semibold text-foreground">Model answer:</span> {question.modelAnswer}</p>}
+      {question.correctAnswer && <p><span className="font-semibold text-foreground">Correct answer:</span> {question.correctAnswer}</p>}
+      {question.explanation && <p><span className="font-semibold text-foreground">Explanation:</span> {question.explanation}</p>}
+    </div>
   );
 }
 
@@ -745,5 +1003,5 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
 }
 
 function QuestionSummary({ question }: { question: PaperBuilderQuestion }) {
-  return <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{BANK_QUESTION_TYPE_LABELS[question.questionType]}</Badge>{question.imageUrl && <Badge variant="secondary"><ImageIcon className="size-3" /> Has image</Badge>}<span className="text-xs text-muted-foreground">{question.difficulty} · {question.marks} mark{question.marks === 1 ? "" : "s"}</span></div><p className="mt-2 text-sm font-medium leading-6">{question.questionText}</p></div>;
+  return <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline">{BANK_QUESTION_TYPE_LABELS[question.questionType]}</Badge>{question.imageUrl && <Badge variant="secondary"><ImageIcon className="size-3" /> Has image</Badge>}<span className="text-xs text-muted-foreground">{question.difficulty} · {question.marks} mark{question.marks === 1 ? "" : "s"}</span>{question.source && <span className="text-xs text-muted-foreground">Source: {question.source}</span>}</div><p className="mt-2 text-sm font-medium leading-6">{question.questionText}</p></div>;
 }

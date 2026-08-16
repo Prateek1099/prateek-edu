@@ -1,6 +1,7 @@
 import type { PaperBuilderQuestion, ValidatedPaperSection } from "./types";
 import type {
   BlueprintChapterDraft,
+  BlueprintGeneratedRow,
   BlueprintRowDraft,
 } from "./blueprint-types";
 import {
@@ -49,6 +50,81 @@ export function uniqueBlueprintCandidates(
     seenText.add(normalized);
     return true;
   });
+}
+
+export function filterBlueprintReplacementCandidates(
+  questions: PaperBuilderQuestion[],
+  subjectId: string,
+  row: BlueprintRowDraft,
+  selectedQuestions: PaperBuilderQuestion[],
+  replaceQuestionId?: string,
+) {
+  const retainedQuestions = selectedQuestions.filter(
+    (question) => question.id !== replaceQuestionId,
+  );
+  const usedIds = new Set(retainedQuestions.map((question) => question.id));
+  const usedText = new Set(
+    retainedQuestions.map((question) => normalizeQuestionText(question.questionText)),
+  );
+
+  return uniqueBlueprintCandidates(questions, subjectId, row).filter((question) => {
+    const normalized = normalizeQuestionText(question.questionText);
+    return (
+      question.id !== replaceQuestionId &&
+      !usedIds.has(question.id) &&
+      !usedText.has(normalized)
+    );
+  });
+}
+
+export function findIncompleteBlueprintRows(rows: BlueprintGeneratedRow[]) {
+  return rows
+    .filter((row) => row.questions.length !== row.questionCount)
+    .map((row) => row.id);
+}
+
+export function applyBlueprintCandidate(
+  rows: BlueprintGeneratedRow[],
+  rowId: string,
+  candidate: PaperBuilderQuestion,
+  replaceQuestionId?: string,
+) {
+  return rows.map((row) => {
+    if (row.id !== rowId) return row;
+    if (replaceQuestionId) {
+      return {
+        ...row,
+        questions: row.questions.map((question) =>
+          question.id === replaceQuestionId ? candidate : question,
+        ),
+      };
+    }
+    if (row.questions.length >= row.questionCount) return row;
+    return { ...row, questions: [...row.questions, candidate] };
+  });
+}
+
+export function applyBlueprintRegeneratedRows(
+  currentRows: BlueprintGeneratedRow[],
+  replacementRows: BlueprintGeneratedRow[],
+  requiredRowIds: string[],
+) {
+  const replacements = new Map(replacementRows.map((row) => [row.id, row]));
+  const errors = requiredRowIds.flatMap((rowId) => {
+    const replacement = replacements.get(rowId);
+    if (!replacement) return [`No regenerated selection was returned for row ${rowId}.`];
+    if (replacement.questions.length !== replacement.questionCount) {
+      return [`${replacement.sectionLabel} is incomplete after regeneration.`];
+    }
+    return [];
+  });
+  if (errors.length > 0) return { rows: currentRows, errors };
+
+  const required = new Set(requiredRowIds);
+  return {
+    rows: currentRows.map((row) => required.has(row.id) ? replacements.get(row.id)! : row),
+    errors: [] as string[],
+  };
 }
 
 export function assembleBlueprintSelections(

@@ -4,6 +4,7 @@ import { BANK_QUESTION_TYPES } from "@/lib/bank-questions";
 import {
   assembleBlueprintSelections,
   calculateBlueprintPaperMarks,
+  filterBlueprintReplacementCandidates,
   findIncompatibleBlueprintSectionLabels,
   groupBlueprintRowsForOutput,
   questionMatchesBlueprintRow,
@@ -20,6 +21,7 @@ import type {
 import {
   findDuplicateSelection,
   normalizeQuestionText,
+  shuffled,
 } from "@/lib/paper-builder/rules";
 import {
   PAPER_DIFFICULTIES,
@@ -132,6 +134,7 @@ function mapQuestion(question: {
   correctAnswer: string | null;
   modelAnswer: string | null;
   explanation: string | null;
+  source: string | null;
   imageUrl: string | null;
   imageAlt: string | null;
   imageCaption: string | null;
@@ -153,6 +156,7 @@ function mapQuestion(question: {
     correctAnswer: question.correctAnswer,
     modelAnswer: question.modelAnswer,
     explanation: question.explanation,
+    source: question.source,
     imageUrl: question.imageUrl,
     imageAlt: question.imageAlt,
     imageCaption: question.imageCaption,
@@ -193,6 +197,7 @@ async function loadBlueprintScope(input: BlueprintPaperDraft) {
         correctAnswer: true,
         modelAnswer: true,
         explanation: true,
+        source: true,
         imageUrl: true,
         imageAlt: true,
         imageCaption: true,
@@ -222,6 +227,94 @@ function scopeError(input: BlueprintPaperDraft, scope: Scope) {
 
 function allRows(input: BlueprintPaperDraft) {
   return input.chapters.flatMap((chapter) => chapter.rows);
+}
+
+function findDraftRow(input: BlueprintPaperDraft, rowId: string) {
+  for (const chapter of input.chapters) {
+    const row = chapter.rows.find((candidate) => candidate.id === rowId);
+    if (row) return { chapter, row };
+  }
+  return null;
+}
+
+function generatedRow(
+  scope: Scope,
+  chapter: BlueprintPaperDraft["chapters"][number],
+  row: BlueprintRowDraft,
+  questions: PaperBuilderQuestion[],
+): BlueprintGeneratedRow {
+  const topic = scope.topics.find((candidate) => candidate.id === row.topicId);
+  return {
+    ...row,
+    sectionLabel: cleanText(row.sectionLabel, 100),
+    topicName: topic?.topicName ?? chapter.topicName,
+    questions,
+  };
+}
+
+function validateEditableSelections(
+  input: BlueprintPaperDraft,
+  scope: Scope,
+  selections: BlueprintSelection[],
+) {
+  const rows = allRows(input);
+  if (!Array.isArray(selections) || selections.length !== rows.length) {
+    return { success: false as const, error: "Every blueprint row needs one current selection." };
+  }
+  const selectionByRow = new Map<string, string[]>();
+  for (const selection of selections) {
+    if (
+      !selection?.rowId ||
+      !Array.isArray(selection.questionIds) ||
+      selectionByRow.has(selection.rowId)
+    ) {
+      return { success: false as const, error: "Current blueprint selections are invalid." };
+    }
+    selectionByRow.set(selection.rowId, selection.questionIds);
+  }
+  if (selectionByRow.size !== rows.length) {
+    return { success: false as const, error: "Every blueprint row needs one current selection." };
+  }
+
+  const questionById = new Map(scope.questions.map((question) => [question.id, question]));
+  const selected = new Map<string, PaperBuilderQuestion[]>();
+  for (const row of rows) {
+    const ids = selectionByRow.get(row.id);
+    if (!ids) return { success: false as const, error: "A current blueprint row selection is missing." };
+    if (ids.length > row.questionCount || new Set(ids).size !== ids.length) {
+      return { success: false as const, error: `${row.sectionLabel} contains too many or repeated question IDs.` };
+    }
+    const questions = ids
+      .map((id) => questionById.get(id))
+      .filter((question): question is PaperBuilderQuestion => Boolean(question));
+    if (
+      questions.length !== ids.length ||
+      questions.some((question) => !questionMatchesBlueprintRow(question, input.subjectId, row))
+    ) {
+      return {
+        success: false as const,
+        error: `${row.sectionLabel} contains a question that no longer matches its exact chapter, type, marks, or difficulty.`,
+      };
+    }
+    selected.set(row.id, questions);
+  }
+  const duplicateError = findDuplicateSelection([...selected.values()].flat());
+  if (duplicateError) return { success: false as const, error: duplicateError };
+  return { success: true as const, selected, questionById };
+}
+
+async function prepareBlueprintEdit(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+) {
+  const error = validateDraft(input);
+  if (error) return { success: false as const, error };
+  const scope = await loadBlueprintScope(input);
+  const invalidScope = scopeError(input, scope);
+  if (invalidScope) return { success: false as const, error: invalidScope };
+  const validated = validateEditableSelections(input, scope, selections);
+  if (!validated.success) return validated;
+  return { success: true as const, scope, selected: validated.selected, questionById: validated.questionById };
 }
 
 function availabilityFor(input: BlueprintPaperDraft, questions: PaperBuilderQuestion[]) {
@@ -363,6 +456,194 @@ export async function generateBlueprintPaper(input: BlueprintPaperDraft) {
     return { success: true as const, result: buildGenerationResult(input, scope, assembled.selected) };
   } catch (error: unknown) {
     return { success: false as const, error: error instanceof Error ? error.message : "Could not generate the paper.", rowErrors: [] as RowError[] };
+  }
+}
+
+export async function getBlueprintReplacementCandidates(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+  replaceQuestionId?: string,
+) {
+  try {
+    await requireSuperAdmin();
+    const prepared = await prepareBlueprintEdit(input, selections);
+    if (!prepared.success) return { success: false as const, error: prepared.error };
+    const target = findDraftRow(input, rowId);
+    if (!target) return { success: false as const, error: "The selected blueprint row no longer exists." };
+    const currentRow = prepared.selected.get(rowId) ?? [];
+    if (replaceQuestionId && !currentRow.some((question) => question.id === replaceQuestionId)) {
+      return { success: false as const, error: "The question to replace is not selected in this row." };
+    }
+    if (!replaceQuestionId && currentRow.length >= target.row.questionCount) {
+      return { success: false as const, error: `${target.row.sectionLabel} is already complete.` };
+    }
+    const candidates = filterBlueprintReplacementCandidates(
+      prepared.scope.questions,
+      input.subjectId,
+      target.row,
+      [...prepared.selected.values()].flat(),
+      replaceQuestionId,
+    );
+    return {
+      success: true as const,
+      candidates,
+      row: {
+        id: target.row.id,
+        sectionLabel: target.row.sectionLabel,
+        topicName: prepared.scope.topics.find((topic) => topic.id === target.row.topicId)?.topicName ?? target.chapter.topicName,
+        questionType: target.row.questionType,
+        marksPerQuestion: target.row.marksPerQuestion,
+        difficulty: target.row.difficulty,
+        missingCount: target.row.questionCount - currentRow.length,
+      },
+    };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Could not load replacement candidates." };
+  }
+}
+
+export async function selectBlueprintCandidate(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+  candidateId: string,
+  replaceQuestionId?: string,
+) {
+  try {
+    await requireSuperAdmin();
+    const prepared = await prepareBlueprintEdit(input, selections);
+    if (!prepared.success) return { success: false as const, error: prepared.error };
+    const target = findDraftRow(input, rowId);
+    if (!target) return { success: false as const, error: "The selected blueprint row no longer exists." };
+    const currentRow = prepared.selected.get(rowId) ?? [];
+    if (replaceQuestionId && !currentRow.some((question) => question.id === replaceQuestionId)) {
+      return { success: false as const, error: "The question to replace is not selected in this row." };
+    }
+    if (!replaceQuestionId && currentRow.length >= target.row.questionCount) {
+      return { success: false as const, error: `${target.row.sectionLabel} is already complete.` };
+    }
+    const candidates = filterBlueprintReplacementCandidates(
+      prepared.scope.questions,
+      input.subjectId,
+      target.row,
+      [...prepared.selected.values()].flat(),
+      replaceQuestionId,
+    );
+    const candidate = candidates.find((question) => question.id === candidateId);
+    if (!candidate) {
+      return { success: false as const, error: "That candidate is no longer a valid replacement for this exact blueprint row." };
+    }
+    const questions = replaceQuestionId
+      ? currentRow.map((question) => question.id === replaceQuestionId ? candidate : question)
+      : [...currentRow, candidate];
+    const retained = [...prepared.selected.entries()]
+      .flatMap(([selectedRowId, selectedQuestions]) => selectedRowId === rowId ? questions : selectedQuestions);
+    const duplicateError = findDuplicateSelection(retained);
+    if (duplicateError) return { success: false as const, error: duplicateError };
+    return {
+      success: true as const,
+      candidate,
+    };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Could not select the replacement question." };
+  }
+}
+
+export async function regenerateBlueprintRow(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+) {
+  try {
+    await requireSuperAdmin();
+    const prepared = await prepareBlueprintEdit(input, selections);
+    if (!prepared.success) return { success: false as const, error: prepared.error };
+    const target = findDraftRow(input, rowId);
+    if (!target) return { success: false as const, error: "The selected blueprint row no longer exists." };
+    const retained = [...prepared.selected.entries()]
+      .filter(([selectedRowId]) => selectedRowId !== rowId)
+      .flatMap(([, questions]) => questions);
+    const candidates = filterBlueprintReplacementCandidates(
+      prepared.scope.questions,
+      input.subjectId,
+      target.row,
+      retained,
+    );
+    if (candidates.length < target.row.questionCount) {
+      const topicName = prepared.scope.topics.find((topic) => topic.id === target.row.topicId)?.topicName ?? target.chapter.topicName;
+      return {
+        success: false as const,
+        error: rowErrorMessage(target.row, topicName, candidates.length),
+      };
+    }
+    const oldIds = new Set((prepared.selected.get(rowId) ?? []).map((question) => question.id));
+    const ordered = shuffled(candidates).sort((left, right) => Number(oldIds.has(left.id)) - Number(oldIds.has(right.id)));
+    const questions = ordered.slice(0, target.row.questionCount);
+    return {
+      success: true as const,
+      row: generatedRow(prepared.scope, target.chapter, target.row, questions),
+    };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Could not regenerate this blueprint row." };
+  }
+}
+
+export async function regenerateBlueprintChapter(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  chapterId: string,
+) {
+  try {
+    await requireSuperAdmin();
+    const prepared = await prepareBlueprintEdit(input, selections);
+    if (!prepared.success) return { success: false as const, error: prepared.error, rowErrors: [] as RowError[] };
+    const chapter = input.chapters.find((candidate) => candidate.id === chapterId);
+    if (!chapter) return { success: false as const, error: "The selected chapter no longer exists.", rowErrors: [] as RowError[] };
+    const chapterRowIds = new Set(chapter.rows.map((row) => row.id));
+    const retained = [...prepared.selected.entries()]
+      .filter(([rowId]) => !chapterRowIds.has(rowId))
+      .flatMap(([, questions]) => questions);
+    const pools = new Map<string, PaperBuilderQuestion[]>();
+    const topicName = prepared.scope.topics.find((topic) => topic.id === chapter.topicId)?.topicName ?? chapter.topicName;
+    const rowErrors: RowError[] = [];
+    for (const row of chapter.rows) {
+      const candidates = filterBlueprintReplacementCandidates(
+        prepared.scope.questions,
+        input.subjectId,
+        row,
+        retained,
+      );
+      pools.set(row.id, candidates);
+      if (candidates.length < row.questionCount) {
+        rowErrors.push({ rowId: row.id, message: rowErrorMessage(row, topicName, candidates.length) });
+      }
+    }
+    if (rowErrors.length > 0) {
+      return { success: false as const, error: "This chapter cannot be regenerated completely.", rowErrors };
+    }
+    const assembled = assembleBlueprintSelections(chapter.rows, pools);
+    if (assembled.shortages.length > 0) {
+      return {
+        success: false as const,
+        error: "Rows in this chapter compete for the same usable questions.",
+        rowErrors: assembled.shortages.map((shortage) => {
+          const row = chapter.rows.find((candidate) => candidate.id === shortage.rowId)!;
+          return { rowId: row.id, message: rowErrorMessage(row, topicName, shortage.usableCount) };
+        }),
+      };
+    }
+    return {
+      success: true as const,
+      rows: chapter.rows.map((row) => generatedRow(
+        prepared.scope,
+        chapter,
+        row,
+        assembled.selected.get(row.id) ?? [],
+      )),
+    };
+  } catch (error: unknown) {
+    return { success: false as const, error: error instanceof Error ? error.message : "Could not regenerate this chapter.", rowErrors: [] as RowError[] };
   }
 }
 
