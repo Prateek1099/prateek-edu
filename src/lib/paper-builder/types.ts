@@ -110,6 +110,7 @@ export type ValidatedPaperSection = {
   marksPerQuestion: number;
   difficulty: PaperDifficulty;
   questions: PaperBuilderQuestion[];
+  isMixedOutput?: boolean;
 };
 
 export type ValidatedPaper = {

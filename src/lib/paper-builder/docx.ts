@@ -89,6 +89,10 @@ function paperHeader(paper: ValidatedPaper, answerKey: boolean) {
 }
 
 function sectionTitle(section: ValidatedPaperSection) {
+  if (section.isMixedOutput) {
+    const marks = section.questions.reduce((total, question) => total + question.marks, 0);
+    return `${section.label} · ${section.questionCount} QUESTIONS · ${marks} MARKS`.toUpperCase();
+  }
   const marks = section.marksPerQuestion === 1 ? "MARK" : "MARKS";
   return `${section.label} · ${BANK_QUESTION_TYPE_LABELS[section.questionType]} · ${section.questionCount} × ${section.marksPerQuestion} ${marks}`.toUpperCase();
 }

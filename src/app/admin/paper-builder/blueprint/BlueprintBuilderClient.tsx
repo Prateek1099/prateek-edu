@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -48,7 +48,17 @@ import {
   calculateBlueprintChapterMarks,
   calculateBlueprintPaperMarks,
   findIncompleteBlueprintRows,
+  groupBlueprintRowsForOutput,
 } from "@/lib/paper-builder/blueprint-rules";
+import {
+  applyFinalQuestionOrder,
+  createFinalQuestionOrder,
+  FINAL_PAPER_ORDER_LABELS,
+  type FinalPaperOrderMode,
+  reconcileFinalQuestionOrder,
+  replaceFinalQuestionId,
+  reshuffleFinalQuestionOrder,
+} from "@/lib/paper-builder/final-paper-order";
 import { applyBlueprintTemplateSnapshot } from "@/lib/paper-builder/blueprint-template-rules";
 import type { BlueprintTemplateSummary } from "@/lib/paper-builder/blueprint-template-types";
 import type {
@@ -154,6 +164,9 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const [rowErrors, setRowErrors] = useState<Array<{ rowId: string; message: string }>>([]);
   const [generatedRows, setGeneratedRows] = useState<BlueprintGeneratedRow[]>([]);
   const [validatedPaper, setValidatedPaper] = useState<ValidatedPaper | null>(null);
+  const [finalOrderMode, setFinalOrderMode] = useState<FinalPaperOrderMode>("shuffle_within_sections");
+  const [finalQuestionOrderIds, setFinalQuestionOrderIds] = useState<string[]>([]);
+  const orderRevision = useRef(1);
   const [reviewing, setReviewing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -207,6 +220,16 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const requestedCount = chapters.flatMap((chapter) => chapter.rows).reduce((total, row) => total + row.questionCount, 0);
   const incompleteRowIds = useMemo(() => findIncompleteBlueprintRows(generatedRows), [generatedRows]);
   const selectionsComplete = generatedRows.length > 0 && incompleteRowIds.length === 0;
+  const currentOutputSections = useMemo(
+    () => groupBlueprintRowsForOutput(generatedRows),
+    [generatedRows],
+  );
+  const orderedPaper = useMemo(
+    () => validatedPaper
+      ? applyFinalQuestionOrder(validatedPaper, finalOrderMode, finalQuestionOrderIds)
+      : null,
+    [finalOrderMode, finalQuestionOrderIds, validatedPaper],
+  );
 
   const draft: BlueprintPaperDraft = {
     version: 1,
@@ -223,6 +246,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     setRowErrors([]);
     setGeneratedRows([]);
     setValidatedPaper(null);
+    setFinalQuestionOrderIds([]);
   };
 
   const updateDetails = <K extends keyof PaperDetails>(key: K, value: PaperDetails[K]) => {
@@ -383,7 +407,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
         toast.error(result.error);
         return;
       }
-      applyGeneration(result.result);
+      applyGeneration(result.result, true);
       setStep(5);
       toast.success("Complete paper generated. Review the chapter allocations before previewing.");
     } finally {
@@ -391,14 +415,27 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     }
   };
 
-  const applyGeneration = (result: BlueprintGenerationResult) => {
+  const applyGeneration = (result: BlueprintGenerationResult, resetOrder = false) => {
     setGeneratedRows(result.rows);
     setValidatedPaper(result.paper);
+    setFinalQuestionOrderIds((current) => {
+      if (resetOrder || current.length === 0) {
+        orderRevision.current += 1;
+        return createFinalQuestionOrder(result.paper.sections, finalOrderMode, orderRevision.current);
+      }
+      return reconcileFinalQuestionOrder(result.paper.sections, finalOrderMode, current);
+    });
     setRowErrors([]);
   };
 
   const updateGeneratedRow = (rowId: string, updater: (questions: PaperBuilderQuestion[]) => PaperBuilderQuestion[]) => {
-    setGeneratedRows((current) => current.map((row) => row.id === rowId ? { ...row, questions: updater(row.questions) } : row));
+    const nextRows = generatedRows.map((row) => row.id === rowId ? { ...row, questions: updater(row.questions) } : row);
+    setGeneratedRows(nextRows);
+    setFinalQuestionOrderIds((current) => reconcileFinalQuestionOrder(
+      groupBlueprintRowsForOutput(nextRows),
+      finalOrderMode,
+      current,
+    ));
     setValidatedPaper(null);
   };
 
@@ -464,12 +501,23 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
         candidateContext.replaceQuestionId,
       );
       if (!result.success) return toast.error(result.error);
-      setGeneratedRows((current) => applyBlueprintCandidate(
-        current,
+      const nextRows = applyBlueprintCandidate(
+        generatedRows,
         candidateContext.rowId,
         result.candidate,
         candidateContext.replaceQuestionId,
-      ));
+      );
+      setGeneratedRows(nextRows);
+      setFinalQuestionOrderIds((current) => {
+        const replaced = candidateContext.replaceQuestionId
+          ? replaceFinalQuestionId(current, candidateContext.replaceQuestionId, result.candidate.id)
+          : current;
+        return reconcileFinalQuestionOrder(
+          groupBlueprintRowsForOutput(nextRows),
+          finalOrderMode,
+          replaced,
+        );
+      });
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => item.rowId !== candidateContext.rowId));
       closeCandidatePicker();
@@ -484,10 +532,13 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     try {
       const result = await regenerateBlueprintRow(draft, currentSelections(), rowId);
       if (!result.success) return toast.error(result.error);
-      setGeneratedRows((current) => {
-        const applied = applyBlueprintRegeneratedRows(current, [result.row], [rowId]);
-        return applied.rows;
-      });
+      const applied = applyBlueprintRegeneratedRows(generatedRows, [result.row], [rowId]);
+      setGeneratedRows(applied.rows);
+      setFinalQuestionOrderIds((current) => reconcileFinalQuestionOrder(
+        groupBlueprintRowsForOutput(applied.rows),
+        finalOrderMode,
+        current,
+      ));
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => item.rowId !== rowId));
       toast.success("Blueprint row regenerated. Other rows were preserved.");
@@ -509,10 +560,13 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
         if (result.rowErrors.length === 0) toast.error(result.error);
         return;
       }
-      setGeneratedRows((current) => {
-        const applied = applyBlueprintRegeneratedRows(current, result.rows, chapterRowIds);
-        return applied.rows;
-      });
+      const applied = applyBlueprintRegeneratedRows(generatedRows, result.rows, chapterRowIds);
+      setGeneratedRows(applied.rows);
+      setFinalQuestionOrderIds((current) => reconcileFinalQuestionOrder(
+        groupBlueprintRowsForOutput(applied.rows),
+        finalOrderMode,
+        current,
+      ));
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => !chapterRowIds.includes(item.rowId)));
       toast.success("Chapter regenerated. Every other chapter was preserved.");
@@ -538,8 +592,31 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     }
   };
 
+  const changeFinalOrderMode = (mode: FinalPaperOrderMode) => {
+    setFinalOrderMode(mode);
+    orderRevision.current += 1;
+    setFinalQuestionOrderIds(createFinalQuestionOrder(
+      currentOutputSections,
+      mode,
+      orderRevision.current,
+    ));
+  };
+
+  const reshuffleFinalOrder = () => {
+    if (finalOrderMode === "chapter_wise" || !selectionsComplete) return;
+    const result = reshuffleFinalQuestionOrder(
+      currentOutputSections,
+      finalOrderMode,
+      finalQuestionOrderIds,
+      orderRevision.current + 1,
+    );
+    orderRevision.current = result.revision;
+    setFinalQuestionOrderIds(result.ids);
+    toast.success("Final paper order reshuffled. Chapter-wise review was not changed.");
+  };
+
   const printPaper = (mode: PrintMode) => {
-    if (!validatedPaper) return toast.error("Validate the current blueprint before printing.");
+    if (!orderedPaper) return toast.error("Validate the current blueprint before printing.");
     document.documentElement.dataset.paperPrintMode = mode;
     const cleanup = () => {
       delete document.documentElement.dataset.paperPrintMode;
@@ -550,11 +627,11 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   };
 
   const downloadDocx = async (mode: DocxMode) => {
-    if (!validatedPaper) return toast.error("Validate the current blueprint before downloading DOCX.");
+    if (!orderedPaper) return toast.error("Validate the current blueprint before downloading DOCX.");
     setDownloadingDocx(mode);
     try {
       const { downloadPaperDocx } = await import("@/lib/paper-builder/docx");
-      await downloadPaperDocx(validatedPaper, mode);
+      await downloadPaperDocx(orderedPaper, mode);
       toast.success("Editable DOCX downloaded.");
     } catch {
       toast.error("Could not generate the DOCX. Please try again.");
@@ -589,6 +666,15 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
         <div className="min-w-0">
+          {step >= 5 && generatedRows.length > 0 && (
+            <FinalPaperOrderControls
+              mode={finalOrderMode}
+              complete={selectionsComplete}
+              onModeChange={changeFinalOrderMode}
+              onReshuffle={reshuffleFinalOrder}
+            />
+          )}
+
           {step === 1 && (
             <PaperDetailsStep
               details={details}
@@ -646,9 +732,9 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
             />
           )}
 
-          {step === 6 && validatedPaper && (
+          {step === 6 && orderedPaper && (
             <PreviewStep
-              paper={validatedPaper}
+              paper={orderedPaper}
               previewTab={previewTab}
               downloadingDocx={downloadingDocx}
               onPreviewTab={setPreviewTab}
@@ -1037,6 +1123,56 @@ function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh,
         ))}
       </CardContent>
     </Card>
+  );
+}
+
+function FinalPaperOrderControls({ mode, complete, onModeChange, onReshuffle }: {
+  mode: FinalPaperOrderMode;
+  complete: boolean;
+  onModeChange: (mode: FinalPaperOrderMode) => void;
+  onReshuffle: () => void;
+}) {
+  const descriptions: Record<FinalPaperOrderMode, string> = {
+    chapter_wise: "Keep the current chapter and row sequence in the final paper.",
+    shuffle_within_sections: "Keep section/type groups, but mix chapters inside each section.",
+    fully_shuffled: "Mix every question into one numbered final-paper sequence.",
+  };
+  return (
+    <section className="paper-builder-screen-only mb-6 rounded-2xl border bg-card p-4 sm:p-5" aria-labelledby="final-paper-order-heading">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <Shuffle className="size-4 text-primary" aria-hidden="true" />
+            <h2 id="final-paper-order-heading" className="font-semibold">Final paper question order</h2>
+          </div>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            {descriptions[mode]} Review below remains chapter-wise.
+          </p>
+        </div>
+        <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+          <Select value={mode} onValueChange={(value) => onModeChange((value || "shuffle_within_sections") as FinalPaperOrderMode)}>
+            <SelectTrigger className="w-full sm:min-w-64" aria-label="Final paper question order">
+              <SelectValue>{FINAL_PAPER_ORDER_LABELS[mode]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(FINAL_PAPER_ORDER_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {mode !== "chapter_wise" && (
+            <Button type="button" variant="outline" disabled={!complete} onClick={onReshuffle}>
+              <RefreshCw className="size-4" /> Reshuffle
+            </Button>
+          )}
+        </div>
+      </div>
+      {!complete && mode !== "chapter_wise" && (
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+          Complete every blueprint row before reshuffling or exporting.
+        </p>
+      )}
+    </section>
   );
 }
 
