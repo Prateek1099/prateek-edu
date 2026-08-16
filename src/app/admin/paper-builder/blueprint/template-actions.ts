@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   calculateTemplateSnapshotMarks,
+  nextBlueprintTemplateCopyName,
   validateBlueprintTemplateInput,
 } from "@/lib/paper-builder/blueprint-template-rules";
 import type {
@@ -15,6 +16,7 @@ import type {
   BlueprintTemplateSnapshot,
   BlueprintTemplateSummary,
   CreateBlueprintTemplateInput,
+  UpdateBlueprintTemplateInput,
 } from "@/lib/paper-builder/blueprint-template-types";
 import type { PaperDifficulty } from "@/lib/paper-builder/types";
 import { prisma } from "@/lib/prisma";
@@ -30,6 +32,10 @@ type CreateResult =
 
 type ApplyResult =
   | { success: true; template: BlueprintTemplateSnapshot }
+  | { success: false; error: string };
+
+type MutationResult =
+  | { success: true; template?: BlueprintTemplateSummary; message: string }
   | { success: false; error: string };
 
 const difficultyToDatabase: Record<PaperDifficulty, BlueprintTemplateDifficulty> = {
@@ -78,7 +84,81 @@ function friendlyError(error: unknown, fallback: string) {
   if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
     return "A blueprint template with this name already exists for the selected subject.";
   }
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    return "This blueprint template no longer exists. Refresh the page and try again.";
+  }
   return error instanceof Error ? error.message : fallback;
+}
+
+function validTemplateId(id: unknown) {
+  if (typeof id !== "string" || !id.trim() || id.length > 200) {
+    throw new Error("Choose a valid blueprint template.");
+  }
+  return id;
+}
+
+async function validateAcademicScope(validated: ReturnType<typeof validateBlueprintTemplateInput>) {
+  const topicIds = validated.chapters.map((chapter) => chapter.topicId);
+  const [subject, topicCount] = await Promise.all([
+    prisma.subject.findUnique({
+      where: { id: validated.subjectId },
+      select: { id: true, qualification: { select: { id: true, boardId: true } } },
+    }),
+    prisma.topic.count({ where: { id: { in: topicIds }, subjectId: validated.subjectId } }),
+  ]);
+  if (!subject) throw new Error("The selected subject no longer exists.");
+  if (subject.qualification.id !== validated.qualificationId || subject.qualification.boardId !== validated.boardId) {
+    throw new Error("The selected subject does not belong to that board and qualification.");
+  }
+  if (topicCount !== topicIds.length) {
+    throw new Error("One or more selected chapters do not belong to the subject.");
+  }
+}
+
+function nestedChapters(validated: ReturnType<typeof validateBlueprintTemplateInput>) {
+  return validated.chapters.map((chapter) => ({
+    topicId: chapter.topicId,
+    sortOrder: chapter.sortOrder,
+    rows: {
+      create: chapter.rows.map((row) => ({
+        sectionLabel: row.sectionLabel,
+        questionType: row.questionType,
+        questionCount: row.questionCount,
+        marksPerQuestion: row.marksPerQuestion,
+        difficulty: difficultyToDatabase[row.difficulty],
+        sortOrder: row.sortOrder,
+      })),
+    },
+  }));
+}
+
+function templateFields(validated: ReturnType<typeof validateBlueprintTemplateInput>) {
+  const header = validated.headerDefaults;
+  return {
+    name: validated.name,
+    description: validated.description,
+    boardId: validated.boardId,
+    qualificationId: validated.qualificationId,
+    subjectId: validated.subjectId,
+    totalMarks: validated.totalMarks,
+    includeHeaderDefaults: validated.includeHeaderDefaults,
+    institutionName: header?.institutionName ?? null,
+    examLabel: header?.examLabel ?? null,
+    courseLine: header?.courseLine ?? null,
+    title: header?.title ?? null,
+    topicLine: header?.topicLine ?? null,
+    durationMinutes: header?.durationMinutes ?? null,
+    dateText: header?.dateText ?? null,
+    classText: header?.classText ?? null,
+    showStudentName: header?.showStudentName ?? null,
+    showRollNumber: header?.showRollNumber ?? null,
+    instructions: header?.instructions ?? null,
+  };
+}
+
+function revalidateTemplatePaths() {
+  revalidatePath("/admin/paper-builder/blueprint");
+  revalidatePath("/admin/paper-builder/blueprint/templates");
 }
 
 export async function listPaperBlueprintTemplates(filters: BlueprintTemplateFilters = {}): Promise<ListResult> {
@@ -185,10 +265,164 @@ export async function createPaperBlueprintTemplate(input: CreateBlueprintTemplat
         includeHeaderDefaults: true,
       },
     });
-    revalidatePath("/admin/paper-builder/blueprint");
+    revalidateTemplatePaths();
     return { success: true, template: summary(created) };
   } catch (error) {
     return { success: false, error: friendlyError(error, "Could not save the blueprint template.") };
+  }
+}
+
+export async function updatePaperBlueprintTemplate(input: UpdateBlueprintTemplateInput): Promise<MutationResult> {
+  await requireSuperAdmin();
+  try {
+    const id = validTemplateId(input?.id);
+    const validated = validateBlueprintTemplateInput(input);
+    await validateAcademicScope(validated);
+    const updated = await prisma.paperBlueprintTemplate.update({
+      where: { id },
+      data: {
+        ...templateFields(validated),
+        chapters: {
+          deleteMany: {},
+          create: nestedChapters(validated),
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        boardId: true,
+        qualificationId: true,
+        subjectId: true,
+        totalMarks: true,
+        includeHeaderDefaults: true,
+      },
+    });
+    revalidateTemplatePaths();
+    return { success: true, template: summary(updated), message: "Blueprint template updated." };
+  } catch (error) {
+    return { success: false, error: friendlyError(error, "Could not update the blueprint template.") };
+  }
+}
+
+export async function deletePaperBlueprintTemplate(id: string): Promise<MutationResult> {
+  await requireSuperAdmin();
+  try {
+    const templateId = validTemplateId(id);
+    await prisma.paperBlueprintTemplate.delete({ where: { id: templateId } });
+    revalidateTemplatePaths();
+    return { success: true, message: "Blueprint template deleted. Question Bank records were not changed." };
+  } catch (error) {
+    return { success: false, error: friendlyError(error, "Could not delete the blueprint template.") };
+  }
+}
+
+export async function duplicatePaperBlueprintTemplate(id: string): Promise<MutationResult> {
+  const admin = await requireSuperAdmin();
+  try {
+    const templateId = validTemplateId(id);
+    const source = await prisma.paperBlueprintTemplate.findUnique({
+      where: { id: templateId },
+      include: {
+        subject: { select: { qualification: { select: { id: true, boardId: true } } } },
+        chapters: {
+          include: {
+            topic: { select: { id: true, subjectId: true, topicName: true } },
+            rows: { orderBy: { sortOrder: "asc" } },
+          },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    });
+    if (!source) return { success: false, error: "This blueprint template no longer exists." };
+    if (
+      source.subject.qualification.id !== source.qualificationId ||
+      source.subject.qualification.boardId !== source.boardId ||
+      source.chapters.some((chapter) => chapter.topic.subjectId !== source.subjectId)
+    ) {
+      return { success: false, error: "This template has stale academic references. Update it before making a copy." };
+    }
+    const existingNames = await prisma.paperBlueprintTemplate.findMany({
+      where: { subjectId: source.subjectId },
+      select: { name: true },
+    });
+    const name = nextBlueprintTemplateCopyName(source.name, existingNames.map((item) => item.name));
+    const headerDefaults = source.includeHeaderDefaults ? {
+      institutionName: source.institutionName ?? "",
+      examLabel: source.examLabel ?? "",
+      title: source.title ?? "",
+      courseLine: source.courseLine ?? "",
+      topicLine: source.topicLine ?? "",
+      durationMinutes: source.durationMinutes ?? 0,
+      dateText: source.dateText ?? "",
+      classText: source.classText ?? "",
+      showStudentName: source.showStudentName ?? true,
+      showRollNumber: source.showRollNumber ?? true,
+      instructions: source.instructions ?? "",
+    } : null;
+    const draft = {
+      version: 1 as const,
+      details: headerDefaults ?? {
+        institutionName: "VEXA",
+        examLabel: "Class Test",
+        title: "",
+        courseLine: "",
+        topicLine: "",
+        durationMinutes: 30,
+        dateText: "",
+        classText: "",
+        showStudentName: true,
+        showRollNumber: true,
+        instructions: "Attempt all questions.",
+      },
+      boardId: source.boardId,
+      qualificationId: source.qualificationId,
+      subjectId: source.subjectId,
+      targetMarks: source.totalMarks,
+      chapters: source.chapters.map((chapter) => ({
+        id: chapter.id,
+        topicId: chapter.topicId,
+        topicName: chapter.topic.topicName,
+        sortOrder: chapter.sortOrder,
+        rows: chapter.rows.map((row) => ({
+          id: row.id,
+          topicId: chapter.topicId,
+          sectionLabel: row.sectionLabel,
+          questionType: row.questionType,
+          questionCount: row.questionCount,
+          marksPerQuestion: row.marksPerQuestion,
+          difficulty: difficultyFromDatabase[row.difficulty],
+        })),
+      })),
+    };
+    const validated = validateBlueprintTemplateInput({
+      name,
+      description: source.description ?? "",
+      includeHeaderDefaults: source.includeHeaderDefaults,
+      draft,
+    });
+    await validateAcademicScope(validated);
+    const created = await prisma.paperBlueprintTemplate.create({
+      data: {
+        ...templateFields(validated),
+        createdById: admin.id,
+        chapters: { create: nestedChapters(validated) },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        boardId: true,
+        qualificationId: true,
+        subjectId: true,
+        totalMarks: true,
+        includeHeaderDefaults: true,
+      },
+    });
+    revalidateTemplatePaths();
+    return { success: true, template: summary(created), message: `Created “${created.name}”.` };
+  } catch (error) {
+    return { success: false, error: friendlyError(error, "Could not duplicate the blueprint template.") };
   }
 }
 

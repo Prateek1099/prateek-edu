@@ -164,3 +164,14 @@ export function calculateTemplateSnapshotMarks(chapters: BlueprintTemplateChapte
     0,
   );
 }
+
+export function nextBlueprintTemplateCopyName(originalName: string, existingNames: Iterable<string>) {
+  const normalizedNames = new Set([...existingNames].map((name) => name.trim().toLocaleLowerCase()));
+  for (let copyNumber = 1; copyNumber <= 10_000; copyNumber += 1) {
+    const suffix = copyNumber === 1 ? " Copy" : ` Copy ${copyNumber}`;
+    const base = originalName.trim().slice(0, Math.max(1, 200 - suffix.length)).trimEnd();
+    const candidate = `${base}${suffix}`;
+    if (!normalizedNames.has(candidate.toLocaleLowerCase())) return candidate;
+  }
+  throw new Error("Could not create a unique copy name. Rename an existing template and try again.");
+}

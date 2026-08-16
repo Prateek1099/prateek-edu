@@ -5,6 +5,7 @@ import type { BlueprintPaperDraft } from "./blueprint-types";
 import {
   applyBlueprintTemplateSnapshot,
   calculateTemplateSnapshotMarks,
+  nextBlueprintTemplateCopyName,
   validateBlueprintTemplateInput,
 } from "./blueprint-template-rules";
 import type { BlueprintTemplateSnapshot, CreateBlueprintTemplateInput } from "./blueprint-template-types";
@@ -168,4 +169,41 @@ test("calculates snapshot marks from rows instead of trusting a stored total", (
   assert.equal(calculateTemplateSnapshotMarks(template.chapters), 10);
   template.totalMarks = 999;
   assert.equal(calculateTemplateSnapshotMarks(template.chapters), 10);
+});
+
+test("duplicates use Copy, then Copy 2, without colliding case-insensitively", () => {
+  assert.equal(nextBlueprintTemplateCopyName("Friday Test", []), "Friday Test Copy");
+  assert.equal(
+    nextBlueprintTemplateCopyName("Friday Test", ["friday test copy", "Friday Test Copy 2"]),
+    "Friday Test Copy 3",
+  );
+});
+
+test("duplicate names stay within the database-safe template name limit", () => {
+  const name = nextBlueprintTemplateCopyName("A".repeat(200), []);
+  assert.equal(name.length, 200);
+  assert.match(name, / Copy$/);
+});
+
+test("editing pattern counts recalculates marks instead of trusting the old total", () => {
+  const edited = draft();
+  edited.chapters[0].rows[0].questionCount = 5;
+  edited.targetMarks = 12;
+  const result = validateBlueprintTemplateInput(input({ name: "Updated", draft: edited }));
+  assert.equal(result.totalMarks, 12);
+});
+
+test("editing cannot save an empty or orphaned chapter", () => {
+  const empty = draft();
+  empty.chapters[0].rows = [];
+  assert.throws(() => validateBlueprintTemplateInput(input({ draft: empty })), /needs at least one blueprint row/);
+});
+
+test("edit validation strips database, browser, generated, and selected question identifiers", () => {
+  const unsafe = input() as CreateBlueprintTemplateInput & Record<string, unknown>;
+  unsafe.id = "database-template-id";
+  unsafe.generatedQuestionIds = ["bank-question-1"];
+  unsafe.preview = { selectedQuestionIds: ["bank-question-2"] };
+  const serialized = JSON.stringify(validateBlueprintTemplateInput(unsafe));
+  assert.doesNotMatch(serialized, /database-template-id|bank-question|generatedQuestionIds|selectedQuestionIds|preview/);
 });

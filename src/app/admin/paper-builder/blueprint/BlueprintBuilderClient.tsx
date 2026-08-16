@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   ArrowDown,
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   Printer,
   RefreshCw,
   Save,
+  Settings2,
   Shuffle,
   Trash2,
   X,
@@ -25,7 +27,7 @@ import { toast } from "sonner";
 
 import { PaperAnswerKeyDocument, PaperQuestionDocument } from "@/components/paper-builder/PaperBuilderDocuments";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -88,6 +90,7 @@ type Props = {
   topics: PaperBuilderTopic[];
   headerTemplates: PaperHeaderTemplate[];
   blueprintTemplates: BlueprintTemplateSummary[];
+  initialBlueprintTemplateId?: string;
 };
 
 type PrintMode = "questions" | "answers" | "both";
@@ -130,13 +133,13 @@ function createRow(topicId: string, index = 1): BlueprintRowDraft {
   };
 }
 
-export default function BlueprintBuilderClient({ subjects, topics, headerTemplates, blueprintTemplates }: Props) {
+export default function BlueprintBuilderClient({ subjects, topics, headerTemplates, blueprintTemplates, initialBlueprintTemplateId = "" }: Props) {
   const [step, setStep] = useState(1);
   const [details, setDetails] = useState<PaperDetails>(initialDetails);
   const [targetMarksText, setTargetMarksText] = useState("");
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [savedBlueprintTemplates, setSavedBlueprintTemplates] = useState(blueprintTemplates);
-  const [selectedBlueprintTemplateId, setSelectedBlueprintTemplateId] = useState("");
+  const [selectedBlueprintTemplateId, setSelectedBlueprintTemplateId] = useState(initialBlueprintTemplateId);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
@@ -743,7 +746,7 @@ function SavedBlueprintTemplateControls({
             Reuse chapter and section patterns. Generated questions are never saved with a template.
           </p>
         </div>
-        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(16rem,1fr)_auto_auto] lg:w-auto">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(16rem,1fr)_auto_auto_auto] lg:w-auto">
           <Select value={selectedTemplateId} onValueChange={(value) => onTemplateChange(value || "")}>
             <SelectTrigger className="w-full sm:min-w-72" aria-label="Saved blueprint template">
               <SelectValue placeholder={templates.length ? "Choose saved blueprint" : "No saved blueprints yet"}>
@@ -765,6 +768,9 @@ function SavedBlueprintTemplateControls({
           <Button type="button" disabled={!canSave || applying} onClick={onSave}>
             <Save className="size-4" /> Save current blueprint
           </Button>
+          <Link href="/admin/paper-builder/blueprint/templates" className={buttonVariants({ variant: "outline" })}>
+            <Settings2 className="size-4" /> Manage templates
+          </Link>
         </div>
       </div>
     </section>

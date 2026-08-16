@@ -6,8 +6,13 @@ import BlueprintBuilderClient from "./BlueprintBuilderClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminBlueprintBuilderPage() {
+export default async function AdminBlueprintBuilderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ templateId?: string | string[] }>;
+}) {
   await requireSuperAdmin();
+  const requestedTemplateId = (await searchParams).templateId;
 
   const [subjects, topics, headerTemplates, blueprintTemplates] = await Promise.all([
     prisma.subject.findMany({
@@ -48,6 +53,7 @@ export default async function AdminBlueprintBuilderPage() {
       <PaperBuilderModeNav mode="blueprint" />
 
       <BlueprintBuilderClient
+        initialBlueprintTemplateId={typeof requestedTemplateId === "string" && blueprintTemplates.some((template) => template.id === requestedTemplateId) ? requestedTemplateId : ""}
         blueprintTemplates={blueprintTemplates}
         headerTemplates={headerTemplates.map((template) => ({
           id: template.id,

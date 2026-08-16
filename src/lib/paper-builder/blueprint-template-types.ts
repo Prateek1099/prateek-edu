@@ -47,3 +47,18 @@ export type CreateBlueprintTemplateInput = {
   includeHeaderDefaults: boolean;
   draft: BlueprintPaperDraft;
 };
+
+export type UpdateBlueprintTemplateInput = CreateBlueprintTemplateInput & {
+  id: string;
+};
+
+export type ManagedBlueprintTemplate = BlueprintTemplateSnapshot & {
+  boardTitle: string;
+  qualificationTitle: string;
+  subjectName: string;
+  chapterCount: number;
+  rowCount: number;
+  createdAt: string;
+  updatedAt: string;
+  staleReason: string | null;
+};
