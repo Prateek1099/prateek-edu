@@ -35,6 +35,13 @@ enum BankQuestionType {
   LONG_ANSWER
 }
 
+enum BlueprintTemplateDifficulty {
+  ANY
+  EASY
+  MEDIUM
+  HARD
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -87,23 +94,24 @@ model User {
   preferredQualification String?
   workspaceId            String?   @map("workspace_id")
 
-  accounts             Account[]
-  sessions             Session[]
-  plan                 SubscriptionPlan?     @relation(fields: [planId], references: [id])
-  enrollments          Enrollment[]
-  progress             UserProgress[]
-  topicProgress        UserTopicProgress[]
-  payments             Payment[]
-  savedPapers          SavedPaper[]
-  reflections          StudentReflection[]
-  challengeAttempts    ChallengeAttempt[]
-  mistakeEntries       MistakeEntry[]
-  revisionPlan         RevisionPlan?
-  worksheetAssignments WorksheetAssignment[]
-  paperHeaderTemplates PaperHeaderTemplate[]
-  workspace            Workspace?            @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
-  ownedWorkspace       Workspace?            @relation("WorkspaceOwner")
-  classEnrollments     ClassStudent[]
+  accounts                Account[]
+  sessions                Session[]
+  plan                    SubscriptionPlan?        @relation(fields: [planId], references: [id])
+  enrollments             Enrollment[]
+  progress                UserProgress[]
+  topicProgress           UserTopicProgress[]
+  payments                Payment[]
+  savedPapers             SavedPaper[]
+  reflections             StudentReflection[]
+  challengeAttempts       ChallengeAttempt[]
+  mistakeEntries          MistakeEntry[]
+  revisionPlan            RevisionPlan?
+  worksheetAssignments    WorksheetAssignment[]
+  paperHeaderTemplates    PaperHeaderTemplate[]
+  paperBlueprintTemplates PaperBlueprintTemplate[]
+  workspace               Workspace?               @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+  ownedWorkspace          Workspace?               @relation("WorkspaceOwner")
+  classEnrollments        ClassStudent[]
 
   @@index([workspaceId])
   @@index([planId])
@@ -151,7 +159,8 @@ model Board {
   title  String // e.g. "Cambridge International", "CBSE Board"
   status String @default("PUBLISHED")
 
-  qualifications Qualification[]
+  qualifications          Qualification[]
+  paperBlueprintTemplates PaperBlueprintTemplate[]
 
   @@map("boards")
 }
@@ -164,9 +173,10 @@ model Qualification {
   status    String @default("PUBLISHED")
   sortOrder Int    @default(0) @map("sort_order")
 
-  board    Board     @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  subjects Subject[]
-  classes  Class[]
+  board                   Board                    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  subjects                Subject[]
+  classes                 Class[]
+  paperBlueprintTemplates PaperBlueprintTemplate[]
 
   @@unique([boardId, name])
   @@map("qualifications")
@@ -184,17 +194,18 @@ model Subject {
   iconType        String? @map("icon_type") // e.g. "emoji", "image"
   iconValue       String? @map("icon_value")
 
-  qualification    Qualification      @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
-  papers           Paper[]
-  notes            Note[]
-  topicalQuestions TopicalQuestion[]
-  topics           Topic[]
-  courses          Course[] // Add course relation here to link courses to subjects properly
-  challenges       Challenge[]
-  bankQuestions    BankQuestion[]
-  classes          Class[]
-  workspaceContent WorkspaceContent[]
-  studentReflections StudentReflection[]
+  qualification           Qualification            @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+  papers                  Paper[]
+  notes                   Note[]
+  topicalQuestions        TopicalQuestion[]
+  topics                  Topic[]
+  courses                 Course[] // Add course relation here to link courses to subjects properly
+  challenges              Challenge[]
+  bankQuestions           BankQuestion[]
+  classes                 Class[]
+  workspaceContent        WorkspaceContent[]
+  studentReflections      StudentReflection[]
+  paperBlueprintTemplates PaperBlueprintTemplate[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -301,14 +312,15 @@ model Topic {
   description String? @db.Text
   importCode  String? @map("import_code")
 
-  subject            Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  userProgress       UserTopicProgress[]
-  notes              Note[]
-  topicalQuestions   TopicalQuestion[]
-  challenges         Challenge[]
-  bankQuestions      BankQuestion[]
-  studentReflections StudentReflection[]
-  workspaceContent   WorkspaceContent[]
+  subject                        Subject                         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  userProgress                   UserTopicProgress[]
+  notes                          Note[]
+  topicalQuestions               TopicalQuestion[]
+  challenges                     Challenge[]
+  bankQuestions                  BankQuestion[]
+  studentReflections             StudentReflection[]
+  workspaceContent               WorkspaceContent[]
+  paperBlueprintTemplateChapters PaperBlueprintTemplateChapter[]
 
   @@unique([subjectId, importCode])
   @@index([subjectId])
@@ -335,6 +347,74 @@ model PaperHeaderTemplate {
 
   @@index([createdById])
   @@map("paper_header_templates")
+}
+
+model PaperBlueprintTemplate {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?  @db.Text
+  boardId               String   @map("board_id")
+  qualificationId       String   @map("qualification_id")
+  subjectId             String   @map("subject_id")
+  totalMarks            Int      @map("total_marks")
+  includeHeaderDefaults Boolean  @default(false) @map("include_header_defaults")
+  institutionName       String?  @map("institution_name")
+  examLabel             String?  @map("exam_label")
+  courseLine            String?  @map("course_line")
+  title                 String?
+  topicLine             String?  @map("topic_line")
+  durationMinutes       Int?     @map("duration_minutes")
+  dateText              String?  @map("date_text")
+  classText             String?  @map("class_text")
+  showStudentName       Boolean? @map("show_student_name")
+  showRollNumber        Boolean? @map("show_roll_number")
+  instructions          String?  @db.Text
+  createdById           String   @map("created_by_id")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  board         Board                           @relation(fields: [boardId], references: [id], onDelete: Restrict)
+  qualification Qualification                   @relation(fields: [qualificationId], references: [id], onDelete: Restrict)
+  subject       Subject                         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  createdBy     User                            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  chapters      PaperBlueprintTemplateChapter[]
+
+  @@unique([subjectId, name])
+  @@index([boardId, qualificationId, subjectId])
+  @@index([createdById])
+  @@map("paper_blueprint_templates")
+}
+
+model PaperBlueprintTemplateChapter {
+  id         String @id @default(cuid())
+  templateId String @map("template_id")
+  topicId    String @map("topic_id")
+  sortOrder  Int    @map("sort_order")
+
+  template PaperBlueprintTemplate      @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  topic    Topic                       @relation(fields: [topicId], references: [id], onDelete: Restrict)
+  rows     PaperBlueprintTemplateRow[]
+
+  @@unique([templateId, topicId])
+  @@unique([templateId, sortOrder])
+  @@index([topicId])
+  @@map("paper_blueprint_template_chapters")
+}
+
+model PaperBlueprintTemplateRow {
+  id               String                      @id @default(cuid())
+  chapterId        String                      @map("chapter_id")
+  sectionLabel     String                      @map("section_label")
+  questionType     BankQuestionType            @map("question_type")
+  questionCount    Int                         @map("question_count")
+  marksPerQuestion Int                         @map("marks_per_question")
+  difficulty       BlueprintTemplateDifficulty
+  sortOrder        Int                         @map("sort_order")
+
+  chapter PaperBlueprintTemplateChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([chapterId, sortOrder])
+  @@map("paper_blueprint_template_rows")
 }
 
 model Note {
