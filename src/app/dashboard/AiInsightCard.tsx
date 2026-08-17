@@ -20,47 +20,52 @@ export function AiInsightCard({ contextData }: { contextData: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ context: contextData })
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate");
       setInsight(data.text);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to generate insight");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Card className="bg-card shadow-sm border-border">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-primary" />
+    <Card className="bg-card shadow-sm border border-border/80 rounded-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-bold flex items-center gap-2.5">
+          <div className="size-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <Sparkles className="size-4 text-primary" />
           </div>
-          AI Study Insight
+          <span>AI Study Insight</span>
         </CardTitle>
-        <CardDescription>Personalised recommendations based on your activity.</CardDescription>
+        <CardDescription className="text-xs text-muted-foreground">Personalised recommendations based on your revision history.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {!insight && !loading && (
-          <Button onClick={generateInsight} size="sm" className="mt-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 shadow-none">
-            Generate Insight
+          <Button
+            onClick={generateInsight}
+            size="sm"
+            className="rounded-xl shadow-sm gap-1.5 font-medium"
+          >
+            <Sparkles className="size-3.5" />
+            <span>Generate Insight</span>
           </Button>
         )}
-        
+
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3">
-            <Loader2 className="w-4 h-4 animate-spin" /> Analysing your progress…
+          <div className="flex items-center gap-2.5 text-xs text-muted-foreground py-2 font-medium">
+            <Loader2 className="size-4 animate-spin text-primary" /> Analysing your revision strengths and weaknesses…
           </div>
         )}
 
         {error && (
-          <div className="text-sm text-destructive mt-3">{error}</div>
+          <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-2.5 rounded-xl mt-2 font-medium">{error}</div>
         )}
 
         {insight && (
-          <div className="mt-3 prose prose-sm dark:prose-invert max-w-none text-foreground/90">
+          <div className="mt-2 prose prose-sm dark:prose-invert max-w-none text-foreground/90 text-xs sm:text-sm leading-relaxed p-3.5 rounded-xl bg-muted/20 border border-border/50">
             <ReactMarkdown>{insight}</ReactMarkdown>
           </div>
         )}
