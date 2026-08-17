@@ -13,7 +13,7 @@ import { AiInsightCard } from "./AiInsightCard";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || !session.user) {
     redirect("/login");
   }
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
   });
 
   const subjectMap = new Map<string, { name: string, completed: number, total: number }>();
-  
+
   topicProgress.forEach(tp => {
     const sub = tp.topic.subject;
     if (!subjectMap.has(sub.id)) {
@@ -147,7 +147,7 @@ export default async function DashboardPage() {
   // 3. Process Strengths & Weaknesses heuristics
   const strongTopics = topicProgress.filter(tp => tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
   const weakTopics = topicProgress.filter(tp => !tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
-  
+
   // 4. Generate Context & Lists for AI & Reflections
   const mistakeTopicsList = topMistakeTopics.map((t) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
   const contextData = `
@@ -161,28 +161,28 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
     <div className="container px-4 md:px-8 py-6 md:py-8 max-w-7xl mx-auto space-y-8">
 
       {/* ── 1. WELCOME HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
             Welcome back, {session.user.name || "Student"} 👋
           </h1>
-          <p className="text-muted-foreground mt-0.5 text-sm md:text-base">
-            Keep learning, keep growing.
+          <p className="text-muted-foreground mt-1 text-sm md:text-base">
+            Track your progress, revisit mistakes, and stay on top of your study plan.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           <Link
             href="/dashboard/join"
             className={cn(
               buttonVariants({ size: "sm", variant: "outline" }),
-              "shadow-sm"
+              "shadow-sm rounded-xl h-9"
             )}
           >
             <Users className="w-4 h-4 mr-1.5" /> Join Class
           </Link>
           <Link
             href="/dashboard/ask-teacher"
-            className={cn(buttonVariants({ size: "sm" }), "shadow-sm")}
+            className={cn(buttonVariants({ size: "sm" }), "shadow-sm rounded-xl h-9 font-medium")}
           >
             Ask Teacher
           </Link>
@@ -192,79 +192,80 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
       {/* ── 2. CONTINUE LEARNING ── */}
       <section>
         {revisionPlan ? (
-          <Card className="shadow-md border-primary/15">
+          <Card className="shadow-md border border-primary/20 rounded-2xl bg-card overflow-hidden">
             <CardContent className="p-5 md:p-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-4 h-4 text-primary" />
+                  <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <CalendarDays className="size-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-base font-bold leading-tight">Continue Learning</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <h2 className="text-base sm:text-lg font-bold leading-tight">Continue Learning</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">
                       {revisionPlan.qualification.toUpperCase()} · {daysUntilExam} day{daysUntilExam !== 1 ? "s" : ""} until exam
                     </p>
                   </div>
                 </div>
                 <Link
                   href="/dashboard/revision-planner"
-                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0")}
+                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0 rounded-xl gap-1 font-medium")}
                 >
-                  Open Planner <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                  <span>Open Planner</span>
+                  <ArrowRight className="size-3.5" />
                 </Link>
               </div>
 
               <div className="mb-4">
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground">Plan completion</span>
-                  <span className="font-semibold">{planCompletionPct}%</span>
+                  <span className="text-muted-foreground font-medium">Plan completion</span>
+                  <span className="font-bold text-primary">{planCompletionPct}%</span>
                 </div>
                 <Progress value={planCompletionPct} className="h-2" />
               </div>
 
               {revisionPlan.tasks.length > 0 ? (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Today&apos;s Tasks</p>
-                  <div className="space-y-1.5">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Today&apos;s Tasks</p>
+                  <div className="space-y-2">
                     {revisionPlan.tasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-2.5 text-sm">
+                      <div key={task.id} className="flex items-center gap-2.5 text-sm p-2 rounded-lg bg-muted/30 border border-border/50">
                         {task.status === "COMPLETED" ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
                         ) : (
-                          <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
+                          <div className="size-4 rounded-full border-2 border-muted-foreground/40 shrink-0" />
                         )}
-                        <span className={task.status === "COMPLETED" ? "line-through text-muted-foreground" : "font-medium"}>
+                        <span className={task.status === "COMPLETED" ? "line-through text-muted-foreground flex-1" : "font-medium flex-1"}>
                           {task.title}
                         </span>
                         {task.priority === "HIGH" && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/10 text-red-500">HIGH</span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive shrink-0">HIGH</span>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No tasks for today. Check your planner for upcoming tasks.</p>
+                <p className="text-sm text-muted-foreground">No tasks scheduled for today. Check your planner for upcoming review tasks.</p>
               )}
             </CardContent>
           </Card>
         ) : (
-          <Card className="shadow-md border-dashed border-primary/15">
+          <Card className="shadow-sm border border-border/80 hover:border-primary/40 transition-colors rounded-2xl bg-card">
             <CardContent className="p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <CalendarDays className="w-4 h-4 text-primary" />
+              <div className="flex items-start gap-3.5">
+                <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <CalendarDays className="size-5 text-primary" />
                 </div>
                 <div>
-                  <h2 className="text-base font-bold">What should you study today?</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Set up your Revision Planner to get daily study tasks based on your progress.
+                  <h2 className="text-base sm:text-lg font-bold">What should you study today?</h2>
+                  <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
+                    Set up your Revision Planner to get personalized daily study tasks based on your syllabus.
                   </p>
                 </div>
               </div>
               <Link
                 href="/dashboard/revision-planner"
-                className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0")}
+                className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0 rounded-xl font-semibold")}
               >
                 Set Up Planner
               </Link>
@@ -274,27 +275,33 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
       </section>
 
       {/* ── 3. THREE COMPACT METRICS ── */}
-      <section className="grid grid-cols-3 gap-3 md:gap-4">
-        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Target className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span className="text-xs font-medium truncate">Courses</span>
+      <section className="grid grid-cols-3 gap-3 md:gap-5">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+              <Target className="size-3.5 shrink-0" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider truncate">Courses</span>
           </div>
-          <p className="text-xl md:text-2xl font-bold">{enrollments}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{enrollments}</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <Target className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-            <span className="text-xs font-medium truncate">Accuracy</span>
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
+              <Target className="size-3.5 shrink-0" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider truncate">Accuracy</span>
           </div>
-          <p className="text-xl md:text-2xl font-bold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</p>
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</p>
         </div>
-        <div className="rounded-xl border border-border bg-card p-3 md:p-4">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-            <span className="text-xs font-medium truncate">Topics Done</span>
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <CheckCircle2 className="size-3.5 shrink-0" />
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-wider truncate">Topics Done</span>
           </div>
-          <p className="text-xl md:text-2xl font-bold">{topicProgress.filter((t) => t.completed).length}</p>
+          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{topicProgress.filter((t) => t.completed).length}</p>
         </div>
       </section>
 
@@ -306,26 +313,28 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             <BookOpen className="w-4 h-4 text-primary" /> My Subjects
           </h2>
           {subjectProgressList.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
               {subjectProgressList.map((sp, i) => {
                 const percentage = sp.total > 0 ? Math.round((sp.completed / sp.total) * 100) : 0;
                 return (
-                  <div key={i} className="space-y-1.5">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">{sp.name}</span>
-                      <span className="text-muted-foreground text-xs">{sp.completed}/{sp.total} topics · {percentage}%</span>
+                  <div key={i} className="space-y-2">
+                    <div className="flex justify-between text-sm items-center">
+                      <span className="font-semibold">{sp.name}</span>
+                      <span className="text-muted-foreground text-xs font-medium">{sp.completed}/{sp.total} topics · <span className="text-foreground font-semibold">{percentage}%</span></span>
                     </div>
-                    <Progress value={percentage} className="h-1.5" />
+                    <Progress value={percentage} className="h-2" />
                   </div>
                 );
               })}
             </div>
           ) : (
-            <Card className="border-dashed">
-              <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-                <BookOpen className="w-8 h-8 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No subject progress yet.</p>
-                <p className="text-xs text-muted-foreground">Complete a topic challenge to start tracking your progress.</p>
+            <Card className="rounded-2xl border border-border/80 bg-card">
+              <CardContent className="p-8 flex flex-col items-center text-center gap-2">
+                <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-1">
+                  <BookOpen className="size-6 text-primary" />
+                </div>
+                <h3 className="text-base font-bold text-foreground">No subject progress yet</h3>
+                <p className="text-xs text-muted-foreground max-w-sm">Complete a practice challenge or review notes to start tracking your subject completion.</p>
               </CardContent>
             </Card>
           )}
@@ -339,18 +348,18 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
               <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" /> Recommended Next
               </h2>
-              <Card className="border-primary/15">
-                <CardContent className="p-4">
+              <Card className="border border-primary/20 rounded-2xl bg-card shadow-sm">
+                <CardContent className="p-5">
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {topMistakeTopics.slice(0, 3).map((t, index) => (
-                      <Badge key={t.topicTag ?? index} variant="outline" className="text-xs border-primary/30 text-primary">
+                      <Badge key={t.topicTag ?? index} variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">
                         {t.topicTag ?? "Uncategorised"}
                       </Badge>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">These topics have the most repeated mistakes.</p>
-                  <Link href="/dashboard/mistakes" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1">
-                    Open Mistake Book <ArrowRight className="w-3 h-3" />
+                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">These topics have the most repeated mistakes in your recent practice.</p>
+                  <Link href="/dashboard/mistakes" className="text-xs text-primary font-semibold hover:underline inline-flex items-center gap-1">
+                    Open Mistake Book <ArrowRight className="size-3" />
                   </Link>
                 </CardContent>
               </Card>
@@ -369,11 +378,11 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             <h2 className="text-lg font-bold flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" /> Assigned Worksheets
             </h2>
-            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs")}>
-              View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs font-semibold")}>
+              View All <ArrowRight className="size-3.5 ml-1" />
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {worksheetAssignments.map((assignment) => {
               const ws = assignment.worksheet;
               const isCompleted = assignment.status === "COMPLETED";
@@ -388,40 +397,40 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                 <Link
                   key={assignment.id}
                   href={isCompleted && !isDocumentWorksheet ? "#" : assignmentLink}
-                  className="block group"
+                  className="block group focus-visible:outline-none"
                 >
-                  <Card className={cn("h-full transition-colors hover:shadow-sm", isOverdue ? "border-destructive/40" : "hover:border-primary/30")}>
-                    <CardContent className="p-4 flex flex-col h-full justify-between">
+                  <Card className={cn("h-full border transition-all duration-200 hover:shadow-md rounded-2xl bg-card", isOverdue ? "border-destructive/40" : "border-border/80 hover:border-primary/40")}>
+                    <CardContent className="p-5 flex flex-col h-full justify-between">
                       <div>
-                        <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center justify-between mb-2">
                           {isCompleted ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="w-3 h-3" /> Done
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 className="size-3" /> Done
                             </span>
                           ) : isOverdue ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">
-                              <AlertCircle className="w-3 h-3" /> Overdue
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
+                              <AlertCircle className="size-3" /> Overdue
                             </span>
                           ) : (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded-sm bg-primary/10 text-primary">
-                              <FileText className="w-3 h-3" /> Pending
+                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                              <FileText className="size-3" /> Pending
                             </span>
                           )}
                           {assignment.dueDate && (
-                            <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                              <Clock className="w-3 h-3" /> {new Date(assignment.dueDate).toLocaleDateString()}
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Clock className="size-3 text-muted-foreground" /> {new Date(assignment.dueDate).toLocaleDateString()}
                             </span>
                           )}
                         </div>
-                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2">{ws.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{ws.subject.name}</p>
+                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2 leading-snug">{ws.title}</h3>
+                        <p className="text-xs text-muted-foreground mt-1">{ws.subject.name}</p>
                       </div>
-                      <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-2">
-                        <span>{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws._count.questions} Qs`}</span>
+                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60 pt-3">
+                        <span className="font-medium">{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws._count.questions} questions`}</span>
                         {isDocumentWorksheet ? (
-                          <span className="text-primary font-medium group-hover:underline">View worksheet →</span>
+                          <span className="text-primary font-semibold group-hover:underline">View worksheet →</span>
                         ) : (
-                          !isCompleted && <span className="text-primary font-medium group-hover:underline">Start →</span>
+                          !isCompleted && <span className="text-primary font-semibold group-hover:underline">Start challenge →</span>
                         )}
                       </div>
                     </CardContent>
@@ -440,8 +449,8 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             <Trophy className="w-4 h-4 text-primary" /> Recent Activity
           </h2>
           {mistakeTotal > 0 && (
-            <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs")}>
-              Mistake Book <ArrowRight className="w-3.5 h-3.5 ml-1" />
+            <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs font-semibold")}>
+              Mistake Book <ArrowRight className="size-3.5 ml-1" />
             </Link>
           )}
         </div>
@@ -482,19 +491,19 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
 
         {/* Recent Challenges list */}
         {recentChallenges.length > 0 ? (
-          <Card className="overflow-hidden">
-            <div className="divide-y divide-border">
+          <Card className="overflow-hidden rounded-2xl border border-border/80 bg-card">
+            <div className="divide-y divide-border/60">
               {recentChallenges.map((ca) => (
                 <div key={ca.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
                   <div className="min-w-0">
-                    <h4 className="font-medium text-sm truncate">{ca.challenge.title}</h4>
+                    <h4 className="font-semibold text-sm truncate">{ca.challenge.title}</h4>
                     <p className="text-xs text-muted-foreground mt-0.5">{ca.challenge.subject.name} · {new Date(ca.completedAt).toLocaleDateString()}</p>
                   </div>
                   <Badge variant="outline" className={cn(
-                    "shrink-0 ml-3",
-                    ca.percentage >= 75 ? "border-emerald-500 text-emerald-500" :
-                    ca.percentage >= 50 ? "border-amber-500 text-amber-500" :
-                    "border-red-500 text-red-500"
+                    "shrink-0 ml-3 font-bold px-2.5 py-0.5 rounded-full",
+                    ca.percentage >= 75 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
+                    ca.percentage >= 50 ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+                    "border-destructive/30 bg-destructive/10 text-destructive"
                   )}>
                     {Math.round(ca.percentage)}%
                   </Badge>
@@ -503,22 +512,24 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             </div>
           </Card>
         ) : (
-          <Card className="border-dashed">
-            <CardContent className="p-6 flex flex-col items-center text-center gap-2">
-              <Trophy className="w-8 h-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">No challenges attempted yet.</p>
-              <p className="text-xs text-muted-foreground">Complete a topic challenge to see your results here.</p>
+          <Card className="rounded-2xl border border-border/80 bg-card">
+            <CardContent className="p-8 flex flex-col items-center text-center gap-2">
+              <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-1">
+                <Trophy className="size-6 text-primary" />
+              </div>
+              <h3 className="text-base font-bold text-foreground">No challenges attempted yet</h3>
+              <p className="text-xs text-muted-foreground max-w-sm">Complete a practice challenge or quiz in any subject to see your results tracked here.</p>
             </CardContent>
           </Card>
         )}
 
         {/* Most Repeated Mistakes — compact */}
         {topMistakeTopics.length > 0 && (
-          <div className="mt-4 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2.5 flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> Most Repeated Mistakes
+          <div className="mt-4 rounded-2xl border border-border/80 bg-card p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+              <AlertTriangle className="size-3.5 text-amber-500" /> Most Repeated Mistakes
             </h3>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {topMistakeTopics.map((t, i) => (
                 <div key={t.topicTag ?? i} className="flex items-center justify-between text-sm">
                   <span className="font-medium">{t.topicTag ?? "Uncategorised"}</span>

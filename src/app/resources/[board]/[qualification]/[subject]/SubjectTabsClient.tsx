@@ -143,7 +143,7 @@ export default function SubjectTabsClient({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-5 md:grid-cols-2">
           {sectionNotes.map((note) => {
             const isPdf = Boolean(note.pdfUrl);
             const href =
@@ -154,20 +154,20 @@ export default function SubjectTabsClient({
             return (
               <article
                 key={note.id}
-                className="flex min-h-64 flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:ring-primary/35 sm:p-6"
+                className="flex min-h-64 flex-col rounded-2xl bg-card p-5 sm:p-6 border border-border/80 hover:border-primary/50 transition-all duration-200 hover:shadow-lg"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5">
                     {isPdf ? "PDF note" : "Text note"}
                   </Badge>
                   {note.topic && (
-                    <Badge variant="outline">{note.topic.topicName}</Badge>
+                    <Badge variant="outline" className="text-xs font-medium">{note.topic.topicName}</Badge>
                   )}
                 </div>
-                <h3 className="mt-5 text-lg font-semibold tracking-tight">
+                <h3 className="mt-4 text-lg font-bold tracking-tight line-clamp-2">
                   {note.title}
                 </h3>
-                <p className="mt-2 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                <p className="mt-2 line-clamp-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
                   {noteExcerpt(note)}
                 </p>
                 <Link
@@ -177,7 +177,7 @@ export default function SubjectTabsClient({
                       size: "lg",
                       variant: isNotebookWork ? "outline" : "default",
                     }),
-                    "mt-auto h-11 w-full gap-2 pt-0 sm:w-fit",
+                    "mt-auto h-11 w-full gap-2 rounded-xl text-sm font-semibold shadow-sm sm:w-fit",
                   )}
                 >
                   {isPdf ? (
@@ -198,7 +198,7 @@ export default function SubjectTabsClient({
   };
 
   return (
-    <TabsPrimitive.Root defaultValue="practice" className="w-full">
+    <TabsPrimitive.Root defaultValue="practice" className="w-full space-y-8">
       <TabsPrimitive.List className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-1.5 rounded-2xl sm:rounded-full border border-zinc-200/80 bg-white/80 p-1.5 backdrop-blur-md max-w-3xl shadow-sm ring-1 ring-zinc-200/60 dark:border-white/10 dark:bg-[#11111a]/80 dark:ring-white/5">
         <TabsPrimitive.Tab
           value="practice"
@@ -229,27 +229,27 @@ export default function SubjectTabsClient({
           <span>Syllabus</span>
         </TabsPrimitive.Tab>
       </TabsPrimitive.List>
-      
+
       {/* Practice hub */}
 
       <TabsPrimitive.Panel value="notes" className="mt-0 outline-none">
         {notes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-14 text-center">
-            <BookOpen className="mx-auto size-10 text-muted-foreground" />
-            <h2 className="mt-4 text-lg font-semibold">No notes available</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+          <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-16 text-center">
+            <BookOpen className="mx-auto size-10 text-muted-foreground opacity-50" />
+            <h2 className="mt-4 text-base sm:text-lg font-bold">No notes available</h2>
+            <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm leading-6 text-muted-foreground">
               Notebook Work and Study Notes for this subject will appear here when they are published.
             </p>
           </div>
         ) : (
           <div className="space-y-12">
             <header className="max-w-2xl">
-              <p className="text-sm font-semibold text-primary">Notes</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary">Notes</p>
+              <h2 className="mt-1.5 text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Write the essentials. Study the details.
               </h2>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
-                Use Notebook Work for concise classroom material and Study Notes for deeper understanding and exam preparation.
+              <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                Use Notebook Work for concise classroom material and Study Notes for deeper conceptual understanding and exam preparation.
               </p>
             </header>
             {renderNoteSection(notebookNotes, "NOTEBOOK_WORK")}
@@ -261,40 +261,40 @@ export default function SubjectTabsClient({
       <TabsPrimitive.Panel value="topicals" className="mt-0 outline-none">
         <div className="space-y-8">
           <header className="max-w-2xl">
-            <p className="text-sm font-semibold text-primary">Topical Questions</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Practise one chapter at a time.</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
-              Open focused question packs by topic, then use the separate solutions document when you are ready to check your work.
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary">Topical Questions</p>
+            <h2 className="mt-1.5 text-2xl sm:text-3xl font-extrabold tracking-tight">Practise one chapter at a time.</h2>
+            <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+              Open focused question packs by topic, then use the separate solutions document when you are ready to verify your answers.
             </p>
           </header>
 
           {topicals.length === 0 ? (
-            <div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-14 text-center">
-              <FileQuestion className="mx-auto size-10 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No topical questions available</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-16 text-center">
+              <FileQuestion className="mx-auto size-10 text-muted-foreground opacity-50" />
+              <h3 className="mt-4 text-base sm:text-lg font-bold">No topical questions available</h3>
+              <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm leading-6 text-muted-foreground">
                 Published chapter-wise question packs for this subject will appear here.
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2">
               {orderedTopicals.map((resource) => (
-                <article key={resource.id} className="flex min-h-64 flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 transition-colors hover:ring-primary/35 sm:p-6">
+                <article key={resource.id} className="flex min-h-64 flex-col rounded-2xl bg-card p-5 sm:p-6 border border-border/80 hover:border-primary/50 transition-all duration-200 hover:shadow-lg">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">Questions PDF</Badge>
-                    {resource.hasSolutions && <Badge variant="outline">Solutions included</Badge>}
+                    <Badge variant="secondary" className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5">Questions PDF</Badge>
+                    {resource.hasSolutions && <Badge variant="outline" className="text-xs font-medium">Solutions included</Badge>}
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold tracking-tight">{resource.title}</h3>
-                  <p className="mt-1 text-sm font-medium text-primary/80">{resource.topic?.topicName || "Whole subject"}</p>
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                  <h3 className="mt-4 text-lg font-bold tracking-tight">{resource.title}</h3>
+                  <p className="mt-1 text-xs sm:text-sm font-semibold text-primary">{resource.topic?.topicName || "Whole subject"}</p>
+                  <p className="mt-2.5 line-clamp-3 text-xs sm:text-sm leading-relaxed text-muted-foreground">
                     {resource.description || "A focused set of questions for practising this topic."}
                   </p>
                   <div className="mt-auto flex flex-col gap-2 pt-6 sm:flex-row">
-                    <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}`} className={cn(buttonVariants({ size: "lg" }), "h-11 flex-1 gap-2")}>
+                    <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}`} className={cn(buttonVariants({ size: "lg" }), "h-11 flex-1 gap-2 rounded-xl text-sm font-semibold shadow-sm")}>
                       <FileQuestion className="size-4" /> Open Questions
                     </Link>
                     {resource.hasSolutions && (
-                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}?document=solutions`} className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 flex-1 gap-2")}>
+                      <Link href={`/resources/${board}/${qualification}/${subject.slug}/topical/${resource.id}?document=solutions`} className={cn(buttonVariants({ size: "lg", variant: "outline" }), "h-11 flex-1 gap-2 rounded-xl text-sm font-semibold")}>
                         <BookOpenCheck className="size-4" /> View Solutions
                       </Link>
                     )}
@@ -307,20 +307,20 @@ export default function SubjectTabsClient({
       </TabsPrimitive.Panel>
 
       <TabsPrimitive.Panel value="practice" className="mt-0 outline-none">
-        <div className="space-y-12">
+        <div className="space-y-10">
           <header className="max-w-2xl">
-            <p className="text-sm font-semibold text-primary">Practice</p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Choose how you want to revise today.</h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground sm:text-base">
-              Build quick recall with MCQs, work through longer worksheets, or revisit questions you found difficult.
+            <p className="text-xs sm:text-sm font-bold uppercase tracking-wider text-primary">Practice</p>
+            <h2 className="mt-1.5 text-2xl sm:text-3xl font-extrabold tracking-tight">Choose how you want to revise today.</h2>
+            <p className="mt-2 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+              Build quick recall with MCQs, work through longer worksheets, or revisit questions you found difficult in your Mistake Book.
             </p>
           </header>
 
           {standardChallenges.length === 0 && worksheets.length === 0 && quickPractices.length === 0 && (
-            <section className="rounded-2xl border border-dashed bg-muted/25 px-5 py-12 text-center">
-              <ClipboardCheck className="mx-auto size-10 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No practice activities available</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            <section className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-16 text-center">
+              <ClipboardCheck className="mx-auto size-10 text-muted-foreground opacity-50" />
+              <h3 className="mt-4 text-base sm:text-lg font-bold">No practice activities available</h3>
+              <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm leading-6 text-muted-foreground">
                 Practice challenges and worksheets for this subject will appear here when they are published.
               </p>
             </section>
@@ -328,42 +328,42 @@ export default function SubjectTabsClient({
 
           {standardChallenges.length > 0 && (
             <section>
-              <div className="mb-5 flex items-start gap-3">
-                <div className="mt-0.5 rounded-xl bg-primary/10 p-2.5 text-primary">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <Trophy className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Practice Challenges</h3>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <h3 className="text-lg sm:text-xl font-bold tracking-tight">Practice Challenges</h3>
+                  <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
                     Fast MCQ-based revision for recall, topic mastery, and instant scoring.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 {standardChallenges.map((challenge) => (
-                  <article key={challenge.id} className="flex flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+                  <article key={challenge.id} className="flex flex-col rounded-2xl bg-card p-5 sm:p-6 border border-border/80 hover:border-primary/50 transition-all duration-200 hover:shadow-lg">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <Badge variant="secondary" className="font-medium">
+                      <Badge variant="secondary" className="font-semibold text-xs px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20">
                         {challenge.topic?.topicName || "Mixed topics"}
                       </Badge>
-                      <Badge variant="outline" className={cn("capitalize", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
+                      <Badge variant="outline" className={cn("capitalize text-xs font-semibold px-2.5 py-0.5", difficultyColor[challenge.difficulty] || difficultyColor.medium)}>
                         {challenge.difficulty}
                       </Badge>
                     </div>
-                    <h4 className="mt-5 text-lg font-semibold tracking-tight">{challenge.title}</h4>
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <ClipboardCheck className="size-4" />
+                    <h4 className="mt-4 text-base sm:text-lg font-bold tracking-tight">{challenge.title}</h4>
+                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <ClipboardCheck className="size-4 text-primary" />
                         {challenge._count.questions} question{challenge._count.questions === 1 ? "" : "s"}
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="size-4" />
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Clock className="size-4 text-muted-foreground" />
                         About {challenge.estimatedTime} min
                       </span>
                     </div>
                     <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${challenge.id}`} className="mt-6">
-                      <Button size="lg" className="h-11 w-full gap-2">
+                      <Button size="lg" className="h-11 w-full gap-2 rounded-xl text-sm font-semibold shadow-sm">
                         Start challenge
                         <ArrowRight className="size-4" />
                       </Button>
@@ -376,33 +376,33 @@ export default function SubjectTabsClient({
 
           {quickPractices.length > 0 && (
             <section>
-              <div className="mb-5 flex items-start gap-3">
-                <div className="mt-0.5 rounded-xl bg-primary/10 p-2.5 text-primary">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <Target className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Topic Practice</h3>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  <h3 className="text-lg sm:text-xl font-bold tracking-tight">Topic Practice</h3>
+                  <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
                     Focused mixed practice built around a specific topic.
                   </p>
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-muted/40 p-4 sm:p-5">
+              <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
                 <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(10rem,auto)] sm:items-end">
-                  <div className="space-y-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject</span>
-                    <div className="flex h-11 items-center gap-2 rounded-xl bg-background px-3 text-sm font-medium ring-1 ring-foreground/10">
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Subject</span>
+                    <div className="flex h-11 items-center gap-2 rounded-xl bg-muted/30 px-3 text-sm font-medium border border-border/60">
                       <BookOpen className="size-4 text-primary" />
                       <span className="truncate">{subject.name}</span>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="practice-topic">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="practice-topic">
                       Topic
                     </label>
                     <Select value={practiceTopic} onValueChange={(value) => value && setPracticeTopic(value)}>
-                      <SelectTrigger id="practice-topic" className="h-11 w-full rounded-xl bg-background">
+                      <SelectTrigger id="practice-topic" className="h-11 w-full rounded-xl bg-background border-border/80">
                         <SelectValue placeholder="All topics" />
                       </SelectTrigger>
                       <SelectContent>
@@ -413,12 +413,12 @@ export default function SubjectTabsClient({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground" htmlFor="practice-difficulty">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground" htmlFor="practice-difficulty">
                       Difficulty
                     </label>
                     <Select value={practiceDifficulty} onValueChange={(value) => value && setPracticeDifficulty(value)}>
-                      <SelectTrigger id="practice-difficulty" className="h-11 w-full rounded-xl bg-background">
+                      <SelectTrigger id="practice-difficulty" className="h-11 w-full rounded-xl bg-background border-border/80">
                         <SelectValue placeholder="All levels" />
                       </SelectTrigger>
                       <SelectContent>
@@ -435,13 +435,14 @@ export default function SubjectTabsClient({
               </div>
 
               {filteredQuickPractices.length === 0 ? (
-                <div className="mt-4 rounded-2xl bg-muted/25 px-5 py-9 text-center">
-                  <Target className="mx-auto size-8 text-muted-foreground" />
-                  <h4 className="mt-3 font-semibold">No matching topic practice</h4>
-                  <p className="mt-1 text-sm text-muted-foreground">Try a different topic or difficulty.</p>
+                <div className="mt-4 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-10 text-center">
+                  <Target className="mx-auto size-8 text-muted-foreground opacity-50" />
+                  <h4 className="mt-3 font-bold text-sm">No matching topic practice</h4>
+                  <p className="mt-1 text-xs text-muted-foreground">Try selecting a different topic or difficulty level.</p>
                   <Button
                     variant="ghost"
-                    className="mt-3"
+                    size="sm"
+                    className="mt-3 rounded-xl text-xs font-semibold"
                     onClick={() => {
                       setPracticeTopic("all");
                       setPracticeDifficulty("all");
@@ -451,36 +452,36 @@ export default function SubjectTabsClient({
                   </Button>
                 </div>
               ) : (
-                <div className="mt-4 overflow-hidden rounded-2xl bg-card ring-1 ring-foreground/10">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-border/80 bg-card">
                   {filteredQuickPractices.map((practice, index) => (
                     <article
                       key={practice.id}
                       className={cn(
-                        "flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
-                        index > 0 && "border-t"
+                        "flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6",
+                        index > 0 && "border-t border-border/60"
                       )}
                     >
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary">{practice.topic?.topicName || "Mixed topics"}</Badge>
-                          <Badge variant="outline" className={cn("capitalize", difficultyColor[practice.difficulty] || difficultyColor.medium)}>
+                          <Badge variant="secondary" className="bg-primary/10 text-primary border border-primary/20 text-xs font-semibold px-2.5 py-0.5">{practice.topic?.topicName || "Mixed topics"}</Badge>
+                          <Badge variant="outline" className={cn("capitalize text-xs font-semibold px-2.5 py-0.5", difficultyColor[practice.difficulty] || difficultyColor.medium)}>
                             {practice.difficulty}
                           </Badge>
                         </div>
-                        <h4 className="mt-3 text-lg font-semibold tracking-tight">{practice.title}</h4>
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1.5">
-                            <ClipboardCheck className="size-4" />
+                        <h4 className="mt-3 text-base sm:text-lg font-bold tracking-tight">{practice.title}</h4>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <ClipboardCheck className="size-4 text-primary" />
                             {practice._count.questions} question{practice._count.questions === 1 ? "" : "s"}
                           </span>
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="size-4" />
+                          <span className="flex items-center gap-1.5 font-medium">
+                            <Clock className="size-4 text-muted-foreground" />
                             About {practice.estimatedTime} min
                           </span>
                         </div>
                       </div>
                       <Link href={`/resources/${board}/${qualification}/${subject.slug}/challenge/${practice.id}`} className="shrink-0">
-                        <Button size="lg" variant="outline" className="h-11 w-full gap-2 px-5 sm:w-auto">
+                        <Button size="lg" variant="outline" className="h-11 w-full gap-2 px-5 sm:w-auto rounded-xl text-sm font-semibold">
                           Start topic practice
                           <ArrowRight className="size-4" />
                         </Button>
@@ -494,39 +495,34 @@ export default function SubjectTabsClient({
 
           {worksheets.length > 0 && (
             <section>
-              <div className="mb-5 flex items-start gap-3">
-                <div className="mt-0.5 rounded-xl bg-blue-500/10 p-2.5 text-blue-600 dark:text-blue-400">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <FileText className="size-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold tracking-tight sm:text-2xl">Worksheets</h3>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Longer teacher-created activities, assignments, and printable revision.
+                  <h3 className="text-lg sm:text-xl font-bold tracking-tight">Worksheets</h3>
+                  <p className="mt-0.5 text-xs sm:text-sm text-muted-foreground">
+                    In-depth question sheets and classroom worksheets with complete step-by-step solutions.
                   </p>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-5 md:grid-cols-2">
                 {worksheets.map((worksheet) => (
-                  <article key={worksheet.id} className="flex flex-col rounded-2xl bg-card p-5 ring-1 ring-foreground/10 sm:p-6">
+                  <article key={worksheet.id} className="flex flex-col rounded-2xl bg-card p-5 sm:p-6 border border-border/80 hover:border-primary/50 transition-all duration-200 hover:shadow-lg">
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <Badge variant="secondary">
-                        {worksheet.type === "PDF_WORKSHEET" ? "PDF worksheet" : "Printable worksheet"}
+                      <Badge variant="secondary" className="font-semibold text-xs px-2.5 py-0.5 bg-primary/10 text-primary border border-primary/20">
+                        {worksheet.topic?.topicName || "General worksheet"}
                       </Badge>
-                      {worksheet.pdfAnswerUrl && <Badge variant="outline">Answer key included</Badge>}
+                      <Badge variant="outline" className="text-xs font-semibold px-2.5 py-0.5">
+                        {worksheet.type === "PDF_WORKSHEET" ? "PDF Document" : "Interactive Worksheet"}
+                      </Badge>
                     </div>
-                    <h4 className="mt-5 text-lg font-semibold tracking-tight">{worksheet.title}</h4>
-                    {worksheet.topic && <p className="mt-1 text-sm text-muted-foreground">{worksheet.topic.topicName}</p>}
-                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <ClipboardCheck className="size-4" />
-                        {worksheet.type === "PDF_WORKSHEET"
-                          ? "PDF format"
-                          : `${worksheet._count.questions} question${worksheet._count.questions === 1 ? "" : "s"}`}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Clock className="size-4" />
-                        About {worksheet.estimatedTime} min
+                    <h4 className="mt-4 text-base sm:text-lg font-bold tracking-tight">{worksheet.title}</h4>
+                    <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-2 text-xs sm:text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <FileText className="size-4 text-primary" />
+                        {worksheet.type === "PDF_WORKSHEET" ? "PDF file" : `${worksheet._count.questions} questions`}
                       </span>
                     </div>
 
@@ -534,7 +530,7 @@ export default function SubjectTabsClient({
                       href={`/resources/${board}/${qualification}/${subject.slug}/worksheet/${worksheet.id}`}
                       className="mt-6"
                     >
-                      <Button size="lg" variant="outline" className="h-11 w-full gap-2">
+                      <Button size="lg" variant="outline" className="h-11 w-full gap-2 rounded-xl text-sm font-semibold">
                         Open worksheet
                         <ArrowRight className="size-4" />
                       </Button>
@@ -545,20 +541,20 @@ export default function SubjectTabsClient({
             </section>
           )}
 
-          <section className="flex flex-col gap-5 rounded-2xl bg-muted/40 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-            <div className="flex gap-3">
-              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300">
+          <section className="flex flex-col gap-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6 shadow-sm">
+            <div className="flex gap-3.5">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
                 <BookMarked className="size-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Mistake Book</h3>
-                <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Review questions you answered incorrectly and focus revision on your weaker areas.
+                <h3 className="text-base sm:text-lg font-bold">Mistake Book</h3>
+                <p className="mt-0.5 max-w-xl text-xs sm:text-sm leading-relaxed text-muted-foreground">
+                  Review questions you answered incorrectly and target your study time on high-priority weak areas.
                 </p>
               </div>
             </div>
             <Link href="/dashboard/mistakes" className="shrink-0">
-              <Button size="lg" variant="outline" className="h-11 w-full gap-2 bg-background sm:w-auto">
+              <Button size="lg" variant="outline" className="h-11 w-full gap-2 bg-background border-border/80 rounded-xl text-sm font-semibold sm:w-auto shadow-sm">
                 Review mistakes
                 <ArrowRight className="size-4" />
               </Button>
@@ -568,40 +564,40 @@ export default function SubjectTabsClient({
       </TabsPrimitive.Panel>
 
       <TabsPrimitive.Panel value="syllabus" className="mt-0 outline-none">
-        <Card className="shadow-sm border-border bg-card">
+        <Card className="shadow-sm border border-border/80 rounded-2xl bg-card">
           <CardHeader>
-            <CardTitle>Syllabus Outline</CardTitle>
-            <CardDescription>Overview of the {subject.name} curriculum.</CardDescription>
+            <CardTitle className="text-xl font-bold">Syllabus Outline</CardTitle>
+            <CardDescription className="text-xs sm:text-sm text-muted-foreground">Official curriculum and scope for {subject.name}.</CardDescription>
           </CardHeader>
           <CardContent>
              {subject.syllabusPdfUrl ? (
                <div className="flex flex-col gap-4">
-                 <p className="text-muted-foreground">The official syllabus document is available for viewing or downloading below.</p>
-                 <div className="flex gap-4">
+                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">The official syllabus document is available for viewing and downloading below.</p>
+                 <div className="flex flex-wrap gap-3">
                    <Link
                      href={subject.syllabusPdfUrl}
                      target="_blank"
                      rel="noopener noreferrer"
-                     className={cn(buttonVariants({ variant: "default" }), "gap-2")}
+                     className={cn(buttonVariants({ variant: "default" }), "gap-2 rounded-xl h-11 text-sm font-semibold shadow-sm")}
                    >
-                     <FileText className="h-4 w-4" /> View PDF
+                     <FileText className="size-4" /> View PDF
                    </Link>
                    <a
                      href={subject.syllabusPdfUrl}
                      download
                      target="_blank"
                      rel="noopener noreferrer"
-                     className={cn(buttonVariants({ variant: "outline" }), "gap-2")}
+                     className={cn(buttonVariants({ variant: "outline" }), "gap-2 rounded-xl h-11 text-sm font-semibold")}
                    >
-                     <Download className="h-4 w-4" /> Download
+                     <Download className="size-4" /> Download
                    </a>
                  </div>
                </div>
              ) : (
-               <div className="text-center py-12 bg-muted/20 rounded-xl border border-dashed">
-                 <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-                 <h3 className="text-lg font-semibold text-foreground">Syllabus unavailable</h3>
-                 <p className="text-muted-foreground mt-2">The syllabus for this subject has not been uploaded yet.</p>
+               <div className="text-center py-14 bg-muted/20 rounded-2xl border border-dashed border-border/80">
+                 <FileText className="size-10 text-muted-foreground mx-auto mb-3 opacity-50" />
+                 <h3 className="text-base font-bold text-foreground">Syllabus unavailable</h3>
+                 <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-sm mx-auto">The syllabus outline for this subject will be published soon.</p>
                </div>
              )}
           </CardContent>
