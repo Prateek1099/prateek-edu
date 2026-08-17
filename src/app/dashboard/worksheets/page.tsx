@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { FileText, Calendar, CheckCircle2, Clock } from "lucide-react";
+import { FileText, Calendar, CheckCircle2, Clock, ChevronLeft } from "lucide-react";
 
 export default async function StudentWorksheetsPage() {
   const session = await getServerSession(authOptions);
@@ -32,23 +32,41 @@ export default async function StudentWorksheetsPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="relative container px-4 md:px-8 py-8 max-w-5xl mx-auto space-y-8 min-h-[calc(100vh-140px)]">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">My Worksheets</h1>
-        <p className="text-muted-foreground mt-1">
-          Open your assigned worksheets and work through them as document-style practice.
-        </p>
+        <Link href="/dashboard" className="inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 -ml-3 text-muted-foreground gap-1.5">
+          <ChevronLeft className="size-4" />
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+
+      <div className="flex items-start gap-3.5">
+        <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm mt-0.5">
+          <FileText className="size-6" />
+        </div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">My Assigned Worksheets</h1>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Open assigned worksheets, submit document practice, and track teacher deadlines.
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-4">
         {assignments.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p>You have no assigned worksheets right now.</p>
-              <p className="text-sm mt-2">Worksheets assigned by your teacher will appear here.</p>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-16 text-center">
+            <FileText className="mx-auto size-10 text-muted-foreground opacity-50 mb-3" />
+            <h3 className="text-base sm:text-lg font-bold">No assigned worksheets right now</h3>
+            <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">
+              Worksheets and practice sets assigned by your teacher will appear here automatically.
+            </p>
+          </div>
         ) : (
           assignments.map(assignment => {
             const ws = assignment.worksheet;
@@ -62,55 +80,60 @@ export default async function StudentWorksheetsPage() {
             const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
 
             return (
-              <Card key={assignment.id} className={`transition-colors ${isOverdue ? "border-destructive/50" : ""}`}>
-                <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold">{ws.title}</h3>
+              <Card
+                key={assignment.id}
+                className={`rounded-2xl border bg-card shadow-sm transition-all hover:border-primary/40 ${
+                  isOverdue ? "border-destructive/50" : "border-border/80"
+                }`}
+              >
+                <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-bold tracking-tight text-foreground">{ws.title}</h3>
                       {isCompleted ? (
-                        <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium">
-                          <CheckCircle2 className="w-3 h-3" /> Completed
+                        <span className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold">
+                          <CheckCircle2 className="size-3.5" /> Completed
                         </span>
                       ) : isOverdue ? (
-                        <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">
-                          <Clock className="w-3 h-3" /> Overdue
+                        <span className="flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive font-semibold">
+                          <Clock className="size-3.5" /> Overdue
                         </span>
                       ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium">
+                        <span className="text-xs px-2.5 py-0.5 rounded-lg bg-primary/10 border border-primary/20 text-primary font-semibold">
                           Assigned
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {ws.subject.name} • {ws.type === "PDF_WORKSHEET"
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                      {ws.subject.name} · {ws.type === "PDF_WORKSHEET"
                         ? "PDF assignment"
-                        : `${ws._count.questions} Questions`} • {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
+                        : `${ws._count.questions} Questions`} · {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
                     </p>
-                    <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3 h-3" /> Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}
+                    <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="size-3.5" /> Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}
                       </span>
                       {assignment.dueDate && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                        <span className="flex items-center gap-1.5 font-medium text-foreground/80">
+                          <Clock className="size-3.5" /> Due: {new Date(assignment.dueDate).toLocaleDateString()}
                         </span>
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="w-full sm:w-auto shrink-0 flex flex-col sm:flex-row gap-2">
                     {isDocumentWorksheet ? (
-                      <Link href={worksheetLink} className="block">
-                        <Button className="w-full gap-2 sm:w-auto">
+                      <Link href={worksheetLink} className="block w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm">
                           <FileText className="size-4" />
                           View Worksheet
                         </Button>
                       </Link>
                     ) : isCompleted ? (
-                      <Button variant="outline" className="w-full sm:w-auto" disabled>Already Completed</Button>
+                      <Button variant="outline" className="w-full sm:w-auto rounded-xl text-xs sm:text-sm font-semibold" disabled>Already Completed</Button>
                     ) : (
-                      <Link href={attemptLink} className="block">
-                        <Button className="w-full sm:w-auto">Start Practice</Button>
+                      <Link href={attemptLink} className="block w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto rounded-xl text-xs sm:text-sm font-semibold shadow-sm">Start Practice</Button>
                       </Link>
                     )}
                   </div>

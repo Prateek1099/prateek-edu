@@ -764,38 +764,49 @@ export function RevisionPlannerDashboard({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-8">
+    <div className="relative space-y-8">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 -top-8 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <CalendarDays className="w-7 h-7 text-primary" />
-            Revision Planner
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {plan.qualification.toUpperCase()} · {plan.board}
-          </p>
+        <div className="flex items-start gap-3.5">
+          <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm mt-0.5">
+            <CalendarDays className="size-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Revision Planner
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium">
+              {plan.qualification.toUpperCase()} · {plan.board}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
             onClick={() => setSettingsOpen(true)}
-            className="h-9 w-9"
+            className="size-9 rounded-xl border-border/80 shadow-xs"
+            aria-label="Planner settings"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="size-4" />
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-1.5"
+            className="gap-1.5 rounded-xl h-9 text-xs font-semibold border-border/80 shadow-xs"
           >
             {isRefreshing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="size-3.5" />
             )}
             Refresh Plan
           </Button>
@@ -803,9 +814,9 @@ export function RevisionPlannerDashboard({
       </div>
 
       {/* ── Stats Row ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Exam Countdown */}
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
           <CardContent className="p-5 flex flex-col items-center text-center">
             <DonutChart
               percentage={Math.max(0, Math.min(100, 100 - (daysUntilExam / 90) * 100))}
@@ -813,11 +824,11 @@ export function RevisionPlannerDashboard({
               size={80}
             />
             <div className="mt-3">
-              <p className={cn("text-2xl font-bold", urgencyColor)}>
+              <p className={cn("text-2xl sm:text-3xl font-extrabold tracking-tight", urgencyColor)}>
                 {daysUntilExam > 0 ? daysUntilExam : 0}
               </p>
-              <p className="text-xs text-muted-foreground">days until exam</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">days until exam</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 {new Date(plan.examDate).toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "short",
@@ -829,7 +840,7 @@ export function RevisionPlannerDashboard({
         </Card>
 
         {/* Completion */}
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
           <CardContent className="p-5 flex flex-col items-center text-center">
             <DonutChart
               percentage={completionPercentage}
@@ -837,29 +848,29 @@ export function RevisionPlannerDashboard({
               size={80}
             />
             <div className="mt-3">
-              <p className="text-sm font-semibold">
+              <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                 {completedTasks}/{totalTasks}
               </p>
-              <p className="text-xs text-muted-foreground">tasks completed</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">tasks done</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Today's Load */}
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
           <CardContent className="p-5 flex flex-col items-center text-center">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-2">
-              <ClipboardList className="w-7 h-7 text-primary" />
+            <div className="size-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-2 shadow-xs">
+              <ClipboardList className="size-6 text-primary" />
             </div>
-            <p className="text-2xl font-bold">{todayTasks.length}</p>
-            <p className="text-xs text-muted-foreground mb-2">
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{todayTasks.length}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
               tasks today
             </p>
             <div className="flex flex-wrap justify-center gap-1">
               {Object.entries(todayTypeBreakdown).map(([type, count]) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground"
+                  className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-muted text-muted-foreground"
                 >
                   {TASK_TYPE_ICONS[type]} {count}
                 </span>
@@ -869,13 +880,13 @@ export function RevisionPlannerDashboard({
         </Card>
 
         {/* Study Streak */}
-        <Card className="bg-card shadow-sm border-border hover:border-primary/20 transition-colors">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
           <CardContent className="p-5 flex flex-col items-center text-center">
-            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-orange-500/10 mb-2">
-              <Flame className="w-7 h-7 text-orange-500" />
+            <div className="size-12 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-2 shadow-xs">
+              <Flame className="size-6 text-orange-500" />
             </div>
-            <p className="text-2xl font-bold">{studyStreak}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{studyStreak}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
               {studyStreak === 1 ? "day streak" : "days streak"}
             </p>
           </CardContent>
@@ -888,16 +899,17 @@ export function RevisionPlannerDashboard({
         <div className="lg:col-span-2 space-y-8">
           {/* Today's Tasks */}
           <section>
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-primary" />
+            <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2 tracking-tight">
+              <CheckCircle2 className="size-5 text-primary" />
               Today&apos;s Plan
               {effectiveTodayTasks.length > 0 && (
-                <Badge variant="secondary" className="ml-2">
+                <Badge variant="secondary" className="ml-2 bg-primary/10 border border-primary/20 text-primary rounded-lg text-xs font-semibold">
                   {effectiveTodayTasks.filter((t) => t.status === "COMPLETED").length}/
                   {effectiveTodayTasks.length}
                 </Badge>
               )}
             </h2>
+
 
             {effectiveTodayTasks.length === 0 ? (
               <Card className="bg-muted/20 border-dashed shadow-sm">

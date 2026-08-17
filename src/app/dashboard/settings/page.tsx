@@ -11,7 +11,7 @@ export const metadata = {
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
-  
+
   if (!session || !session.user) {
     redirect("/login");
   }
@@ -60,15 +60,21 @@ export default async function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 w-full flex flex-col p-4 md:p-8 overflow-y-auto">
+    <div className="relative flex-1 w-full flex flex-col p-4 md:p-8 overflow-y-auto min-h-[calc(100vh-140px)]">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
       <div className="max-w-4xl mx-auto w-full space-y-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Settings</h1>
-          <p className="text-muted-foreground">
-            Manage your profile, study preferences, and account security.
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1.5">Settings</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+            Manage your profile, academic preferences, appearance, and account security.
           </p>
         </div>
-        
+
         <SettingsClient user={userData} />
       </div>
     </div>

@@ -40,23 +40,80 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-140px)] items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-md shadow-lg border-primary/10">
-        <CardHeader className="space-y-2 text-center"><div className="mx-auto rounded-xl border border-primary/20 bg-primary/10 p-3"><KeyRound className="h-7 w-7 text-primary" /></div><CardTitle>Set a new password</CardTitle><CardDescription>Use at least 10 characters, with uppercase, lowercase, and a number.</CardDescription></CardHeader>
+    <div className="relative flex min-h-[calc(100vh-140px)] items-center justify-center p-4">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-1/4 -z-10 mx-auto h-72 max-w-2xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+      <Card className="w-full max-w-md rounded-2xl border border-border/80 bg-card shadow-xl">
+        <CardHeader className="space-y-3 text-center pb-4">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-2xs">
+            <KeyRound className="size-7 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-extrabold tracking-tight">Set a new password</CardTitle>
+            <CardDescription className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Use at least 10 characters, with uppercase, lowercase, and a number.
+            </CardDescription>
+          </div>
+        </CardHeader>
         <CardContent>
-          {success ? <p className="rounded-md bg-emerald-500/10 p-4 text-center text-sm text-emerald-700 dark:text-emerald-400">Password updated. You can now log in.</p> : <form className="space-y-4" onSubmit={submit}>
-            {error && <p className="rounded-md bg-destructive/10 p-3 text-center text-sm text-destructive">{error}</p>}
-            <div className="grid gap-2"><Label htmlFor="password">New password</Label><Input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={10} required /></div>
-            <div className="grid gap-2"><Label htmlFor="confirmPassword">Confirm new password</Label><Input id="confirmPassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} minLength={10} required /></div>
-            <Button className="w-full" type="submit" disabled={isSubmitting || !email || !token}>{isSubmitting ? "Updating..." : "Update password"}</Button>
-          </form>}
+          {success ? (
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-center text-xs sm:text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              Password updated successfully. You can now log in.
+            </div>
+          ) : (
+            <form className="space-y-4" onSubmit={submit}>
+              {error && (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-center text-xs sm:text-sm font-semibold text-destructive">
+                  {error}
+                </div>
+              )}
+              <div className="space-y-1.5">
+                <Label htmlFor="password" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  minLength={10}
+                  className="h-10 rounded-xl bg-background border-border/80"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Confirm new password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  minLength={10}
+                  className="h-10 rounded-xl bg-background border-border/80"
+                  required
+                />
+              </div>
+              <Button className="w-full h-11 rounded-xl text-xs sm:text-sm font-semibold shadow-md" type="submit" disabled={isSubmitting || !email || !token}>
+                {isSubmitting ? "Updating..." : "Update password"}
+              </Button>
+            </form>
+          )}
         </CardContent>
-        <CardFooter><Link className="mx-auto text-sm font-medium text-primary hover:underline" href="/login">Back to login</Link></CardFooter>
+        <CardFooter className="pt-0 justify-center">
+          <Link className="inline-flex items-center text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors" href="/login">
+            Back to login
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );
 }
 
 export default function ResetPasswordPage() {
-  return <Suspense fallback={<div className="flex min-h-[calc(100vh-140px)] items-center justify-center">Loading...</div>}><ResetPasswordForm /></Suspense>;
+  return (
+    <Suspense fallback={<div className="flex min-h-[calc(100vh-140px)] items-center justify-center text-sm text-muted-foreground">Loading...</div>}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
 }

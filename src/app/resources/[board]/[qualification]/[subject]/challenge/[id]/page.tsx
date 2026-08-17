@@ -52,7 +52,7 @@ export default async function ChallengeDetailPage({
   // Strict Authorization Guard for Workspace Challenges
   if (challenge.workspaceId) {
     const isOwner = sessionUser.workspaceId === challenge.workspaceId;
-    
+
     if (!isOwner) {
       const assignment = await prisma.worksheetAssignment.findUnique({
         where: {
@@ -97,57 +97,64 @@ export default async function ChallengeDetailPage({
   };
 
   return (
-    <div className="container px-4 md:px-8 py-12 max-w-4xl mx-auto min-h-[calc(100vh-140px)]">
-      <Link href={`/resources/${board}/${qualification}/${subject}`}>
-        <Button variant="ghost" size="sm" className="mb-6 -ml-2 text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to Resources
-        </Button>
-      </Link>
+    <div className="relative container px-4 md:px-8 py-8 md:py-12 max-w-4xl mx-auto min-h-[calc(100vh-140px)] space-y-8">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
+      <div>
+        <Link href={`/resources/${board}/${qualification}/${subject}`} className="inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 -ml-3 text-muted-foreground gap-1.5">
+          <ArrowLeft className="size-4" />
+          <span>Back to Resources</span>
+        </Link>
+      </div>
 
       {/* Hero Card */}
-      <Card className="shadow-md border-border overflow-hidden relative">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary to-primary/40" />
-        <CardContent className="p-8">
-          <div className="flex items-start gap-5">
-            <div className="bg-primary/10 p-4 rounded-2xl shrink-0">
-              <Trophy className="h-10 w-10 text-primary" />
+      <Card className="rounded-2xl border border-border/80 bg-card shadow-lg overflow-hidden relative">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-primary via-purple-500 to-indigo-500" />
+        <CardContent className="p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row items-start gap-5">
+            <div className="size-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 shadow-sm">
+              <Trophy className="size-7" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between flex-wrap gap-3">
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{challenge.title}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{challenge.title}</h1>
                   {challenge.topic && (
-                    <p className="text-muted-foreground mt-1">{challenge.topic.topicName}</p>
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">{challenge.topic.topicName}</p>
                   )}
                 </div>
                 <Badge
                   variant="outline"
-                  className={cn("capitalize text-sm px-3 py-1", difficultyColor[challenge.difficulty] || difficultyColor.medium)}
+                  className={cn("capitalize text-xs font-semibold px-3 py-1 rounded-lg", difficultyColor[challenge.difficulty] || difficultyColor.medium)}
                 >
                   {challenge.difficulty}
                 </Badge>
               </div>
 
               {/* Stats */}
-              <div className="flex flex-wrap items-center gap-6 mt-6 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-6 mt-6 text-xs sm:text-sm text-muted-foreground font-medium">
                 <div className="flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <span><strong className="text-foreground">{challenge._count.questions}</strong> Questions</span>
+                  <Zap className="size-4 text-primary" />
+                  <span><strong className="text-foreground font-semibold">{challenge._count.questions}</strong> Questions</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span>Estimated <strong className="text-foreground">{challenge.estimatedTime}</strong> min</span>
+                  <Clock className="size-4 text-primary" />
+                  <span>Estimated <strong className="text-foreground font-semibold">{challenge.estimatedTime}</strong> min</span>
                 </div>
                 {attempts.length > 0 && (
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    <span><strong className="text-foreground">{attempts.length}</strong> Attempt{attempts.length !== 1 ? "s" : ""}</span>
+                    <BarChart3 className="size-4 text-primary" />
+                    <span><strong className="text-foreground font-semibold">{attempts.length}</strong> Attempt{attempts.length !== 1 ? "s" : ""}</span>
                   </div>
                 )}
               </div>
 
-              <Link href={`/resources/${board}/${qualification}/${subject}/challenge/${id}/attempt`}>
-                <Button size="lg" className="mt-8 px-10 font-semibold text-base">
+              <Link href={`/resources/${board}/${qualification}/${subject}/challenge/${id}/attempt`} className="inline-block mt-8">
+                <Button size="lg" className="h-11 px-8 rounded-xl font-semibold text-sm sm:text-base shadow-md">
                   {attempts.length > 0 ? "Retry Challenge" : "Start Challenge"}
                 </Button>
               </Link>
@@ -158,47 +165,47 @@ export default async function ChallengeDetailPage({
 
       {/* Past Attempts */}
       {attempts.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" /> Your Attempts
+        <div className="space-y-4">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="size-5 text-primary" /> Your Attempts
           </h2>
-          <Card className="shadow-sm overflow-hidden">
-            <div className="divide-y divide-border">
+          <Card className="rounded-2xl border border-border/80 bg-card shadow-sm overflow-hidden">
+            <div className="divide-y divide-border/60">
               {attempts.map((a) => (
                 <Link
                   key={a.id}
                   href={`/resources/${board}/${qualification}/${subject}/challenge/${id}/results/${a.id}`}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 hover:bg-muted/30 transition-colors gap-3"
+                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 sm:p-5 hover:bg-muted/30 transition-colors gap-3.5"
                 >
                   <div className="flex items-center gap-4">
                     <div className={cn(
-                      "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold",
+                      "size-11 rounded-xl flex items-center justify-center text-sm font-bold border",
                       a.percentage >= 75
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                         : a.percentage >= 50
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-red-500/10 text-red-600 dark:text-red-400"
+                        ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                        : "bg-destructive/10 border-destructive/20 text-destructive"
                     )}>
                       {Math.round(a.percentage)}%
                     </div>
                     <div>
-                      <p className="font-semibold text-sm">
+                      <p className="font-semibold text-sm text-foreground">
                         {a.score}/{a.totalQuestions} correct
                       </p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                        <Calendar className="h-3 w-3" />
+                      <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 font-medium">
+                        <Calendar className="size-3.5" />
                         {new Date(a.completedAt).toLocaleDateString()}
                         {a.timeTaken != null && (
                           <>
                             <span className="mx-1">·</span>
-                            <Clock className="h-3 w-3" />
+                            <Clock className="size-3.5" />
                             {formatTime(a.timeTaken)}
                           </>
                         )}
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">View Results →</Badge>
+                  <Badge variant="outline" className="text-xs font-semibold px-2.5 py-1 rounded-lg">View Results →</Badge>
                 </Link>
               ))}
             </div>

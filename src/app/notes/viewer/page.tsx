@@ -37,22 +37,22 @@ function NotesViewerInner() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-muted/20">
-      <div className="flex items-center justify-between gap-3 px-3 py-3 border-b bg-background shadow-sm z-10 shrink-0 sm:px-4">
+    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-background">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/80 bg-card/90 backdrop-blur-md shadow-xs z-10 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <Button variant="ghost" size="sm" className="rounded-xl h-9 px-3 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground" onClick={() => router.back()}>
             <ArrowLeft className="size-4" />
             <span className="hidden sm:inline">Back</span>
           </Button>
-          <h1 className="text-sm md:text-base font-semibold truncate">{title}</h1>
+          <h1 className="text-xs sm:text-sm md:text-base font-bold truncate text-foreground">{title}</h1>
         </div>
         <a
           href={downloadUrl}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0 gap-1.5")}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "shrink-0 gap-1.5 rounded-xl h-9 px-3 text-xs sm:text-sm font-semibold shadow-2xs")}
           aria-label={`Download ${title}`}
         >
-          <Download className="size-4" />
-          <span className="hidden sm:inline">Download</span>
+          <Download className="size-3.5" />
+          <span className="hidden sm:inline">Download PDF</span>
         </a>
       </div>
 

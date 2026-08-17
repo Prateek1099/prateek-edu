@@ -41,101 +41,114 @@ export default function ContactPage() {
 
       setSuccess(true);
       (e.target as HTMLFormElement).reset();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to submit query";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="container px-4 py-12 max-w-7xl mx-auto space-y-12">
-      <div className="text-center space-y-4 max-w-3xl mx-auto">
-        <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
-          Get in <span className="text-primary">Touch</span>
+    <div className="relative container px-4 md:px-8 py-10 md:py-16 max-w-6xl mx-auto space-y-12 min-h-[calc(100vh-140px)]">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-80 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
+      <div className="text-center space-y-3 max-w-2xl mx-auto">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground">
+          Get in <span className="bg-gradient-to-r from-primary via-purple-500 to-indigo-500 bg-clip-text text-transparent">Touch</span>
         </h1>
-        <p className="text-xl text-muted-foreground">
-          Have a question about our courses, learning resources, or need technical support? We&apos;re here to help!
+        <p className="text-xs sm:text-sm md:text-base text-muted-foreground leading-relaxed">
+          Have a question about our learning resources, or need help? Our team is always here for you.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className="bg-muted/10 border-primary/10">
-          <CardHeader className="text-center">
-            <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-2">
-              <Mail className="h-6 w-6 text-primary" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-2xs mb-3">
+              <Mail className="size-6" />
             </div>
-            <CardTitle>Email Us</CardTitle>
-            <CardDescription>We usually reply within 24 hours.</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-bold">Email Us</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">We usually reply within 24 hours.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center font-medium">
+          <CardContent className="text-center text-xs sm:text-sm font-semibold text-foreground">
             support.vexaonline@gmail.com
           </CardContent>
         </Card>
 
-        <Card className="bg-muted/10 border-primary/10">
-          <CardHeader className="text-center">
-            <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-2">
-              <Phone className="h-6 w-6 text-primary" />
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-2xs mb-3">
+              <Phone className="size-6" />
             </div>
-            <CardTitle>Call Us</CardTitle>
-            <CardDescription>Mon-Fri from 2pm to 7pm.</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-bold">Call Us</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">Mon–Fri from 2pm to 7pm.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center font-medium">
+          <CardContent className="text-center text-xs sm:text-sm font-semibold text-foreground">
             +91 7014769931
           </CardContent>
         </Card>
 
-        <Card className="bg-muted/10 border-primary/10">
-          <CardHeader className="text-center">
-            <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit mb-2">
-              <MapPin className="h-6 w-6 text-primary" />
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm hover:border-primary/40 transition-all">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-2xs mb-3">
+              <MapPin className="size-6" />
             </div>
-            <CardTitle>Office</CardTitle>
-            <CardDescription>Visit our Office for any queries.</CardDescription>
+            <CardTitle className="text-base sm:text-lg font-bold">Office</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">Visit our office in Jodhpur.</CardDescription>
           </CardHeader>
-          <CardContent className="text-center font-medium">
-            iStart Nest Incubation Center, Vikramaditya Nagar, Jodhpur
+          <CardContent className="text-center text-xs sm:text-sm font-semibold text-foreground">
+            iStart Nest Incubation Center, Jodhpur
           </CardContent>
         </Card>
       </div>
 
-      <Card className="max-w-2xl mx-auto border-primary/10 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl">Send a Message</CardTitle>
-          <CardDescription>Fill out the form below and we will get back to you.</CardDescription>
+      <Card className="max-w-2xl mx-auto rounded-2xl border border-border/80 bg-card shadow-xl">
+        <CardHeader className="p-6 sm:p-8 pb-4">
+          <CardTitle className="text-xl sm:text-2xl font-extrabold tracking-tight">Send a Message</CardTitle>
+          <CardDescription className="text-xs sm:text-sm text-muted-foreground">
+            Fill out the form below and we will get back to you promptly.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 sm:p-8 pt-0">
           {success ? (
-            <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 rounded-lg text-center font-medium">
+            <div className="p-6 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-center text-xs sm:text-sm font-semibold">
               Thank you for reaching out! We have received your message and will contact you shortly.
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && <div className="text-red-500 text-sm font-medium">{error}</div>}
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold rounded-xl">
+                  {error}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input id="name" name="name" placeholder="Rohan Sharma" required />
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name</Label>
+                  <Input id="name" name="name" placeholder="Rohan Sharma" className="rounded-xl h-10 bg-background border-border/80" required />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" name="email" type="email" placeholder="rohan@example.com" required />
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
+                  <Input id="email" name="email" type="email" placeholder="rohan@example.com" className="rounded-xl h-10 bg-background border-border/80" required />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input id="subject" name="subject" placeholder="How can we help you?" required />
+              <div className="space-y-1.5">
+                <Label htmlFor="subject" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Subject</Label>
+                <Input id="subject" name="subject" placeholder="How can we help you?" className="rounded-xl h-10 bg-background border-border/80" required />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="message">Message</Label>
-                <Textarea id="message" name="message" placeholder="Type your message here..." className="min-h-[150px]" required />
+              <div className="space-y-1.5">
+                <Label htmlFor="message" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Message</Label>
+                <Textarea id="message" name="message" placeholder="Type your message here..." className="min-h-[130px] rounded-xl bg-background border-border/80 resize-none text-xs sm:text-sm" required />
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full h-11 rounded-xl text-xs sm:text-sm font-semibold shadow-md" disabled={loading}>
                 {loading ? "Sending..." : "Send Message"}
               </Button>
             </form>

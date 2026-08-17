@@ -130,16 +130,22 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
   const strokeDashoffset = circumference - (attempt.percentage / 100) * circumference;
 
   return (
-    <div className="container px-4 md:px-8 py-12 max-w-4xl mx-auto min-h-[calc(100vh-140px)]">
-      {/* Score Hero */}
-      <Card className="shadow-md overflow-hidden relative mb-8">
+    <div className="relative container max-w-4xl mx-auto px-4 py-8 md:py-12 space-y-8">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
+      {/* Hero Score Card */}
+      <Card className="rounded-2xl border border-border/80 bg-card shadow-lg overflow-hidden relative">
         <div className={cn(
           "absolute top-0 left-0 right-0 h-1.5",
-          attempt.percentage >= 75 ? "bg-gradient-to-r from-emerald-500 to-emerald-300" :
-          attempt.percentage >= 50 ? "bg-gradient-to-r from-amber-500 to-amber-300" :
-          "bg-gradient-to-r from-red-500 to-red-300"
+          attempt.percentage >= 75 ? "bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300" :
+          attempt.percentage >= 50 ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300" :
+          "bg-gradient-to-r from-red-500 via-rose-400 to-red-300"
         )} />
-        <CardContent className="p-8">
+        <CardContent className="p-6 sm:p-8 md:p-10">
           <div className="flex flex-col md:flex-row items-center gap-8">
             {/* Score Ring */}
             <div className="relative shrink-0">
@@ -159,34 +165,34 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold">{attempt.score}/{attempt.totalQuestions}</span>
-                <span className="text-sm font-semibold text-muted-foreground">{Math.round(attempt.percentage)}%</span>
+                <span className="text-3xl font-extrabold tracking-tight text-foreground">{attempt.score}/{attempt.totalQuestions}</span>
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{Math.round(attempt.percentage)}%</span>
               </div>
             </div>
 
             {/* Info */}
             <div className="text-center md:text-left flex-1">
-              <h1 className="text-2xl font-bold tracking-tight">{challenge.title}</h1>
-              <p className={cn("text-lg mt-2 font-medium", perf.color)}>{perf.text}</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">{challenge.title}</h1>
+              <p className={cn("text-base sm:text-lg mt-2 font-bold", perf.color)}>{perf.text}</p>
 
               {weakTopics.length > 0 && (
-                <div className="mt-3 flex items-start gap-2 text-sm text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                <div className="mt-3 flex items-start justify-center md:justify-start gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
+                  <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-500" />
                   <span>
-                    Review: {weakTopics.map((t) => t.topic).join(", ")}
+                    Review focus: <strong className="text-foreground">{weakTopics.map((t) => t.topic).join(", ")}</strong>
                   </span>
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3 mt-5">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-6">
                 <Link href={retryUrl}>
-                  <Button variant="outline">
-                    <RotateCcw className="h-4 w-4 mr-2" /> Retry Challenge
+                  <Button variant="outline" className="rounded-xl h-10 px-4 text-xs sm:text-sm font-semibold">
+                    <RotateCcw className="size-3.5 mr-2" /> Retry Challenge
                   </Button>
                 </Link>
                 <Link href={backUrl}>
-                  <Button variant="ghost">
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Back to Challenges
+                  <Button variant="ghost" className="rounded-xl h-10 px-4 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="size-3.5 mr-2" /> Back to Challenges
                   </Button>
                 </Link>
               </div>
@@ -196,48 +202,48 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
       </Card>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card className="shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-emerald-500/10 p-2 rounded-lg">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <CheckCircle2 className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Correct</p>
-              <p className="text-xl font-bold">{attempt.score}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Correct</p>
+              <p className="text-xl font-extrabold text-foreground">{attempt.score}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-red-500/10 p-2 rounded-lg">
-              <XCircle className="h-5 w-5 text-red-500" />
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive shrink-0">
+              <XCircle className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Incorrect</p>
-              <p className="text-xl font-bold">{incorrect}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Incorrect</p>
+              <p className="text-xl font-extrabold text-foreground">{incorrect}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <Clock className="h-5 w-5 text-primary" />
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+              <Clock className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Time</p>
-              <p className="text-xl font-bold">{formatTime(attempt.timeTaken)}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Time</p>
+              <p className="text-xl font-extrabold text-foreground">{formatTime(attempt.timeTaken)}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <BarChart3 className="h-5 w-5 text-primary" />
+        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+          <CardContent className="p-4 sm:p-5 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+              <BarChart3 className="size-5" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Difficulty</p>
-              <p className="text-xl font-bold capitalize">{challenge.difficulty}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Difficulty</p>
+              <p className="text-xl font-extrabold capitalize text-foreground">{challenge.difficulty}</p>
             </div>
           </CardContent>
         </Card>
@@ -245,20 +251,20 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
 
       {/* Topic Performance */}
       {topicStats.length > 1 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" /> Topic Performance
+        <div className="space-y-4">
+          <h2 className="text-lg sm:text-xl font-bold tracking-tight flex items-center gap-2">
+            <Trophy className="size-5 text-primary" /> Topic Performance
           </h2>
-          <Card className="shadow-sm">
-            <CardContent className="p-5 space-y-4">
+          <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+            <CardContent className="p-5 sm:p-6 space-y-4">
               {topicStats.map((t) => (
                 <div key={t.topic} className="space-y-1.5">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{t.topic}</span>
+                  <div className="flex justify-between text-xs sm:text-sm">
+                    <span className="font-semibold text-foreground">{t.topic}</span>
                     <span className={cn(
-                      "font-semibold",
+                      "font-bold",
                       t.percentage >= 75 ? "text-emerald-600 dark:text-emerald-400" :
-                      t.percentage >= 50 ? "text-amber-600 dark:text-amber-400" : "text-red-500"
+                      t.percentage >= 50 ? "text-amber-600 dark:text-amber-400" : "text-destructive"
                     )}>
                       {t.correct}/{t.total} ({t.percentage}%)
                     </span>
@@ -269,7 +275,7 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
                   />
                   {t.percentage < 75 && (
                     <div className="flex justify-end pt-1">
-                      <AskTeacherDialog 
+                      <AskTeacherDialog
                         buttonLabel="Ask Teacher About This Topic"
                         variant="ghost"
                         className="text-xs text-muted-foreground hover:text-primary h-auto py-1 px-2"

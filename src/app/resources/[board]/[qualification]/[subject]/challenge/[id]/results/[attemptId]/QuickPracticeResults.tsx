@@ -152,29 +152,35 @@ export default function QuickPracticeResults({
   };
 
   return (
-    <main className="min-h-[calc(100vh-140px)] bg-background">
-      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8">
-        <section className="overflow-hidden rounded-3xl bg-card ring-1 ring-foreground/10">
-          <div className="grid gap-8 px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-center lg:px-10">
+    <main className="relative min-h-[calc(100vh-140px)] bg-background">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+
+      <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12 lg:px-8 space-y-8">
+        <section className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-lg">
+          <div className="grid gap-8 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-center lg:p-10">
             <div>
-              <Badge variant="secondary" className="gap-1.5">
-                <CheckCircle2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+              <Badge variant="secondary" className="gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-lg">
+                <CheckCircle2 className="size-3.5" />
                 Practice completed
               </Badge>
-              <h1 className="mt-5 text-2xl font-semibold tracking-tight sm:text-3xl">{challenge.title}</h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
+              <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">{challenge.title}</h1>
+              <p className="mt-3 max-w-xl text-xs sm:text-sm md:text-base leading-relaxed text-muted-foreground">
                 {getResultMessage(attempt.percentage)}
               </p>
 
-              <div className="mt-7 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-wrap gap-3">
                 {incorrectCount > 0 && (
-                  <Button size="lg" className="h-11 gap-2" onClick={startMistakeReview}>
+                  <Button size="lg" className="h-11 gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md" onClick={startMistakeReview}>
                     <Target className="size-4" />
                     Review {incorrectCount} mistake{incorrectCount === 1 ? "" : "s"}
                   </Button>
                 )}
                 <Link href={retryUrl}>
-                  <Button size="lg" variant={incorrectCount > 0 ? "outline" : "default"} className="h-11 gap-2">
+                  <Button size="lg" variant={incorrectCount > 0 ? "outline" : "default"} className="h-11 gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-sm">
                     <RotateCcw className="size-4" />
                     Retry practice
                   </Button>
@@ -182,45 +188,45 @@ export default function QuickPracticeResults({
               </div>
             </div>
 
-            <div className="rounded-2xl bg-muted/45 p-5 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Accuracy</p>
-              <p className="mt-2 text-6xl font-semibold tracking-tight tabular-nums">
-                {accuracy}<span className="text-2xl text-muted-foreground">%</span>
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-6 text-center shadow-2xs">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Accuracy</p>
+              <p className="mt-2 text-5xl sm:text-6xl font-extrabold tracking-tight tabular-nums text-foreground">
+                {accuracy}<span className="text-2xl text-muted-foreground font-bold">%</span>
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 text-xs sm:text-sm font-medium text-muted-foreground">
                 {attempt.score} of {attempt.totalQuestions} correct
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 border-t bg-muted/20 sm:grid-cols-4">
-            <div className="px-4 py-4 sm:px-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
+          <div className="grid grid-cols-2 border-t border-border/60 bg-muted/20 sm:grid-cols-4">
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 Correct
               </div>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{attempt.score}</p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground">{attempt.score}</p>
             </div>
-            <div className="border-l px-4 py-4 sm:px-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <X className="size-4 text-red-600 dark:text-red-400" />
+            <div className="border-l border-border/60 p-4 sm:p-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <X className="size-3.5 text-destructive" />
                 Incorrect
               </div>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{incorrectCount}</p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground">{incorrectCount}</p>
             </div>
-            <div className="border-t px-4 py-4 sm:border-l sm:border-t-0 sm:px-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock3 className="size-4 text-primary" />
+            <div className="border-t border-border/60 p-4 sm:border-l sm:border-t-0 sm:p-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Clock3 className="size-3.5 text-primary" />
                 Time
               </div>
-              <p className="mt-1 text-xl font-semibold tabular-nums">{formatTime(attempt.timeTaken)}</p>
+              <p className="mt-1 text-xl font-extrabold tabular-nums text-foreground">{formatTime(attempt.timeTaken)}</p>
             </div>
-            <div className="border-l border-t px-4 py-4 sm:border-t-0 sm:px-6">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Target className="size-4 text-primary" />
+            <div className="border-l border-t border-border/60 p-4 sm:border-t-0 sm:p-5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                <Target className="size-3.5 text-primary" />
                 Difficulty
               </div>
-              <p className="mt-1 text-xl font-semibold capitalize">{challenge.difficulty}</p>
+              <p className="mt-1 text-xl font-extrabold capitalize text-foreground">{challenge.difficulty}</p>
             </div>
           </div>
         </section>

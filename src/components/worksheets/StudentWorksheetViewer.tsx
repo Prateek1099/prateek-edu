@@ -30,48 +30,58 @@ export default function StudentWorksheetViewer({ worksheet, backUrl }: StudentWo
   const hasSolutions = isPdf ? Boolean(worksheet.pdfAnswerUrl) : worksheet.questions.length > 0;
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <div className="worksheet-screen-only print:hidden">
-        <Link
-          href={backUrl}
-          className="mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Practice
-        </Link>
+    <div className="relative mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 space-y-8">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
 
-        <header className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                <BookOpenCheck className="size-5" />
+      <div className="worksheet-screen-only print:hidden space-y-6">
+        <div>
+          <Link
+            href={backUrl}
+            className="inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 -ml-3 text-muted-foreground gap-1.5"
+          >
+            <ArrowLeft className="size-4" />
+            <span>Back to Practice</span>
+          </Link>
+        </div>
+
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 shadow-2xs">
+                <BookOpenCheck className="size-6" />
               </div>
-              <Badge variant="secondary">{isPdf ? "PDF worksheet" : "Printable worksheet"}</Badge>
+              <Badge variant="secondary" className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold px-2.5 py-0.5 rounded-lg">
+                {isPdf ? "PDF worksheet" : "Printable worksheet"}
+              </Badge>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{worksheet.title}</h1>
-            <p className="mt-3 text-base text-muted-foreground">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-foreground">{worksheet.title}</h1>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
               {worksheet.subjectName}
               {worksheet.topicName ? ` · ${worksheet.topicName}` : ""}
             </p>
-            <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs sm:text-sm font-medium text-muted-foreground pt-1">
               <span className="inline-flex items-center gap-1.5">
-                <FileText className="size-4" />
+                <FileText className="size-4 text-primary" />
                 {isPdf
                   ? "Document assignment"
                   : `${worksheet.questions.length} question${worksheet.questions.length === 1 ? "" : "s"}`}
               </span>
               <span className="inline-flex items-center gap-1.5">
-                <Clock className="size-4" />
+                <Clock className="size-4 text-primary" />
                 About {worksheet.estimatedTime} min
               </span>
             </div>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
             {isPdf ? (
               worksheet.pdfUrl && (
                 <a href={worksheet.pdfUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-                  <Button size="lg" className="h-11 w-full gap-2">
+                  <Button size="lg" className="h-11 w-full gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-md">
                     <ExternalLink className="size-4" />
                     Open PDF
                   </Button>
@@ -81,12 +91,12 @@ export default function StudentWorksheetViewer({ worksheet, backUrl }: StudentWo
               <PrintButton
                 label="Print worksheet"
                 icon={<Printer className="size-4" />}
-                className="h-11 w-full px-5 sm:w-auto"
+                className="h-11 w-full px-5 sm:w-auto rounded-xl text-xs sm:text-sm font-semibold shadow-md"
               />
             )}
             {worksheet.pdfAnswerUrl && (
               <a href={worksheet.pdfAnswerUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">
-                <Button size="lg" variant="outline" className="h-11 w-full gap-2">
+                <Button size="lg" variant="outline" className="h-11 w-full gap-2 rounded-xl text-xs sm:text-sm font-semibold shadow-2xs">
                   <Download className="size-4" />
                   View solutions
                 </Button>
@@ -95,8 +105,8 @@ export default function StudentWorksheetViewer({ worksheet, backUrl }: StudentWo
           </div>
         </header>
 
-        <div className="mb-6 flex gap-3 rounded-2xl bg-muted/50 p-4 text-sm leading-6 text-muted-foreground">
-          <Info className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div className="flex gap-3 rounded-2xl border border-border/80 bg-muted/20 p-4 sm:p-5 text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary" />
           <p>
             Work through this as a document-style assignment. It does not use instant feedback,
             accuracy scoring, or the Practice Challenge results flow.

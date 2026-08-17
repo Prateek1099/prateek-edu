@@ -360,37 +360,39 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="relative min-h-screen bg-background">
       {/* Top Bar */}
-      <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border shadow-sm">
+      <div className="sticky top-0 z-30 bg-card/90 backdrop-blur-md border-b border-border/80 shadow-xs">
         <div className="container max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <h2 className="font-bold text-sm md:text-base truncate">{challenge.title}</h2>
-          <div className="flex items-center gap-4 shrink-0">
-            <span className="text-sm text-muted-foreground hidden sm:inline">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="font-bold text-xs sm:text-sm md:text-base truncate text-foreground">{challenge.title}</h2>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline font-medium">
               Question {currentIndex + 1} of {total}
             </span>
-            <div className="flex items-center gap-1.5 bg-muted px-3 py-1.5 rounded-lg">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="font-mono text-sm font-semibold">{formatTimer(timeElapsed)}</span>
+            <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary px-3 py-1.5 rounded-xl shadow-2xs">
+              <Clock className="size-3.5 text-primary" />
+              <span className="font-mono text-xs sm:text-sm font-bold">{formatTimer(timeElapsed)}</span>
             </div>
           </div>
         </div>
-        <Progress value={progressPercent} className="h-1 rounded-none" />
+        <Progress value={progressPercent} className="h-1 rounded-none bg-muted/40" />
       </div>
 
-      <div className="container max-w-6xl mx-auto px-4 py-6">
+      <div className="container max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-6">
         {/* Mobile palette */}
-        <div className="flex gap-1.5 overflow-x-auto pb-4 lg:hidden scrollbar-none">
+        <div className="flex gap-1.5 overflow-x-auto pb-2 lg:hidden scrollbar-none">
           {questions.map((q, i) => (
             <button
               key={q.id}
               onClick={() => setCurrentIndex(i)}
               className={cn(
-                "h-9 w-9 shrink-0 rounded-lg text-xs font-bold transition-all",
-                i === currentIndex && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                "size-9 shrink-0 rounded-xl text-xs font-bold transition-all outline-none",
+                i === currentIndex && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-xs",
                 answers[q.id]
                   ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  : "bg-muted/60 text-muted-foreground hover:bg-muted border border-border/60"
               )}
             >
               {i + 1}
@@ -398,25 +400,25 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
           ))}
         </div>
 
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Question Area */}
           <div className="flex-1 min-w-0">
-            <Card className="shadow-sm">
-              <CardContent className="p-6 md:p-8">
+            <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
+              <CardContent className="p-5 sm:p-8 md:p-10">
                 {/* Question Header */}
                 <div className="flex items-start justify-between gap-3 mb-6">
-                  <span className="text-sm font-semibold text-primary bg-primary/10 px-3 py-1 rounded-lg shrink-0">
-                    Q{currentIndex + 1}
+                  <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-lg shrink-0">
+                    Question {currentIndex + 1} of {total}
                   </span>
                   {current.topicTag && (
-                    <Badge variant="secondary" className="text-xs shrink-0">
+                    <Badge variant="secondary" className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold shrink-0">
                       {current.topicTag}
                     </Badge>
                   )}
                 </div>
 
                 {/* Question Text */}
-                <p className="text-lg md:text-xl font-semibold leading-relaxed mb-8">
+                <p className="text-base sm:text-lg md:text-xl font-bold leading-relaxed mb-8 text-foreground">
                   {current.questionText}
                 </p>
 
@@ -427,55 +429,59 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
                     return (
                       <button
                         key={opt}
+                        type="button"
                         onClick={() => selectAnswer(opt)}
                         className={cn(
-                          "w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all",
+                          "w-full flex items-center gap-3.5 sm:gap-4 p-4 rounded-xl border text-left transition-all duration-150 outline-none select-none cursor-pointer",
                           isSelected
-                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                            : "border-border bg-card hover:border-primary/40 hover:bg-muted/30"
+                            ? "border-primary bg-primary/10 text-foreground ring-2 ring-primary/20 shadow-xs"
+                            : "border-border/80 bg-card hover:border-primary/40 hover:bg-muted/30 text-foreground"
                         )}
                       >
                         <div
                           className={cn(
-                            "h-9 w-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors",
+                            "size-8 sm:size-9 rounded-xl flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 transition-colors border",
                             isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-primary border-primary text-primary-foreground shadow-xs"
+                              : "bg-muted/50 border-border/80 text-muted-foreground"
                           )}
                         >
-                          {opt}
+                          {isSelected ? <Check className="size-4" /> : opt}
                         </div>
-                        <span className={cn("text-sm md:text-base", isSelected && "font-medium text-foreground")}>
+                        <span className={cn("text-xs sm:text-sm md:text-base leading-relaxed flex-1", isSelected && "font-semibold")}>
                           {getOptionText(current, opt)}
                         </span>
+                        {isSelected && <span className="hidden text-xs font-bold text-primary sm:inline">Selected</span>}
                       </button>
                     );
                   })}
                 </div>
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+                <div className="flex items-center justify-between mt-8 pt-6 border-t border-border/60">
                   <Button
                     variant="outline"
                     onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
                     disabled={currentIndex === 0}
+                    className="rounded-xl h-10 px-4 text-xs sm:text-sm font-semibold"
                   >
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                    <ChevronLeft className="size-4 mr-1" /> Previous
                   </Button>
 
                   {currentIndex === total - 1 ? (
                     <Button
                       onClick={() => setShowConfirm(true)}
-                      className="px-8 font-semibold"
-                      size="lg"
+                      className="rounded-xl h-10 px-6 font-semibold text-xs sm:text-sm shadow-md"
+                      size="default"
                     >
-                      <Send className="h-4 w-4 mr-2" /> Submit Challenge
+                      <Send className="size-3.5 mr-2" /> Submit Challenge
                     </Button>
                   ) : (
                     <Button
                       onClick={() => setCurrentIndex((i) => Math.min(total - 1, i + 1))}
+                      className="rounded-xl h-10 px-5 text-xs sm:text-sm font-semibold shadow-xs"
                     >
-                      Next <ChevronRight className="h-4 w-4 ml-1" />
+                      Next <ChevronRight className="size-4 ml-1" />
                     </Button>
                   )}
                 </div>
@@ -484,11 +490,11 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
           </div>
 
           {/* Desktop Palette Sidebar */}
-          <div className="hidden lg:block w-64 shrink-0">
+          <div className="hidden lg:block w-72 shrink-0">
             <div className="sticky top-24">
-              <Card className="shadow-sm">
+              <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
                 <CardContent className="p-5">
-                  <h3 className="text-sm font-bold mb-4 text-muted-foreground uppercase tracking-wider">
+                  <h3 className="text-xs font-bold mb-4 text-muted-foreground uppercase tracking-wider">
                     Question Palette
                   </h3>
                   <div className="grid grid-cols-5 gap-2">
@@ -497,37 +503,37 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
                         key={q.id}
                         onClick={() => setCurrentIndex(i)}
                         className={cn(
-                          "h-10 w-10 rounded-lg text-xs font-bold transition-all",
-                          i === currentIndex && "ring-2 ring-primary ring-offset-2 ring-offset-background",
+                          "size-10 rounded-xl text-xs font-bold transition-all outline-none",
+                          i === currentIndex && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-xs",
                           answers[q.id]
                             ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                            : "bg-muted/60 text-muted-foreground hover:bg-muted border border-border/60"
                         )}
                       >
                         {i + 1}
                       </button>
                     ))}
                   </div>
-                  <div className="mt-5 pt-4 border-t border-border space-y-2 text-sm">
+                  <div className="mt-5 pt-4 border-t border-border/60 space-y-2 text-xs font-medium">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Answered</span>
-                      <span className="font-semibold text-primary">{answeredCount}/{total}</span>
+                      <span className="font-bold text-primary">{answeredCount}/{total}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Remaining</span>
-                      <span className="font-semibold">{total - answeredCount}</span>
+                      <span className="font-bold text-foreground">{total - answeredCount}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time</span>
-                      <span className="font-mono font-semibold">{formatTimer(timeElapsed)}</span>
+                      <span className="text-muted-foreground">Time elapsed</span>
+                      <span className="font-mono font-bold text-foreground">{formatTimer(timeElapsed)}</span>
                     </div>
                   </div>
                   <Button
                     onClick={() => setShowConfirm(true)}
-                    className="w-full mt-5 font-semibold"
+                    className="w-full mt-5 font-semibold rounded-xl text-xs sm:text-sm h-10 shadow-sm"
                     variant={answeredCount === total ? "default" : "outline"}
                   >
-                    <Send className="h-4 w-4 mr-2" /> Submit
+                    <Send className="size-3.5 mr-2" /> Submit Answers
                   </Button>
                 </CardContent>
               </Card>
@@ -538,30 +544,30 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
 
       {/* Submit Confirmation Dialog */}
       <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <DialogContent>
+        <DialogContent className="max-w-md rounded-2xl border border-border/80 bg-card p-6 shadow-xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {answeredCount < total && <AlertTriangle className="h-5 w-5 text-amber-500" />}
+            <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+              {answeredCount < total && <AlertTriangle className="size-5 text-amber-500" />}
               Submit Challenge?
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs sm:text-sm text-muted-foreground leading-relaxed pt-1">
               {answeredCount < total ? (
                 <>
-                  You have answered <strong>{answeredCount}</strong> out of <strong>{total}</strong> questions.{" "}
-                  <strong>{total - answeredCount}</strong> unanswered questions will be marked incorrect.
+                  You have answered <strong className="text-foreground font-semibold">{answeredCount}</strong> out of <strong className="text-foreground font-semibold">{total}</strong> questions.{" "}
+                  <strong className="text-foreground font-semibold">{total - answeredCount}</strong> unanswered questions will be marked incorrect.
                 </>
               ) : (
                 <>
-                  You have answered all <strong>{total}</strong> questions. Ready to submit?
+                  You have answered all <strong className="text-foreground font-semibold">{total}</strong> questions. Ready to submit?
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => setShowConfirm(false)}>
-              Go Back
+          <div className="flex justify-end gap-2.5 mt-5">
+            <Button variant="outline" className="rounded-xl text-xs font-semibold" onClick={() => setShowConfirm(false)}>
+              Keep Reviewing
             </Button>
-            <Button onClick={handleSubmit}>
+            <Button className="rounded-xl text-xs font-semibold shadow-md" onClick={handleSubmit}>
               Submit Answers
             </Button>
           </div>

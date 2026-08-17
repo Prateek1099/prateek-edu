@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, Menu, User as UserIcon, BookOpen, Settings, LogOut, ChevronDown, Repeat } from 'lucide-react';
 import {
@@ -19,6 +19,7 @@ import { useState, useRef, useEffect } from "react";
 import { GlobalSearch } from "./GlobalSearch";
 import { clearEcosystemPreference } from "@/app/actions/resources-actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 type EcosystemPreference = { board: string; boardTitle: string; qualTitle?: string | null };
 
@@ -38,44 +39,48 @@ function UserDropdown({ session }: { session: Session }) {
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative h-9 w-9 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center justify-center"
+        className="relative size-9 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring flex items-center justify-center transition-transform hover:scale-105"
+        aria-label="User menu"
       >
-        <Avatar className="h-9 w-9 border border-border">
+        <Avatar className="size-9 border border-primary/20 ring-2 ring-primary/10">
           <AvatarImage src={session.user?.image || ''} alt="Avatar" />
-          <AvatarFallback className="bg-primary/10 text-primary">
-            {session.user?.name ? session.user.name.charAt(0).toUpperCase() : <UserIcon className="h-4 w-4" />}
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+            {session.user?.name ? session.user.name.charAt(0).toUpperCase() : <UserIcon className="size-4" />}
           </AvatarFallback>
         </Avatar>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-popover ring-1 ring-black/5 dark:ring-white/10 z-50 p-1 animate-in fade-in zoom-in duration-100">
-          <Link 
-            href="/dashboard" 
-            className="flex items-center w-full px-2 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+        <div className="absolute right-0 mt-2 w-56 rounded-2xl shadow-xl bg-popover border border-border/80 ring-1 ring-black/5 dark:ring-white/10 z-50 p-1.5 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
+          <div className="px-3 py-2 border-b border-border/60 mb-1">
+            <p className="text-xs font-semibold text-foreground truncate">{session.user?.name || "Student"}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{session.user?.email}</p>
+          </div>
+          <Link
+            href="/dashboard"
+            className="flex items-center w-full px-3 py-2 text-xs sm:text-sm font-medium rounded-xl hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => setIsOpen(false)}
           >
-            <BookOpen className="mr-2 h-4 w-4" />
+            <BookOpen className="mr-2.5 size-4 text-primary" />
             <span>Dashboard</span>
           </Link>
 
-
-          <div className="h-px bg-border my-1" />
-          <Link 
-            href="/dashboard/settings" 
-            className="flex items-center w-full px-2 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors"
+          <Link
+            href="/dashboard/settings"
+            className="flex items-center w-full px-3 py-2 text-xs sm:text-sm font-medium rounded-xl hover:bg-accent hover:text-accent-foreground transition-colors"
             onClick={() => setIsOpen(false)}
           >
-            <Settings className="mr-2 h-4 w-4" />
+            <Settings className="mr-2.5 size-4 text-muted-foreground" />
             <span>Settings</span>
           </Link>
-          <button 
+          <div className="h-px bg-border/60 my-1" />
+          <button
             onClick={() => { setIsOpen(false); signOut(); }}
-            className="flex items-center w-full px-2 py-2 text-sm text-destructive rounded-md hover:bg-destructive/10 transition-colors mt-1"
+            className="flex items-center w-full px-3 py-2 text-xs sm:text-sm font-medium text-destructive rounded-xl hover:bg-destructive/10 transition-colors"
           >
-            <LogOut className="mr-2 h-4 w-4" />
+            <LogOut className="mr-2.5 size-4" />
             <span>Log out</span>
           </button>
         </div>
@@ -92,29 +97,29 @@ function EcosystemSwitcher({ preference, mobile = false }: { preference: Ecosyst
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className={mobile
-        ? "inline-flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-left text-sm font-semibold leading-snug text-primary transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:shrink-0"
-        : "inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 text-sm font-semibold text-primary transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+        ? "inline-flex min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3.5 py-2.5 text-left text-xs sm:text-sm font-semibold leading-snug text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&_svg]:shrink-0"
+        : "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-primary/20 bg-primary/10 px-3.5 text-xs font-semibold text-primary transition-all hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring shadow-sm [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0"
       }>
-        <span className={mobile ? "min-w-0 break-words" : undefined}>
+        <span className={mobile ? "min-w-0 break-words" : "truncate max-w-40"}>
           {preference.boardTitle} {preference.qualTitle && `• ${preference.qualTitle}`}
         </span>
-        <ChevronDown className="h-4 w-4 opacity-50" />
+        <ChevronDown className="size-3.5 opacity-60 ml-0.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={mobile ? "start" : "end"} className="w-56 max-w-[calc(100vw-2rem)]">
-        <DropdownMenuItem 
-          className="cursor-pointer flex items-center"
+      <DropdownMenuContent align={mobile ? "start" : "end"} className="w-56 max-w-[calc(100vw-2rem)] rounded-2xl border border-border/80 p-1.5 shadow-xl">
+        <DropdownMenuItem
+          className="cursor-pointer flex items-center rounded-xl px-3 py-2 text-xs sm:text-sm font-medium"
           onClick={() => router.push(`/resources/${preference.board}`)}
         >
-          <BookOpen className="h-4 w-4 mr-2" /> Change Qualification
+          <BookOpen className="size-4 mr-2.5 text-primary" /> Change Qualification
         </DropdownMenuItem>
         <DropdownMenuItem
-          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center"
+          className="cursor-pointer text-destructive focus:bg-destructive/10 focus:text-destructive flex items-center rounded-xl px-3 py-2 text-xs sm:text-sm font-medium mt-0.5"
           onClick={async () => {
             await clearEcosystemPreference();
             window.location.href = '/resources';
           }}
         >
-          <Repeat className="h-4 w-4 mr-2" /> Switch Ecosystem
+          <Repeat className="size-4 mr-2.5" /> Switch Ecosystem
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -124,86 +129,117 @@ function EcosystemSwitcher({ preference, mobile = false }: { preference: Ecosyst
 export default function NavbarClient({ preference }: { preference: EcosystemPreference | null }) {
   const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   const routes = [
     { label: status === 'authenticated' ? 'Dashboard' : 'Home', href: status === 'authenticated' ? '/dashboard' : '/' },
     { label: 'Courses', href: '/courses' },
   ];
-  
+
   if (preference) {
     routes.push({ label: 'Resources', href: '/resources' });
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
-      <div className="container mx-auto flex h-16 max-w-7xl min-w-0 items-center justify-between px-3 sm:px-4 lg:px-8">
-        
+    <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
+      <div className="container mx-auto flex h-16 max-w-7xl min-w-0 items-center justify-between px-4 sm:px-6 lg:px-8">
+
         {/* Logo */}
-        <Link href="/" className="flex shrink-0 items-center gap-2 rounded-lg transition-transform hover:scale-105">
-          <div className="rounded-xl bg-primary/10 p-2">
-            <GraduationCap className="h-6 w-6 text-primary" />
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 rounded-xl transition-transform hover:scale-105 outline-none">
+          <div className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+            <GraduationCap className="size-5 text-primary" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground sm:text-xl">
             Vexa
           </span>
         </Link>
-        
-        {/* Mobile Nav */}
-        <div className="flex shrink-0 items-center gap-1 xl:hidden">
+
+        {/* Mobile Nav Trigger & Theme Toggle */}
+        <div className="flex shrink-0 items-center gap-2 xl:hidden">
           <ThemeToggle />
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetTrigger className="flex size-10 items-center justify-center rounded-md transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-[390px]:size-11">
-              <Menu className="h-5 w-5" aria-hidden="true" />
+            <SheetTrigger className="flex size-10 items-center justify-center rounded-xl border border-border/80 bg-card transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-[390px]:size-10 shadow-sm">
+              <Menu className="size-5" aria-hidden="true" />
               <span className="sr-only">Toggle Menu</span>
             </SheetTrigger>
             <SheetContent
               side="right"
-              className="w-[calc(100vw-1rem)] max-w-sm overflow-y-auto p-5 sm:w-full"
+              className="w-[calc(100vw-1rem)] max-w-sm overflow-y-auto p-6 sm:w-full border-border/80 bg-card rounded-l-3xl shadow-2xl"
             >
-              <SheetTitle className="flex items-center gap-2 pr-10 text-lg font-semibold">
-                  <GraduationCap className="h-6 w-6 text-primary" />
-                  Vexa
+              <SheetTitle className="flex items-center gap-2.5 pr-10 text-lg font-bold">
+                <div className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-sm">
+                  <GraduationCap className="size-5 text-primary" />
+                </div>
+                <span>Vexa</span>
               </SheetTitle>
               <SheetDescription className="sr-only">
                 Vexa navigation, search, account, and academic ecosystem controls.
               </SheetDescription>
 
-              <nav className="mt-2 flex flex-col gap-2 text-base font-medium">
+              <nav className="mt-6 flex flex-col gap-2 text-sm font-medium">
                 {preference && (
-                  <div className="mb-2 space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current ecosystem</p>
+                  <div className="mb-3 space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">Academic Ecosystem</p>
                     <EcosystemSwitcher preference={preference} mobile />
                   </div>
                 )}
 
                 <GlobalSearch
-                  className="mb-2 h-11 w-full md:w-full lg:w-full"
+                  className="mb-3 h-11 w-full md:w-full lg:w-full"
                   onOpen={() => setMobileOpen(false)}
                 />
 
-                {routes.map((route) => (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    className="flex min-h-11 items-center rounded-lg px-3 transition-colors hover:bg-accent hover:text-primary"
-                    onClick={() => setMobileOpen(false)}
-                  >
-                    {route.label}
-                  </Link>
-                ))}
-                
+                <div className="space-y-1">
+                  {routes.map((route) => {
+                    const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
+                    return (
+                      <Link
+                        key={route.href}
+                        href={route.href}
+                        className={cn(
+                          "flex min-h-11 items-center rounded-xl px-3.5 text-sm font-semibold transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "text-foreground/80 hover:bg-accent hover:text-foreground"
+                        )}
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {route.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+
                 {status === 'authenticated' ? (
-                  <>
-                    <div className="my-2 h-px bg-border" />
-                    <Link href="/dashboard" className="flex min-h-11 items-center gap-2 rounded-lg px-3 transition-colors hover:bg-accent hover:text-primary" onClick={() => setMobileOpen(false)}><BookOpen className="w-4 h-4" /> Dashboard</Link>
-                    <Button variant="ghost" className="min-h-11 justify-start px-3 hover:text-primary" onClick={() => { setMobileOpen(false); signOut(); }}>
-                      <LogOut className="w-4 h-4 mr-2" /> Logout
+                  <div className="mt-4 pt-4 border-t border-border/80 space-y-1">
+                    <Link
+                      href="/dashboard"
+                      className="flex min-h-11 items-center gap-2.5 rounded-xl px-3.5 text-sm font-semibold text-foreground/80 hover:bg-accent hover:text-foreground transition-colors"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <BookOpen className="size-4 text-primary" /> Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      className="flex min-h-11 items-center gap-2.5 rounded-xl px-3.5 text-sm font-semibold text-foreground/80 hover:bg-accent hover:text-foreground transition-colors"
+                      onClick={() => setMobileOpen(false)}
+                    >
+                      <Settings className="size-4 text-muted-foreground" /> Settings
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      className="w-full min-h-11 justify-start px-3.5 rounded-xl text-sm font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => { setMobileOpen(false); signOut(); }}
+                    >
+                      <LogOut className="size-4 mr-2.5" /> Logout
                     </Button>
-                  </>
+                  </div>
                 ) : (
-                  <Link href="/login" className="mt-3 w-full" onClick={() => setMobileOpen(false)}>
-                    <Button className="h-11 w-full">Login</Button>
-                  </Link>
+                  <div className="mt-4 pt-4 border-t border-border/80">
+                    <Link href="/login" className="w-full" onClick={() => setMobileOpen(false)}>
+                      <Button className="h-11 w-full rounded-xl text-sm font-semibold shadow-md">Login</Button>
+                    </Link>
+                  </div>
                 )}
               </nav>
             </SheetContent>
@@ -211,18 +247,26 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
         </div>
 
         {/* Desktop Nav */}
-        <nav className="hidden items-center space-x-6 text-sm font-medium xl:flex">
-          {routes.map((route) => (
-            <Link
-              key={route.href}
-              href={route.href}
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              {route.label}
-            </Link>
-          ))}
-          
-          <div className="h-4 w-px bg-border mx-2"></div>
+        <nav className="hidden items-center space-x-2 text-sm font-medium xl:flex">
+          {routes.map((route) => {
+            const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
+            return (
+              <Link
+                key={route.href}
+                href={route.href}
+                className={cn(
+                  "px-3.5 py-2 rounded-xl text-sm font-semibold transition-all",
+                  isActive
+                    ? "text-primary bg-primary/10 border border-primary/20 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                {route.label}
+              </Link>
+            );
+          })}
+
+          <div className="h-4 w-px bg-border/80 mx-2"></div>
 
           {preference && <EcosystemSwitcher preference={preference} />}
 
@@ -233,7 +277,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
             <UserDropdown session={session} />
           ) : (
             <Link href="/login">
-              <Button variant="default" className="rounded-full px-6 transition-transform hover:scale-105 active:scale-95 shadow-md">
+              <Button variant="default" className="rounded-xl px-5 h-9 text-xs sm:text-sm font-semibold transition-transform hover:scale-105 active:scale-95 shadow-md">
                 Login
               </Button>
             </Link>

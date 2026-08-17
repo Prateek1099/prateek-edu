@@ -100,10 +100,12 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
 
   if (mistakes.length === 0) {
     return (
-      <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed">
-        <BookOpen className="h-10 w-10 text-muted-foreground mx-auto mb-4 opacity-50" />
-        <h3 className="text-lg font-semibold">No mistakes yet</h3>
-        <p className="text-muted-foreground">Complete a Topic Challenge and your mistakes will appear here automatically.</p>
+      <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 px-5 py-16 text-center">
+        <BookOpen className="mx-auto size-10 text-muted-foreground opacity-50 mb-3" />
+        <h3 className="text-base sm:text-lg font-bold">No mistakes recorded yet</h3>
+        <p className="mx-auto mt-1 max-w-md text-xs sm:text-sm leading-relaxed text-muted-foreground">
+          As you practice Topic Challenges, questions you answer incorrectly will appear here automatically for review.
+        </p>
       </div>
     );
   }
@@ -111,34 +113,45 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
   return (
     <div className="space-y-6">
       {/* Filter Tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {([
-          ["all", "All", mistakes.length],
+          ["all", "All Mistakes", mistakes.length],
           ["needs_revision", "Needs Revision", mistakes.filter((m) => m.status === "needs_revision").length],
           ["revised", "Revised", mistakes.filter((m) => m.status === "revised").length],
-        ] as const).map(([key, label, count]) => (
-          <Button
-            key={key}
-            variant={filter === key ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(key as any)}
-          >
-            {label} ({count})
-          </Button>
-        ))}
+        ] as const).map(([key, label, count]) => {
+          const isSelected = filter === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setFilter(key)}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all duration-150 outline-none select-none cursor-pointer",
+                isSelected
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                  : "bg-muted/40 text-muted-foreground hover:bg-muted/80 hover:text-foreground border border-border/60"
+              )}
+            >
+              <span>{label}</span>
+              <span className={cn("px-1.5 py-0.2 rounded-md text-[11px] font-bold", isSelected ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Retry Related Challenges */}
       {Object.keys(challengeRetryMap).length > 0 && filter !== "revised" && (
-        <Card className="bg-primary/5 border-primary/20 shadow-sm">
-          <CardContent className="p-4">
-            <p className="text-sm font-semibold text-primary mb-2 flex items-center gap-2">
-              <RotateCcw className="h-4 w-4" /> Retry Related Challenges
+        <Card className="rounded-2xl border border-primary/20 bg-primary/5 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <p className="text-xs sm:text-sm font-bold text-primary mb-3 flex items-center gap-2">
+              <RotateCcw className="size-4" /> Retry Related Challenges
             </p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(challengeRetryMap).map(([id, ch]) => (
                 <Link key={id} href={ch.url}>
-                  <Badge variant="outline" className="cursor-pointer hover:bg-primary/10 transition-colors py-1.5 px-3">
+                  <Badge variant="outline" className="cursor-pointer bg-background hover:bg-primary/10 border-primary/30 transition-colors py-1.5 px-3 rounded-xl text-xs font-semibold">
                     {ch.title} →
                   </Badge>
                 </Link>
@@ -158,28 +171,34 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
             <Card
               key={m.id}
               className={cn(
-                "shadow-sm transition-colors",
-                isRevised ? "border-emerald-500/30 opacity-75" : "border-amber-500/30"
+                "rounded-2xl shadow-sm transition-all duration-200 overflow-hidden bg-card",
+                isRevised
+                  ? "border border-emerald-500/30 opacity-80"
+                  : "border border-border/80 hover:border-amber-500/40"
               )}
             >
               {/* Collapsed Header */}
               <button
                 onClick={() => toggleExpand(m.id)}
-                className="w-full text-left p-4 flex items-center gap-3"
+                className="w-full text-left p-4 sm:p-5 flex items-center gap-3.5 transition-colors hover:bg-muted/20 outline-none"
               >
                 <div className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
-                  isRevised ? "bg-emerald-500/10 text-emerald-500" : "bg-amber-500/10 text-amber-500"
+                  "size-9 rounded-xl flex items-center justify-center shrink-0 border",
+                  isRevised
+                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400"
+                    : "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
                 )}>
-                  {isRevised ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                  {isRevised ? <CheckCircle2 className="size-4" /> : <XCircle className="size-4" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{m.questionText}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs sm:text-sm font-semibold truncate text-foreground">{m.questionText}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
                     {m.topicTag && (
-                      <Badge variant="secondary" className="text-xs">{m.topicTag}</Badge>
+                      <Badge variant="secondary" className="bg-primary/10 border border-primary/20 text-primary text-[11px] font-semibold px-2 py-0.2">
+                        {m.topicTag}
+                      </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       {m.challengeTitle} · {m.mistakeCount}× wrong
                     </span>
                   </div>
@@ -187,25 +206,25 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
                 <Badge
                   variant="outline"
                   className={cn(
-                    "shrink-0 text-xs",
+                    "shrink-0 text-xs font-bold px-2.5 py-0.5 rounded-lg",
                     m.mistakeCount >= 3
-                      ? "border-red-500/50 text-red-500 bg-red-500/5"
-                      : "border-amber-500/50 text-amber-500 bg-amber-500/5"
+                      ? "border-destructive/40 text-destructive bg-destructive/10"
+                      : "border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/10"
                   )}
                 >
                   ×{m.mistakeCount}
                 </Badge>
                 {isExpanded ? (
-                  <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronUp className="size-4 shrink-0 text-muted-foreground" />
                 ) : (
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
                 )}
               </button>
 
               {/* Expanded Content */}
               {isExpanded && (
-                <CardContent className="px-4 pb-4 pt-0 border-t border-border">
-                  <p className="text-sm font-semibold mt-3 mb-4">{m.questionText}</p>
+                <CardContent className="px-4 sm:px-6 pb-5 pt-0 border-t border-border/60">
+                  <p className="text-sm font-bold mt-4 mb-4 text-foreground leading-relaxed">{m.questionText}</p>
                   <div className="space-y-2">
                     {OPTIONS.map((opt) => {
                       const isStudent = m.studentAnswer.toUpperCase() === opt;
@@ -214,48 +233,48 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
                         <div
                           key={opt}
                           className={cn(
-                            "flex items-center gap-3 p-3 rounded-lg border text-sm",
-                            isCorrect && "border-emerald-500/50 bg-emerald-500/5",
-                            isStudent && !isCorrect && "border-red-500/50 bg-red-500/5",
-                            !isCorrect && !isStudent && "border-border"
+                            "flex items-center gap-3 p-3 sm:p-3.5 rounded-xl border text-xs sm:text-sm transition-colors",
+                            isCorrect && "border-emerald-500/50 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100 font-medium",
+                            isStudent && !isCorrect && "border-destructive/50 bg-destructive/10 text-destructive-foreground font-medium",
+                            !isCorrect && !isStudent && "border-border/60 bg-muted/20 text-muted-foreground"
                           )}
                         >
                           <div className={cn(
-                            "h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                            isCorrect ? "bg-emerald-500 text-white" :
-                            isStudent ? "bg-red-500 text-white" :
-                            "bg-muted text-muted-foreground"
+                            "size-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0",
+                            isCorrect ? "bg-emerald-600 text-white" :
+                            isStudent ? "bg-destructive text-white" :
+                            "bg-muted text-muted-foreground border border-border/60"
                           )}>
                             {opt}
                           </div>
-                          <span className="flex-1">{getOptionText(m, opt)}</span>
-                          {isCorrect && <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />}
-                          {isStudent && !isCorrect && <XCircle className="h-4 w-4 text-red-500 shrink-0" />}
+                          <span className="flex-1 leading-relaxed">{getOptionText(m, opt)}</span>
+                          {isCorrect && <CheckCircle2 className="size-4 text-emerald-600 shrink-0" />}
+                          {isStudent && !isCorrect && <XCircle className="size-4 text-destructive shrink-0" />}
                         </div>
                       );
                     })}
                   </div>
 
                   {m.explanation && (
-                    <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
-                      <p className="font-semibold text-primary text-xs uppercase tracking-wider mb-1 flex items-center gap-1">
-                        <Lightbulb className="h-3 w-3" /> Explanation
+                    <div className="mt-4 p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs sm:text-sm">
+                      <p className="font-bold text-primary text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                        <Lightbulb className="size-3.5" /> Explanation
                       </p>
-                      <p className="text-foreground/90">{m.explanation}</p>
+                      <p className="text-foreground/90 leading-relaxed">{m.explanation}</p>
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-                    <div className="text-xs text-muted-foreground">
-                      Last seen: {new Date(m.updatedAt).toLocaleDateString()}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-5 pt-4 border-t border-border/60">
+                    <div className="text-[11px] sm:text-xs text-muted-foreground font-medium">
+                      Last answered incorrectly: {new Date(m.updatedAt).toLocaleDateString()}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Link href={m.retryUrl}>
-                        <Button variant="outline" size="sm">
-                          <RotateCcw className="h-3 w-3 mr-1.5" /> Retry Challenge
+                        <Button variant="outline" size="sm" className="rounded-xl h-9 text-xs font-semibold">
+                          <RotateCcw className="size-3.5 mr-1.5" /> Retry Challenge
                         </Button>
                       </Link>
-                      <AskTeacherDialog 
+                      <AskTeacherDialog
                         context={{
                           source: "Mistake Book",
                           topic: m.topicTag || undefined,
@@ -268,13 +287,16 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
                         size="sm"
                         disabled={toggling === m.id}
                         onClick={() => toggleStatus(m.id, m.status)}
-                        className={!isRevised ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                        className={cn(
+                          "rounded-xl h-9 text-xs font-semibold",
+                          !isRevised ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : ""
+                        )}
                       >
                         {toggling === m.id
-                          ? "..."
+                          ? "Updating..."
                           : isRevised
                           ? "Mark Needs Revision"
-                          : "✓ Mark Revised"}
+                          : "✓ Mark as Revised"}
                       </Button>
                     </div>
                   </div>

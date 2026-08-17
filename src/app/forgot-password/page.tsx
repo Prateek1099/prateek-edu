@@ -32,21 +32,53 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-140px)] items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-md shadow-lg border-primary/10">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto rounded-xl border border-primary/20 bg-primary/10 p-3"><Mail className="h-7 w-7 text-primary" /></div>
-          <CardTitle>Forgot password?</CardTitle>
-          <CardDescription>Enter your email and we&apos;ll send a reset link if the account supports password login.</CardDescription>
+    <div className="relative flex min-h-[calc(100vh-140px)] items-center justify-center p-4">
+      {/* Ambient background glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-1/4 -z-10 mx-auto h-72 max-w-2xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
+      />
+      <Card className="w-full max-w-md rounded-2xl border border-border/80 bg-card shadow-xl">
+        <CardHeader className="space-y-3 text-center pb-4">
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-2xs">
+            <Mail className="size-7 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-2xl font-extrabold tracking-tight">Forgot password?</CardTitle>
+            <CardDescription className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+              Enter your account email and we&apos;ll send a password reset link.
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" onSubmit={submit}>
-            <div className="grid gap-2"><Label htmlFor="email">Email</Label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
-            <Button className="w-full" type="submit" disabled={isSubmitting}>{isSubmitting ? "Sending..." : "Send reset link"}</Button>
-            {message && <p className="rounded-md bg-muted p-3 text-center text-sm text-muted-foreground">{message}</p>}
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-10 rounded-xl bg-background border-border/80"
+                required
+              />
+            </div>
+            <Button className="w-full h-11 rounded-xl text-xs sm:text-sm font-semibold shadow-md" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Sending..." : "Send reset link"}
+            </Button>
+            {message && (
+              <p className="rounded-xl border border-border/60 bg-muted/40 p-3 text-center text-xs sm:text-sm text-muted-foreground">
+                {message}
+              </p>
+            )}
           </form>
         </CardContent>
-        <CardFooter><Link className="mx-auto inline-flex items-center text-sm font-medium text-primary hover:underline" href="/login"><ArrowLeft className="mr-1 h-4 w-4" /> Back to login</Link></CardFooter>
+        <CardFooter className="pt-0 justify-center">
+          <Link className="inline-flex items-center text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors" href="/login">
+            <ArrowLeft className="mr-1.5 size-3.5" /> Back to login
+          </Link>
+        </CardFooter>
       </Card>
     </div>
   );
