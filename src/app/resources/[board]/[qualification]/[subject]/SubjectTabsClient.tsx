@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,19 +198,41 @@ export default function SubjectTabsClient({
   };
 
   return (
-    <Tabs defaultValue="practice" className="w-full">
-      <TabsList className="mb-8 grid h-auto w-full max-w-4xl grid-cols-2 gap-1 rounded-xl border bg-muted/30 p-1.5 sm:grid-cols-4">
-        <TabsTrigger value="practice" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm">
-          <Zap className="h-4 w-4" /> Practice
-        </TabsTrigger>
-        <TabsTrigger value="notes" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><ScrollText className="h-4 w-4" /> Notes</TabsTrigger>
-        <TabsTrigger value="topicals" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><FileQuestion className="h-4 w-4" /> Topical Questions</TabsTrigger>
-        <TabsTrigger value="syllabus" className="min-h-11 gap-2 whitespace-normal px-2 py-2.5 text-center text-xs sm:text-sm"><ListChecks className="h-4 w-4" /> Syllabus</TabsTrigger>
-      </TabsList>
+    <TabsPrimitive.Root defaultValue="practice" className="w-full">
+      <TabsPrimitive.List className="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-1.5 rounded-2xl sm:rounded-full border border-zinc-200/80 bg-white/80 p-1.5 backdrop-blur-md max-w-3xl shadow-sm ring-1 ring-zinc-200/60 dark:border-white/10 dark:bg-[#11111a]/80 dark:ring-white/5">
+        <TabsPrimitive.Tab
+          value="practice"
+          className="group relative inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/25 data-[active]:border-indigo-400/30 border border-transparent"
+        >
+          <Zap className="size-4 shrink-0 transition-transform group-hover:scale-105 text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-300 dark:group-hover:text-white group-data-[active]:text-white dark:group-data-[active]:text-white" />
+          <span>Practice</span>
+        </TabsPrimitive.Tab>
+        <TabsPrimitive.Tab
+          value="notes"
+          className="group relative inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/25 data-[active]:border-indigo-400/30 border border-transparent"
+        >
+          <ScrollText className="size-4 shrink-0 transition-transform group-hover:scale-105 text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-300 dark:group-hover:text-white group-data-[active]:text-white dark:group-data-[active]:text-white" />
+          <span>Notes</span>
+        </TabsPrimitive.Tab>
+        <TabsPrimitive.Tab
+          value="topicals"
+          className="group relative inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/25 data-[active]:border-indigo-400/30 border border-transparent"
+        >
+          <FileQuestion className="size-4 shrink-0 transition-transform group-hover:scale-105 text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-300 dark:group-hover:text-white group-data-[active]:text-white dark:group-data-[active]:text-white" />
+          <span>Topical Questions</span>
+        </TabsPrimitive.Tab>
+        <TabsPrimitive.Tab
+          value="syllabus"
+          className="group relative inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-full px-3 py-2.5 sm:py-2.5 text-xs sm:text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-100/80 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/25 data-[active]:border-indigo-400/30 border border-transparent"
+        >
+          <ListChecks className="size-4 shrink-0 transition-transform group-hover:scale-105 text-zinc-500 group-hover:text-zinc-950 dark:text-zinc-300 dark:group-hover:text-white group-data-[active]:text-white dark:group-data-[active]:text-white" />
+          <span>Syllabus</span>
+        </TabsPrimitive.Tab>
+      </TabsPrimitive.List>
       
       {/* Practice hub */}
 
-      <TabsContent value="notes" className="mt-0">
+      <TabsPrimitive.Panel value="notes" className="mt-0 outline-none">
         {notes.length === 0 ? (
           <div className="rounded-2xl border border-dashed bg-muted/20 px-5 py-14 text-center">
             <BookOpen className="mx-auto size-10 text-muted-foreground" />
@@ -234,9 +256,9 @@ export default function SubjectTabsClient({
             {renderNoteSection(studyNotes, "STUDY_NOTES")}
           </div>
         )}
-      </TabsContent>
+      </TabsPrimitive.Panel>
 
-      <TabsContent value="topicals" className="mt-0">
+      <TabsPrimitive.Panel value="topicals" className="mt-0 outline-none">
         <div className="space-y-8">
           <header className="max-w-2xl">
             <p className="text-sm font-semibold text-primary">Topical Questions</p>
@@ -282,9 +304,9 @@ export default function SubjectTabsClient({
             </div>
           )}
         </div>
-      </TabsContent>
+      </TabsPrimitive.Panel>
 
-      <TabsContent value="practice" className="mt-0">
+      <TabsPrimitive.Panel value="practice" className="mt-0 outline-none">
         <div className="space-y-12">
           <header className="max-w-2xl">
             <p className="text-sm font-semibold text-primary">Practice</p>
@@ -543,9 +565,9 @@ export default function SubjectTabsClient({
             </Link>
           </section>
         </div>
-      </TabsContent>
+      </TabsPrimitive.Panel>
 
-      <TabsContent value="syllabus" className="mt-0">
+      <TabsPrimitive.Panel value="syllabus" className="mt-0 outline-none">
         <Card className="shadow-sm border-border bg-card">
           <CardHeader>
             <CardTitle>Syllabus Outline</CardTitle>
@@ -584,7 +606,7 @@ export default function SubjectTabsClient({
              )}
           </CardContent>
         </Card>
-      </TabsContent>
-    </Tabs>
+      </TabsPrimitive.Panel>
+    </TabsPrimitive.Root>
   );
 }

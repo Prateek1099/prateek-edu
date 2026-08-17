@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -81,11 +81,21 @@ export default function RegisterPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <Tabs defaultValue="student" onValueChange={(v) => setRegisterAs(v)} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="student">Student</TabsTrigger>
-              <TabsTrigger value="teacher">Teacher</TabsTrigger>
-            </TabsList>
+          <TabsPrimitive.Root defaultValue="student" value={registerAs} onValueChange={(v) => v && setRegisterAs(v)} className="w-full">
+            <TabsPrimitive.List className="mb-4 grid w-full grid-cols-2 gap-1.5 rounded-xl border border-zinc-200/80 bg-zinc-100/80 p-1.5 backdrop-blur-md shadow-sm ring-1 ring-zinc-200/60 dark:border-white/10 dark:bg-[#11111a]/80 dark:ring-white/5">
+              <TabsPrimitive.Tab
+                value="student"
+                className="group relative inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-200/70 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/20 data-[active]:border-indigo-400/30 border border-transparent"
+              >
+                Student
+              </TabsPrimitive.Tab>
+              <TabsPrimitive.Tab
+                value="teacher"
+                className="group relative inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-all duration-200 cursor-pointer select-none outline-none hover:text-zinc-950 hover:bg-zinc-200/70 dark:text-zinc-300 dark:hover:text-white dark:hover:bg-white/10 data-[active]:bg-gradient-to-r data-[active]:from-indigo-600 data-[active]:to-indigo-500 data-[active]:text-white data-[active]:font-semibold data-[active]:shadow-md data-[active]:shadow-indigo-500/20 data-[active]:border-indigo-400/30 border border-transparent"
+              >
+                Teacher
+              </TabsPrimitive.Tab>
+            </TabsPrimitive.List>
             
             <form onSubmit={handleRegister} className="space-y-4">
               {error && (
@@ -158,7 +168,7 @@ export default function RegisterPage() {
                 {loading ? "Creating Account..." : "Sign Up"}
               </Button>
             </form>
-          </Tabs>
+          </TabsPrimitive.Root>
         </CardContent>
         <CardFooter className="flex flex-col text-sm text-muted-foreground text-center space-y-2">
           <div>
