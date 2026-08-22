@@ -4,13 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { getCompletedCourseIds } from "@/lib/course-entitlements";
 import { prisma } from "@/lib/prisma";
 import { CourseCatalog } from "./CourseCatalog";
-import { publicMetadata } from "@/lib/seo";
-
-export const metadata = publicMetadata({
-  title: "Courses",
-  description: "Explore Vexa's published courses and structured learning material for supported CBSE and Cambridge-focused school subjects.",
-  path: "/courses",
-});
 
 export default async function CoursesPage() {
   const session = await getServerSession(authOptions);

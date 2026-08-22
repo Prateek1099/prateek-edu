@@ -2,13 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { getEcosystemPreference } from "@/app/actions/resources-actions";
 import ResourcesClient from "./ResourcesClient";
 import { redirect } from "next/navigation";
-import { publicMetadata } from "@/lib/seo";
-
-export const metadata = publicMetadata({
-  title: "Student Learning Resources",
-  description: "Browse Vexa notes, topical questions, worksheets, syllabus documents, and practice resources organized by academic board and subject.",
-  path: "/resources",
-});
 
 export default async function ResourcesRootPage() {
   const pref = await getEcosystemPreference();

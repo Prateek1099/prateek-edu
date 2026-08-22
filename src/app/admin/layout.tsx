@@ -3,10 +3,6 @@ import { AdminBoardProvider } from "@/components/AdminBoardContext";
 import { prisma } from "@/lib/prisma";
 import { rejectIfNotAdmin } from "@/lib/require-role";
 import { redirect } from "next/navigation";
-import type { Metadata } from "next";
-import { PRIVATE_ROBOTS } from "@/lib/seo";
-
-export const metadata: Metadata = { title: "Admin", robots: PRIVATE_ROBOTS };
 
 export default async function AdminLayout({
   children,

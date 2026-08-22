@@ -4,16 +4,13 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { WorkspaceSidebar } from "@/components/WorkspaceSidebar";
 import { WorkspaceProvider } from "@/components/WorkspaceContext";
-import type { Metadata } from "next";
-import { PRIVATE_ROBOTS } from "@/lib/seo";
-
-export const metadata: Metadata = { title: "Teacher Workspace", robots: PRIVATE_ROBOTS };
 
 export default async function WorkspaceLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const user = session.user as typeof session.user & { id?: string; role?: string };
+  // Type assertion since we augmented the session user
+  const user = session.user as any;
   if (user.role !== "TEACHER") redirect("/dashboard");
 
   const workspace = await prisma.workspace.findUnique({
@@ -37,7 +34,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           </div>
           <h1 className="text-2xl font-bold tracking-tight mb-2">Workspace Pending Approval</h1>
           <p className="text-muted-foreground mb-4">
-            Your workspace <strong>&ldquo;{workspace.name}&rdquo;</strong> is awaiting approval from the Vexa admin team.
+            Your workspace <strong>"{workspace.name}"</strong> is awaiting approval from the Vexa admin team.
           </p>
           <p className="text-sm text-muted-foreground">
             You will receive access once your workspace has been reviewed and activated. This usually takes less than 24 hours.

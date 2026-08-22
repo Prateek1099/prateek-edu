@@ -11,37 +11,16 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { prisma } from "@/lib/prisma";
 import { cn } from "@/lib/utils";
-import { publicMetadata } from "@/lib/seo";
-
-type NoteRouteParams = { board: string; qualification: string; subject: string; id: string };
-
-export async function generateMetadata({ params }: { params: Promise<NoteRouteParams> }) {
-  const { board, qualification, subject, id } = await params;
-  const note = await prisma.note.findFirst({
-    where: {
-      id,
-      isPublished: true,
-      subject: {
-        slug: subject,
-        status: "PUBLISHED",
-        qualification: { name: qualification, status: "PUBLISHED", board: { name: board, status: "PUBLISHED" } },
-      },
-    },
-    select: { title: true, content: true, noteType: true },
-  });
-  if (!note) return { title: "Study Note" };
-  const noteLabel = note.noteType === "NOTEBOOK_WORK" ? "Notebook Work" : "Study Notes";
-  return publicMetadata({
-    title: `${note.title} — ${noteLabel}`,
-    description: (note.content?.trim() || `Open ${note.title}, published as ${noteLabel} on Vexa.`).slice(0, 160),
-    path: `/resources/${board}/${qualification}/${subject}/notes/${id}`,
-  });
-}
 
 export default async function StudentTextNotePage({
   params,
 }: {
-  params: Promise<NoteRouteParams>;
+  params: Promise<{
+    board: string;
+    qualification: string;
+    subject: string;
+    id: string;
+  }>;
 }) {
   const { board, qualification, subject, id } = await params;
 
