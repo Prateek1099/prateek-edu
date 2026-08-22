@@ -18,6 +18,21 @@ import {
   User
 } from "lucide-react";
 import CheckoutButton from "@/components/CheckoutButton";
+import { publicMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const course = await prisma.course.findUnique({
+    where: { slug },
+    select: { title: true, shortDescription: true, description: true, isPublished: true },
+  });
+  if (!course?.isPublished) return { title: "Course" };
+  return publicMetadata({
+    title: course.title,
+    description: (course.shortDescription || course.description || `Explore ${course.title} on Vexa.`).slice(0, 160),
+    path: `/courses/${slug}`,
+  });
+}
 
 export default async function CourseDetailPage({
   params,

@@ -4,6 +4,18 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight, ArrowLeft, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { publicMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ board: string }> }) {
+  const { board } = await params;
+  const boardData = await prisma.board.findUnique({ where: { name: board }, select: { title: true, status: true } });
+  if (!boardData || boardData.status !== "PUBLISHED") return { title: "Learning Resources" };
+  return publicMetadata({
+    title: `${boardData.title} Learning Resources`,
+    description: `Browse Vexa's ${boardData.title}-focused qualifications, subjects, notes, worksheets, topical questions, and practice resources.`,
+    path: `/resources/${board}`,
+  });
+}
 
 export default async function BoardQualificationSelection({
   params,

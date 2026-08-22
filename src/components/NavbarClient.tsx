@@ -131,14 +131,18 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
-  const routes = [
+  const desktopRoutes = [
     { label: status === 'authenticated' ? 'Dashboard' : 'Home', href: status === 'authenticated' ? '/dashboard' : '/' },
+    { label: 'Features', href: '/features' },
+    { label: 'Resources', href: '/resources' },
     { label: 'Courses', href: '/courses' },
   ];
-
-  if (preference) {
-    routes.push({ label: 'Resources', href: '/resources' });
-  }
+  const mobileRoutes = [
+    ...desktopRoutes,
+    { label: 'Pricing', href: '/pricing' },
+    { label: 'About', href: '/about' },
+    { label: 'Request Demo', href: '/request-demo' },
+  ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
@@ -190,7 +194,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
                 />
 
                 <div className="space-y-1">
-                  {routes.map((route) => {
+                  {mobileRoutes.map((route) => {
                     const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
                     return (
                       <Link
@@ -236,9 +240,13 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
                   </div>
                 ) : (
                   <div className="mt-4 pt-4 border-t border-border/80">
-                    <Link href="/login" className="w-full" onClick={() => setMobileOpen(false)}>
-                      <Button className="h-11 w-full rounded-xl text-sm font-semibold shadow-md">Login</Button>
-                    </Link>
+                    <Button
+                      nativeButton={false}
+                      render={<Link href="/login" onClick={() => setMobileOpen(false)} />}
+                      className="h-11 w-full rounded-xl text-sm font-semibold shadow-md"
+                    >
+                      Login
+                    </Button>
                   </div>
                 )}
               </nav>
@@ -248,7 +256,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
 
         {/* Desktop Nav */}
         <nav className="hidden items-center space-x-2 text-sm font-medium xl:flex">
-          {routes.map((route) => {
+          {desktopRoutes.map((route) => {
             const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
             return (
               <Link
@@ -273,14 +281,16 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
           <GlobalSearch />
           <ThemeToggle />
 
+          <Button nativeButton={false} render={<Link href="/request-demo" />} variant="outline" className="rounded-xl px-4 h-9 text-xs font-semibold">
+            Request Demo
+          </Button>
+
           {status === 'authenticated' ? (
             <UserDropdown session={session} />
           ) : (
-            <Link href="/login">
-              <Button variant="default" className="rounded-xl px-5 h-9 text-xs sm:text-sm font-semibold transition-transform hover:scale-105 active:scale-95 shadow-md">
-                Login
-              </Button>
-            </Link>
+            <Button nativeButton={false} render={<Link href="/login" />} variant="default" className="rounded-xl px-5 h-9 text-xs sm:text-sm font-semibold transition-transform hover:scale-105 active:scale-95 shadow-md">
+              Login
+            </Button>
           )}
         </nav>
       </div>

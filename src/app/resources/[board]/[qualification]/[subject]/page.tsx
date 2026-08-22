@@ -4,6 +4,21 @@ import SubjectTabsClient from "./SubjectTabsClient";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen } from "lucide-react";
+import { publicMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ board: string; qualification: string; subject: string }> }) {
+  const { board, qualification, subject } = await params;
+  const data = await prisma.subject.findFirst({
+    where: { slug: subject, status: "PUBLISHED", qualification: { name: qualification, status: "PUBLISHED", board: { name: board, status: "PUBLISHED" } } },
+    select: { name: true, qualification: { select: { title: true, board: { select: { title: true } } } } },
+  });
+  if (!data) return { title: "Subject Resources" };
+  return publicMetadata({
+    title: `${data.name} Notes, Worksheets and Practice`,
+    description: `Study ${data.name} with published notes, topical questions, worksheets, syllabus material, and practice for ${data.qualification.title} ${data.qualification.board.title}.`,
+    path: `/resources/${board}/${qualification}/${subject}`,
+  });
+}
 
 export default async function SubjectDashboardPage({ params }: { params: Promise<{ board: string, qualification: string, subject: string }> }) {
   const { board, qualification, subject } = await params;

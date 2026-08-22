@@ -5,6 +5,21 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChevronRight, BookOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClientPreferenceSetter } from "./ClientPreferenceSetter";
+import { publicMetadata } from "@/lib/seo";
+
+export async function generateMetadata({ params }: { params: Promise<{ board: string; qualification: string }> }) {
+  const { board, qualification } = await params;
+  const data = await prisma.qualification.findFirst({
+    where: { name: qualification, status: "PUBLISHED", board: { name: board, status: "PUBLISHED" } },
+    select: { title: true, board: { select: { title: true } } },
+  });
+  if (!data) return { title: "Subject Resources" };
+  return publicMetadata({
+    title: `${data.title} Subject Resources`,
+    description: `Explore ${data.title} subjects and structured learning resources for ${data.board.title}-focused study on Vexa.`,
+    path: `/resources/${board}/${qualification}`,
+  });
+}
 
 export default async function QualificationPage({ params }: { params: Promise<{ board: string, qualification: string }> }) {
   const { board, qualification } = await params;

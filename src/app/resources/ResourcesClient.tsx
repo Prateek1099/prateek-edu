@@ -47,7 +47,7 @@ export default function ResourcesClient({
                   <div>
                     <h2 className="text-2xl font-bold tracking-tight mb-2">{b.title}</h2>
                     <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                      {isCambridge ? "IGCSE, O Level, AS & A Level resources and past papers." : isCbse ? "Class 9, Class 10, Class 11, and Class 12 resources." : "Custom curriculum and revision study material."}
+                      {isCambridge ? "IGCSE, O Level, AS & A Level learning and revision resources." : isCbse ? "Class 9, Class 10, Class 11, and Class 12 resources." : "Custom curriculum and revision study material."}
                     </p>
                   </div>
                   <div className="w-full pt-4 mt-auto">
