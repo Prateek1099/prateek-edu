@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { PaperBuilderModeNav } from "@/components/paper-builder/PaperBuilderModeNav";
 import { buttonVariants } from "@/components/ui/button";
 import { calculateTemplateSnapshotMarks } from "@/lib/paper-builder/blueprint-template-rules";
 import type { ManagedBlueprintTemplate } from "@/lib/paper-builder/blueprint-template-types";
@@ -127,6 +128,8 @@ export default async function BlueprintTemplatesPage() {
           <ArrowLeft className="size-4" /> Back to Blueprint Builder
         </Link>
       </header>
+
+      <PaperBuilderModeNav mode="templates" />
 
       <TemplatesManagerClient
         templates={templates}

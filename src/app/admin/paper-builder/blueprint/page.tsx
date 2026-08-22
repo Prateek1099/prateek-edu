@@ -46,7 +46,7 @@ export default async function AdminBlueprintBuilderPage({
       <header className="paper-builder-screen-only max-w-4xl">
         <h1 className="text-3xl font-bold tracking-tight">Blueprint Builder</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Control chapter-wise marks and question distribution, reuse saved blueprint patterns, then generate a printable paper from reviewed global Vexa Question Bank records. Generated papers remain browser-session-only.
+          Control chapter-wise marks and question distribution, reuse saved blueprint patterns, then generate a printable paper from reviewed global Vexa Question Bank records. Final validated papers can be preserved in Paper Archive.
         </p>
       </header>
 

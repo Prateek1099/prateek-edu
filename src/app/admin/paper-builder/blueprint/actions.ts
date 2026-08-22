@@ -123,6 +123,7 @@ function validateDraft(input: BlueprintPaperDraft) {
 
 function mapQuestion(question: {
   id: string;
+  updatedAt: Date;
   subjectId: string;
   topicId: string | null;
   questionType: PaperBuilderQuestion["questionType"];
@@ -145,6 +146,7 @@ function mapQuestion(question: {
 }): PaperBuilderQuestion {
   return {
     id: question.id,
+    sourceUpdatedAt: question.updatedAt.toISOString(),
     subjectId: question.subjectId,
     topicId: question.topicId,
     questionType: question.questionType,
@@ -186,6 +188,7 @@ async function loadBlueprintScope(input: BlueprintPaperDraft) {
       where: { workspaceId: null, subjectId: input.subjectId, topicId: { in: topicIds } },
       select: {
         id: true,
+        updatedAt: true,
         subjectId: true,
         topicId: true,
         questionType: true,

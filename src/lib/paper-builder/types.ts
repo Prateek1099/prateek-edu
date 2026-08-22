@@ -10,6 +10,7 @@ export type PaperDifficulty = (typeof PAPER_DIFFICULTIES)[number];
 
 export type PaperBuilderQuestion = {
   id: string;
+  sourceUpdatedAt?: string;
   subjectId: string;
   topicId: string | null;
   questionType: BankQuestionTypeValue;

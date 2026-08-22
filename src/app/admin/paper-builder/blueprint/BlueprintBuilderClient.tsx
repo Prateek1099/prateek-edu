@@ -90,6 +90,7 @@ import {
   selectBlueprintCandidate,
   validateBlueprintSelection,
 } from "./actions";
+import { saveGeneratedPaper } from "../archive/actions";
 import {
   applyPaperBlueprintTemplate,
   createPaperBlueprintTemplate,
@@ -150,6 +151,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [savedBlueprintTemplates, setSavedBlueprintTemplates] = useState(blueprintTemplates);
   const [selectedBlueprintTemplateId, setSelectedBlueprintTemplateId] = useState(initialBlueprintTemplateId);
+  const [appliedBlueprintTemplateId, setAppliedBlueprintTemplateId] = useState<string | null>(null);
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
@@ -171,6 +173,11 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const [generating, setGenerating] = useState(false);
   const [validating, setValidating] = useState(false);
   const [downloadingDocx, setDownloadingDocx] = useState<DocxMode | null>(null);
+  const [savePaperOpen, setSavePaperOpen] = useState(false);
+  const [savedPaperName, setSavedPaperName] = useState("");
+  const [savedPaperDescription, setSavedPaperDescription] = useState("");
+  const [savingPaper, setSavingPaper] = useState(false);
+  const [lastSavedPaperId, setLastSavedPaperId] = useState<string | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
   const [candidateContext, setCandidateContext] = useState<CandidateContext | null>(null);
   const [candidateQuestions, setCandidateQuestions] = useState<PaperBuilderQuestion[]>([]);
@@ -252,6 +259,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const updateDetails = <K extends keyof PaperDetails>(key: K, value: PaperDetails[K]) => {
     setDetails((current) => ({ ...current, [key]: value }));
     setValidatedPaper(null);
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
   };
 
   const applyTemplate = () => {
@@ -270,6 +279,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       topicLine: template.defaultTopicLine ?? "",
     }));
     setValidatedPaper(null);
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
     toast.success(`Applied “${template.name}”.`);
   };
 
@@ -320,6 +331,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       });
       closeCandidatePicker();
       clearGenerated();
+      setAppliedBlueprintTemplateId(template.id);
+      setLastSavedPaperId(null);
       setStep(3);
       toast.success(`Applied “${template.name}”. Check availability before generating.`);
     } catch {
@@ -332,6 +345,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
   const resetAcademicScope = () => {
     setChapters([]);
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
     setDetails((current) => ({ ...current, courseLine: "", topicLine: "" }));
   };
 
@@ -340,6 +355,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     setSubjectId(nextSubjectId);
     setChapters([]);
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
     setDetails((current) => ({
       ...current,
       courseLine: subject ? `${subject.name} · ${subject.qualificationTitle} · ${subject.boardTitle}` : "",
@@ -361,6 +378,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     setChapters(next);
     setDetails((current) => ({ ...current, topicLine: next.map((chapter) => chapter.topicName).join(" · ") }));
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
   };
 
   const updateRow = (chapterId: string, rowId: string, patch: Partial<BlueprintRowDraft>) => {
@@ -368,6 +387,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       ? { ...chapter, rows: chapter.rows.map((row) => row.id === rowId ? { ...row, ...patch } : row) }
       : chapter));
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
   };
 
   const addRow = (chapterId: string) => {
@@ -375,6 +396,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       ? { ...chapter, rows: [...chapter.rows, createRow(chapter.topicId, chapter.rows.length + 1)] }
       : chapter));
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
   };
 
   const removeRow = (chapterId: string, rowId: string) => {
@@ -382,6 +405,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       ? { ...chapter, rows: chapter.rows.filter((row) => row.id !== rowId) }
       : chapter));
     clearGenerated();
+    setAppliedBlueprintTemplateId(null);
+    setLastSavedPaperId(null);
   };
 
   const reviewAvailability = async () => {
@@ -426,6 +451,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       return reconcileFinalQuestionOrder(result.paper.sections, finalOrderMode, current);
     });
     setRowErrors([]);
+    setLastSavedPaperId(null);
   };
 
   const updateGeneratedRow = (rowId: string, updater: (questions: PaperBuilderQuestion[]) => PaperBuilderQuestion[]) => {
@@ -437,6 +463,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       current,
     ));
     setValidatedPaper(null);
+    setLastSavedPaperId(null);
   };
 
   const moveQuestion = (rowId: string, index: number, direction: -1 | 1) => {
@@ -508,6 +535,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
         candidateContext.replaceQuestionId,
       );
       setGeneratedRows(nextRows);
+      setLastSavedPaperId(null);
       setFinalQuestionOrderIds((current) => {
         const replaced = candidateContext.replaceQuestionId
           ? replaceFinalQuestionId(current, candidateContext.replaceQuestionId, result.candidate.id)
@@ -534,6 +562,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       if (!result.success) return toast.error(result.error);
       const applied = applyBlueprintRegeneratedRows(generatedRows, [result.row], [rowId]);
       setGeneratedRows(applied.rows);
+      setLastSavedPaperId(null);
       setFinalQuestionOrderIds((current) => reconcileFinalQuestionOrder(
         groupBlueprintRowsForOutput(applied.rows),
         finalOrderMode,
@@ -562,6 +591,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       }
       const applied = applyBlueprintRegeneratedRows(generatedRows, result.rows, chapterRowIds);
       setGeneratedRows(applied.rows);
+      setLastSavedPaperId(null);
       setFinalQuestionOrderIds((current) => reconcileFinalQuestionOrder(
         groupBlueprintRowsForOutput(applied.rows),
         finalOrderMode,
@@ -600,6 +630,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       mode,
       orderRevision.current,
     ));
+    setLastSavedPaperId(null);
   };
 
   const reshuffleFinalOrder = () => {
@@ -612,6 +643,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
     );
     orderRevision.current = result.revision;
     setFinalQuestionOrderIds(result.ids);
+    setLastSavedPaperId(null);
     toast.success("Final paper order reshuffled. Chapter-wise review was not changed.");
   };
 
@@ -637,6 +669,38 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
       toast.error("Could not generate the DOCX. Please try again.");
     } finally {
       setDownloadingDocx(null);
+    }
+  };
+
+  const saveFinalPaper = async () => {
+    if (!orderedPaper || !validatedPaper || !selectionsComplete) {
+      return toast.error("Validate a complete paper before saving it.");
+    }
+    setSavingPaper(true);
+    try {
+      const result = await saveGeneratedPaper({
+        name: savedPaperName,
+        description: savedPaperDescription,
+        draft,
+        selections: currentSelections(),
+        finalOrderMode,
+        orderedQuestionIds: finalQuestionOrderIds,
+        questionVersions: orderedPaper.sections.flatMap((section) => section.questions).map((question) => ({
+          id: question.id,
+          updatedAt: question.sourceUpdatedAt ?? "",
+        })),
+        sourceBlueprintTemplateId: appliedBlueprintTemplateId,
+      });
+      if (!result.success) return toast.error(result.error);
+      setLastSavedPaperId(result.id);
+      setSavePaperOpen(false);
+      setSavedPaperName("");
+      setSavedPaperDescription("");
+      toast.success("Exact final paper saved to Paper Archive.");
+    } catch {
+      toast.error("Could not save this generated paper. Please try again.");
+    } finally {
+      setSavingPaper(false);
     }
   };
 
@@ -684,7 +748,7 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
               onTemplateChange={setSelectedTemplateId}
               onApplyTemplate={applyTemplate}
               onDetailsChange={updateDetails}
-              onTargetMarksChange={(value) => { setTargetMarksText(value); clearGenerated(); }}
+              onTargetMarksChange={(value) => { setTargetMarksText(value); clearGenerated(); setAppliedBlueprintTemplateId(null); setLastSavedPaperId(null); }}
             />
           )}
 
@@ -740,6 +804,8 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
               onPreviewTab={setPreviewTab}
               onPrint={printPaper}
               onDownload={downloadDocx}
+              onSave={() => setSavePaperOpen(true)}
+              savedPaperId={lastSavedPaperId}
             />
           )}
         </div>
@@ -771,6 +837,20 @@ export default function BlueprintBuilderClient({ subjects, topics, headerTemplat
         onDescriptionChange={setTemplateDescription}
         onIncludeHeaderDefaultsChange={setIncludeHeaderDefaults}
         onSave={saveBlueprintTemplate}
+      />
+
+      <SaveGeneratedPaperDialog
+        open={savePaperOpen}
+        name={savedPaperName}
+        description={savedPaperDescription}
+        saving={savingPaper}
+        paper={orderedPaper}
+        finalOrderMode={finalOrderMode}
+        sourceTemplateName={savedBlueprintTemplates.find((template) => template.id === appliedBlueprintTemplateId)?.name ?? null}
+        onOpenChange={setSavePaperOpen}
+        onNameChange={setSavedPaperName}
+        onDescriptionChange={setSavedPaperDescription}
+        onSave={saveFinalPaper}
       />
 
       <div className="paper-builder-screen-only sticky bottom-3 z-20 flex flex-col-reverse gap-2 rounded-2xl border bg-background/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
@@ -940,6 +1020,62 @@ function SaveBlueprintTemplateDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function SaveGeneratedPaperDialog({
+  open,
+  name,
+  description,
+  saving,
+  paper,
+  finalOrderMode,
+  sourceTemplateName,
+  onOpenChange,
+  onNameChange,
+  onDescriptionChange,
+  onSave,
+}: {
+  open: boolean;
+  name: string;
+  description: string;
+  saving: boolean;
+  paper: ValidatedPaper | null;
+  finalOrderMode: FinalPaperOrderMode;
+  sourceTemplateName: string | null;
+  onOpenChange: (open: boolean) => void;
+  onNameChange: (value: string) => void;
+  onDescriptionChange: (value: string) => void;
+  onSave: () => void;
+}) {
+  const count = paper?.sections.reduce((total, section) => total + section.questions.length, 0) ?? 0;
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Save Generated Paper</DialogTitle>
+          <DialogDescription>Save the exact validated questions, final order, answers, header, and archive-owned image copies. This snapshot will not change when Question Bank records change.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid gap-2 rounded-xl border bg-muted/30 p-3 text-sm sm:grid-cols-2">
+            <DialogSummary label="Scope" value={paper ? `${paper.boardTitle} · ${paper.qualificationTitle} · ${paper.subjectName}` : "Not validated"} />
+            <DialogSummary label="Paper" value={`${count} questions · ${paper?.totalMarks ?? 0} marks`} />
+            <DialogSummary label="Final order" value={FINAL_PAPER_ORDER_LABELS[finalOrderMode]} />
+            <DialogSummary label="Source" value={sourceTemplateName ?? "Manual blueprint"} />
+          </div>
+          <Field label="Saved paper name"><Input value={name} maxLength={200} autoFocus placeholder="e.g. Class 12 IP Friday Test" onChange={(event) => onNameChange(event.target.value)} /></Field>
+          <Field label="Description (optional)"><Textarea value={description} maxLength={3000} rows={3} placeholder="Internal note about this exact paper" onChange={(event) => onDescriptionChange(event.target.value)} /></Field>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="button" disabled={!name.trim() || !paper || saving} onClick={onSave}><Save className="size-4" /> {saving ? "Saving exact paper…" : "Save to Paper Archive"}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DialogSummary({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 break-words">{value}</p></div>;
 }
 
 function WizardProgress({ step }: { step: number }) {
@@ -1325,19 +1461,21 @@ function CandidateAnswerReview({ question }: { question: PaperBuilderQuestion })
   );
 }
 
-function PreviewStep({ paper, previewTab, downloadingDocx, onPreviewTab, onPrint, onDownload }: {
+function PreviewStep({ paper, previewTab, downloadingDocx, savedPaperId, onPreviewTab, onPrint, onDownload, onSave }: {
   paper: ValidatedPaper;
   previewTab: PreviewTab;
   downloadingDocx: DocxMode | null;
+  savedPaperId: string | null;
   onPreviewTab: (tab: PreviewTab) => void;
   onPrint: (mode: PrintMode) => void;
   onDownload: (mode: DocxMode) => void;
+  onSave: () => void;
 }) {
   return (
     <section id="blueprint-paper-preview" className="space-y-5">
       <div className="paper-builder-screen-only flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-xl font-semibold">Blueprint paper output</h2><p className="mt-1 text-sm text-muted-foreground">Server-validated and still browser-session-only.</p></div>
-        <div className="flex flex-wrap gap-2"><Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => onPreviewTab("questions")}><Eye className="size-4" /> Student paper</Button><Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => onPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button></div>
+        <div><h2 className="text-xl font-semibold">Blueprint paper output</h2><p className="mt-1 text-sm text-muted-foreground">Server-validated. Save the exact final paper when it is ready.</p></div>
+        <div className="flex flex-wrap gap-2"><Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => onPreviewTab("questions")}><Eye className="size-4" /> Student paper</Button><Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => onPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button><Button type="button" onClick={onSave}><Save className="size-4" /> Save Generated Paper</Button>{savedPaperId && <Link href={`/admin/paper-builder/archive/${savedPaperId}`} className={buttonVariants({ variant: "outline" })}>Open in Paper Archive</Link>}</div>
       </div>
       <div className="paper-builder-screen-only flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => onPrint("questions")}><Printer className="size-4" /> Print question paper</Button><Button type="button" variant="outline" onClick={() => onPrint("answers")}><Printer className="size-4" /> Print answer key</Button><Button type="button" onClick={() => onPrint("both")}><Printer className="size-4" /> Print both</Button></div>
       <div className="paper-builder-screen-only flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("questions")}><FileDown className="size-4" /> {downloadingDocx === "questions" ? "Generating…" : "Download Question Paper DOCX"}</Button><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("answers")}><FileDown className="size-4" /> {downloadingDocx === "answers" ? "Generating…" : "Download Answer Key DOCX"}</Button><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("both")}><FileDown className="size-4" /> {downloadingDocx === "both" ? "Generating…" : "Download Both DOCX"}</Button></div>
@@ -1355,7 +1493,7 @@ function BlueprintSummary({ chapters, targetMarks, availability, selectedCount, 
       <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Blueprint summary</p><p className="mt-2 text-2xl font-bold">{total} marks</p>{targetMarks !== null && <p className={cn("mt-1 text-sm", targetMarks === total ? "text-emerald-600" : "text-destructive")}>Target: {targetMarks} marks</p>}</div>
       <div className="space-y-2 text-sm"><SummaryRow label="Chapters" value={chapters.length} /><SummaryRow label="Rows" value={chapters.flatMap((chapter) => chapter.rows).length} /><SummaryRow label="Questions" value={requestedCount} />{selectedCount > 0 && <SummaryRow label="Selected" value={selectedCount} />}</div>
       {availability.length > 0 && <StatusBanner good={insufficient === 0} message={insufficient === 0 ? "All rows have sufficient availability" : `${insufficient} row${insufficient === 1 ? "" : "s"} need attention`} />}
-      <p className="text-xs leading-5 text-muted-foreground">Saved templates contain only the reusable blueprint pattern. Generated questions and papers remain browser-session-only.</p>
+      <p className="text-xs leading-5 text-muted-foreground">Saved templates contain only reusable patterns. A validated final paper is preserved only when you explicitly save it to Paper Archive.</p>
     </aside>
   );
 }

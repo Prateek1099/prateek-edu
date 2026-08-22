@@ -42,6 +42,12 @@ enum BlueprintTemplateDifficulty {
   HARD
 }
 
+enum SavedGeneratedPaperOrderMode {
+  CHAPTER_WISE
+  SHUFFLE_WITHIN_SECTIONS
+  FULLY_SHUFFLED
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -109,6 +115,7 @@ model User {
   worksheetAssignments    WorksheetAssignment[]
   paperHeaderTemplates    PaperHeaderTemplate[]
   paperBlueprintTemplates PaperBlueprintTemplate[]
+  savedGeneratedPapers    SavedGeneratedPaper[]
   workspace               Workspace?               @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
   ownedWorkspace          Workspace?               @relation("WorkspaceOwner")
   classEnrollments        ClassStudent[]
@@ -161,6 +168,7 @@ model Board {
 
   qualifications          Qualification[]
   paperBlueprintTemplates PaperBlueprintTemplate[]
+  savedGeneratedPapers    SavedGeneratedPaper[]
 
   @@map("boards")
 }
@@ -177,6 +185,7 @@ model Qualification {
   subjects                Subject[]
   classes                 Class[]
   paperBlueprintTemplates PaperBlueprintTemplate[]
+  savedGeneratedPapers    SavedGeneratedPaper[]
 
   @@unique([boardId, name])
   @@map("qualifications")
@@ -206,6 +215,7 @@ model Subject {
   workspaceContent        WorkspaceContent[]
   studentReflections      StudentReflection[]
   paperBlueprintTemplates PaperBlueprintTemplate[]
+  savedGeneratedPapers    SavedGeneratedPaper[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -321,6 +331,7 @@ model Topic {
   studentReflections             StudentReflection[]
   workspaceContent               WorkspaceContent[]
   paperBlueprintTemplateChapters PaperBlueprintTemplateChapter[]
+  savedGeneratedPaperQuestions   SavedGeneratedPaperQuestion[]
 
   @@unique([subjectId, importCode])
   @@index([subjectId])
@@ -378,6 +389,7 @@ model PaperBlueprintTemplate {
   subject       Subject                         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
   createdBy     User                            @relation(fields: [createdById], references: [id], onDelete: Restrict)
   chapters      PaperBlueprintTemplateChapter[]
+  savedGeneratedPapers SavedGeneratedPaper[]
 
   @@unique([subjectId, name])
   @@index([boardId, qualificationId, subjectId])
@@ -415,6 +427,109 @@ model PaperBlueprintTemplateRow {
 
   @@unique([chapterId, sortOrder])
   @@map("paper_blueprint_template_rows")
+}
+
+model SavedGeneratedPaper {
+  id                                  String                       @id @default(cuid())
+  name                                String
+  description                         String?                      @db.Text
+  boardId                             String?                      @map("board_id")
+  boardTitleSnapshot                  String                       @map("board_title_snapshot")
+  qualificationId                     String?                      @map("qualification_id")
+  qualificationTitleSnapshot          String                       @map("qualification_title_snapshot")
+  subjectId                           String?                      @map("subject_id")
+  subjectNameSnapshot                 String                       @map("subject_name_snapshot")
+  totalMarks                          Int                          @map("total_marks")
+  durationMinutes                     Int                          @map("duration_minutes")
+  finalOrderMode                      SavedGeneratedPaperOrderMode @map("final_order_mode")
+  snapshotVersion                     Int                          @default(1) @map("snapshot_version")
+  sourceBlueprintTemplateId           String?                      @map("source_blueprint_template_id")
+  sourceBlueprintTemplateNameSnapshot String?                      @map("source_blueprint_template_name_snapshot")
+  institutionName                     String                       @map("institution_name")
+  examLabel                           String                       @map("exam_label")
+  courseLine                          String                       @map("course_line")
+  paperTitle                          String                       @map("paper_title")
+  topicLine                           String                       @map("topic_line")
+  dateText                            String                       @map("date_text")
+  classText                           String                       @map("class_text")
+  showStudentName                     Boolean                      @map("show_student_name")
+  showRollNumber                      Boolean                      @map("show_roll_number")
+  instructions                        String                       @db.Text
+  createdById                         String                       @map("created_by_id")
+  archivedAt                          DateTime?                    @map("archived_at")
+  createdAt                           DateTime                     @default(now()) @map("created_at")
+  updatedAt                           DateTime                     @updatedAt @map("updated_at")
+
+  board                   Board?                           @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  qualification           Qualification?                   @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
+  subject                 Subject?                         @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  sourceBlueprintTemplate PaperBlueprintTemplate?          @relation(fields: [sourceBlueprintTemplateId], references: [id], onDelete: SetNull)
+  createdBy               User                             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  sections                SavedGeneratedPaperSection[]
+  questions               SavedGeneratedPaperQuestion[]
+
+  @@index([archivedAt, createdAt])
+  @@index([boardId, qualificationId, subjectId])
+  @@index([createdById])
+  @@index([sourceBlueprintTemplateId])
+  @@map("saved_generated_papers")
+}
+
+model SavedGeneratedPaperSection {
+  id               String            @id @default(cuid())
+  savedPaperId     String            @map("saved_paper_id")
+  label            String
+  questionType     BankQuestionType? @map("question_type")
+  questionCount    Int               @map("question_count")
+  marksPerQuestion Int?              @map("marks_per_question")
+  isMixedOutput    Boolean           @default(false) @map("is_mixed_output")
+  sortOrder        Int               @map("sort_order")
+
+  savedPaper SavedGeneratedPaper           @relation(fields: [savedPaperId], references: [id], onDelete: Cascade)
+  questions SavedGeneratedPaperQuestion[]
+
+  @@unique([savedPaperId, sortOrder])
+  @@index([savedPaperId])
+  @@map("saved_generated_paper_sections")
+}
+
+model SavedGeneratedPaperQuestion {
+  id                     String           @id @default(cuid())
+  savedPaperId           String           @map("saved_paper_id")
+  sectionId              String           @map("section_id")
+  originalBankQuestionId String?          @map("original_bank_question_id")
+  topicId                String?          @map("topic_id")
+  topicNameSnapshot      String?          @map("topic_name_snapshot")
+  questionType           BankQuestionType @map("question_type")
+  marks                  Int
+  difficulty             String
+  source                 String?          @db.Text
+  sortOrder              Int              @map("sort_order")
+  finalQuestionNumber    Int              @map("final_question_number")
+  questionText           String           @map("question_text") @db.Text
+  optionA                String?          @map("option_a")
+  optionB                String?          @map("option_b")
+  optionC                String?          @map("option_c")
+  optionD                String?          @map("option_d")
+  correctAnswer          String?          @map("correct_answer")
+  modelAnswer            String?          @map("model_answer") @db.Text
+  explanation            String?          @db.Text
+  imageUrl               String?          @map("image_url") @db.Text
+  imageAlt               String?          @map("image_alt")
+  imageCaption           String?          @map("image_caption")
+
+  savedPaper           SavedGeneratedPaper        @relation(fields: [savedPaperId], references: [id], onDelete: Cascade)
+  section              SavedGeneratedPaperSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  originalBankQuestion BankQuestion?              @relation(fields: [originalBankQuestionId], references: [id], onDelete: SetNull)
+  topic                Topic?                     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@unique([sectionId, sortOrder])
+  @@unique([savedPaperId, finalQuestionNumber])
+  @@index([savedPaperId])
+  @@index([originalBankQuestionId])
+  @@index([topicId])
+  @@index([finalQuestionNumber])
+  @@map("saved_generated_paper_questions")
 }
 
 model Note {
@@ -704,6 +819,7 @@ model BankQuestion {
   topic              Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
   workspace          Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   generatedQuestions Question[]
+  savedGeneratedPaperQuestions SavedGeneratedPaperQuestion[]
 
   @@index([workspaceId])
   @@index([subjectId])
