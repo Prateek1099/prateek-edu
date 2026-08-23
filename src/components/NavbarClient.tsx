@@ -16,7 +16,7 @@ import { useSession, signOut } from 'next-auth/react';
 import type { Session } from "next-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useRef, useEffect } from "react";
-import { GlobalSearch } from "./GlobalSearch";
+import { GlobalSearch, GlobalSearchTrigger } from "./GlobalSearch";
 import { clearEcosystemPreference } from "@/app/actions/resources-actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -129,6 +129,7 @@ function EcosystemSwitcher({ preference, mobile = false }: { preference: Ecosyst
 export default function NavbarClient({ preference }: { preference: EcosystemPreference | null }) {
   const { data: session, status } = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
   const routes = [
@@ -141,6 +142,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
   }
 
   return (
+    <>
     <header className="sticky top-0 z-50 w-full border-b border-border/80 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container mx-auto flex h-16 max-w-7xl min-w-0 items-center justify-between px-4 sm:px-6 lg:px-8">
 
@@ -184,9 +186,12 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
                   </div>
                 )}
 
-                <GlobalSearch
+                <GlobalSearchTrigger
                   className="mb-3 h-11 w-full md:w-full lg:w-full"
-                  onOpen={() => setMobileOpen(false)}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setSearchOpen(true);
+                  }}
                 />
 
                 <div className="space-y-1">
@@ -270,7 +275,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
 
           {preference && <EcosystemSwitcher preference={preference} />}
 
-          <GlobalSearch />
+          <GlobalSearchTrigger onClick={() => setSearchOpen(true)} />
           <ThemeToggle />
 
           {status === 'authenticated' ? (
@@ -285,5 +290,7 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
         </nav>
       </div>
     </header>
+    <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+    </>
   );
 }
