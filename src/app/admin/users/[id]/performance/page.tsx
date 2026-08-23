@@ -4,13 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft,
   Trophy,
-  BookOpen,
   AlertTriangle,
   MessageSquare,
   User,
@@ -114,9 +113,13 @@ export default async function StudentPerformancePage({
           <p className="text-muted-foreground">{student.email}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/admin/worksheets/create?topic=${encodeURIComponent(topMistakeTopics[0]?.topicTag || "all")}`}>
-            <Button variant="outline">Generate Personalized Worksheet</Button>
-          </Link>
+          <Button
+            nativeButton={false}
+            variant="outline"
+            render={<Link href="/admin/worksheets/create" />}
+          >
+            Open Worksheet Creator
+          </Button>
           <div className="text-sm px-3 py-1 bg-muted rounded-full">
             {student.isPremium ? "Premium User" : "Free User"}
           </div>
@@ -193,7 +196,7 @@ export default async function StudentPerformancePage({
               {topMistakeTopics.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground text-sm">No mistake data yet.</div>
               ) : (
-                topMistakeTopics.map((t: any, i: number) => (
+                topMistakeTopics.map((t, i) => (
                   <div key={t.topicTag} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
@@ -223,7 +226,7 @@ export default async function StudentPerformancePage({
               {challengeAttempts.length === 0 ? (
                 <div className="p-6 text-center text-muted-foreground text-sm">No challenge attempts yet.</div>
               ) : (
-                challengeAttempts.map((ca: any) => (
+                challengeAttempts.map((ca) => (
                   <div key={ca.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
                     <div>
                       <p className="font-medium text-sm">{ca.challenge.title}</p>

@@ -9,6 +9,7 @@ import {
   BookOpen,
   CalendarDays,
   CircleHelp,
+  FilePlus2,
   RefreshCw,
   Target,
   Trophy,
@@ -549,6 +550,17 @@ function AttentionSection({ insights }: { insights: ScopedTeachingInsights }) {
 }
 
 function TopicSection({ insights }: { insights: ScopedTeachingInsights }) {
+  const remedialUrl = (topicId: string) => {
+    const params = new URLSearchParams({
+      boardId: insights.scope.boardId,
+      qualificationId: insights.scope.qualificationId,
+      subjectId: insights.scope.subjectId,
+      topicId,
+      dateRange: insights.scope.dateRange,
+    });
+    return `/admin/worksheets/remedial/create?${params.toString()}`;
+  };
+
   return (
     <section className="space-y-3">
       <div>
@@ -558,8 +570,8 @@ function TopicSection({ insights }: { insights: ScopedTeachingInsights }) {
         </p>
       </div>
       {insights.topics.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Not enough data to identify topic performance.</CardContent></Card> : (
-        <Card className="overflow-hidden"><Table><TableHeader><TableRow><TableHead>Topic</TableHead><TableHead>Attempts</TableHead><TableHead>Average</TableHead><TableHead>Wrong / unanswered</TableHead><TableHead>Students affected</TableHead><TableHead>Suggested action</TableHead></TableRow></TableHeader><TableBody>
-          {insights.topics.map((topic) => <TableRow key={topic.topicId ?? "unassigned"}><TableCell><div className="flex items-center gap-2"><span className="font-medium">{topic.topicName}</span>{!topic.sufficientData && <Badge variant="outline">Insufficient data</Badge>}</div></TableCell><TableCell>{topic.attempts}</TableCell><TableCell>{formatScore(topic.averageScore)}</TableCell><TableCell>{topic.wrongOrUnanswered}</TableCell><TableCell>{topic.affectedStudents}</TableCell><TableCell className="max-w-sm whitespace-normal">{topic.suggestedAction}</TableCell></TableRow>)}
+        <Card className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Topic</TableHead><TableHead>Attempts</TableHead><TableHead>Average</TableHead><TableHead>Wrong / unanswered</TableHead><TableHead>Students affected</TableHead><TableHead>Suggested action</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader><TableBody>
+          {insights.topics.map((topic) => <TableRow key={topic.topicId ?? "unassigned"}><TableCell><div className="flex items-center gap-2"><span className="font-medium">{topic.topicName}</span>{!topic.sufficientData && <Badge variant="outline">Insufficient data</Badge>}</div></TableCell><TableCell>{topic.attempts}</TableCell><TableCell>{formatScore(topic.averageScore)}</TableCell><TableCell>{topic.wrongOrUnanswered}</TableCell><TableCell>{topic.affectedStudents}</TableCell><TableCell className="max-w-sm whitespace-normal">{topic.suggestedAction}</TableCell><TableCell className="text-right">{topic.topicId ? <Button nativeButton={false} variant="outline" size="sm" className="whitespace-nowrap" render={<Link href={remedialUrl(topic.topicId)} />}><FilePlus2 className="size-4" /> Generate Remedial Worksheet</Button> : <span className="text-xs text-muted-foreground">Assign a topic first</span>}</TableCell></TableRow>)}
         </TableBody></Table></Card>
       )}
     </section>
