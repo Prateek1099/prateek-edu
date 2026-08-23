@@ -48,7 +48,21 @@ export type InsightReflectionRecord = {
   boardId: string;
   qualificationId: string;
   subjectId: string;
+  subjectName: string;
   topicId: string | null;
+  topicName: string | null;
+  message: string | null;
+  createdAt: string;
+};
+
+export type HelpRequestInsightRow = {
+  id: string;
+  userId: string;
+  studentName: string;
+  studentEmail: string;
+  subjectName: string;
+  topicName: string;
+  message: string;
   createdAt: string;
 };
 
@@ -104,6 +118,7 @@ export type ScopedInsights = {
   };
   students: StudentInsightRow[];
   attention: AttentionStudent[];
+  helpRequests: HelpRequestInsightRow[];
   topics: TopicInsightRow[];
   challenges: ChallengeInsightRow[];
   warnings: string[];
@@ -472,6 +487,21 @@ export function buildScopedInsights(
   const topics = buildTopicSummary(attempts);
   const challenges = buildChallengeSummary(attempts);
   const { students, attention } = buildStudents(attempts, reflections);
+  const helpRequests = reflections
+    .map<HelpRequestInsightRow>((reflection) => ({
+      id: reflection.id,
+      userId: reflection.userId,
+      studentName: displayStudentName(reflection.userName, reflection.userEmail),
+      studentEmail: reflection.userEmail?.trim() || "—",
+      subjectName: reflection.subjectName,
+      topicName: reflection.topicName || "No topic selected",
+      message: reflection.message?.trim() || "No message provided",
+      createdAt: reflection.createdAt,
+    }))
+    .sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    );
   const answerAnalyses = attempts.map(analyseAttemptAnswers);
   const warnings: string[] = [];
 
@@ -503,11 +533,12 @@ export function buildScopedInsights(
         (sum, analysis) => sum + analysis.wrongOrUnanswered,
         0,
       ),
-      helpRequests: reflections.length,
+      helpRequests: helpRequests.length,
       weakTopics,
     },
     students,
     attention,
+    helpRequests,
     topics,
     challenges,
     warnings,

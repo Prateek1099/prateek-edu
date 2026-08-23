@@ -55,7 +55,10 @@ function reflection(overrides: Partial<InsightReflectionRecord> = {}): InsightRe
     boardId: "board-cbse",
     qualificationId: "class-12",
     subjectId: "subject-ip",
+    subjectName: "Informatics Practices (065)",
     topicId: "topic-sql",
+    topicName: "SQL",
+    message: "Please explain nested SQL queries.",
     createdAt: "2026-08-22T13:00:00.000Z",
     ...overrides,
   };
@@ -122,6 +125,43 @@ test("filters attempts and help requests by the selected date range", () => {
   );
   assert.equal(result.overview.totalAttempts, 1);
   assert.equal(result.overview.helpRequests, 1);
+  assert.equal(result.helpRequests.length, 1);
+});
+
+test("returns actionable scoped help-request details and matching overview count", () => {
+  const result = insights([], [
+    reflection({ id: "older", createdAt: "2026-08-21T13:00:00.000Z" }),
+    reflection({
+      id: "newer",
+      userName: null,
+      userEmail: "student@example.com",
+      message: "How do I use GROUP BY?",
+      createdAt: "2026-08-22T14:00:00.000Z",
+    }),
+  ]);
+
+  assert.equal(result.overview.helpRequests, result.helpRequests.length);
+  assert.equal(result.helpRequests[0].id, "newer");
+  assert.equal(result.helpRequests[0].studentName, "student@example.com");
+  assert.equal(result.helpRequests[0].subjectName, "Informatics Practices (065)");
+  assert.equal(result.helpRequests[0].topicName, "SQL");
+  assert.equal(result.helpRequests[0].message, "How do I use GROUP BY?");
+});
+
+test("does not infer a topic or message for incomplete help requests", () => {
+  const result = insights([], [
+    reflection({
+      userName: null,
+      userEmail: null,
+      topicId: null,
+      topicName: null,
+      message: null,
+    }),
+  ]);
+
+  assert.equal(result.helpRequests[0].studentName, "Unnamed student");
+  assert.equal(result.helpRequests[0].topicName, "No topic selected");
+  assert.equal(result.helpRequests[0].message, "No message provided");
 });
 
 test("excludes workspace challenges", () => {

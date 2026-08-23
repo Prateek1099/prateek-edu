@@ -245,14 +245,18 @@ export async function getScopedTeachingInsights(scope: InsightsScope): Promise<S
             id: true,
             userId: true,
             topicId: true,
+            message: true,
             createdAt: true,
             user: { select: { name: true, email: true } },
             subject: {
               select: {
                 id: true,
+                name: true,
+                code: true,
                 qualification: { select: { id: true, board: { select: { id: true } } } },
               },
             },
+            topic: { select: { topicName: true } },
           },
         }),
   ]);
@@ -288,7 +292,12 @@ export async function getScopedTeachingInsights(scope: InsightsScope): Promise<S
           boardId: reflection.subject.qualification.board.id,
           qualificationId: reflection.subject.qualification.id,
           subjectId: reflection.subject.id,
+          subjectName: reflection.subject.code
+            ? `${reflection.subject.name} (${reflection.subject.code})`
+            : reflection.subject.name,
           topicId: reflection.topicId,
+          topicName: reflection.topic?.topicName ?? null,
+          message: reflection.message,
           createdAt: reflection.createdAt.toISOString(),
         }]
       : [],

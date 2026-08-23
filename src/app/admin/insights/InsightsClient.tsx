@@ -373,11 +373,101 @@ function InsightsResults({ insights }: { insights: ScopedTeachingInsights }) {
       )}
 
       <StudentPerformanceSection insights={insights} />
+      <HelpRequestsSection insights={insights} />
       <AttentionSection insights={insights} />
       <TopicSection insights={insights} />
       <ChallengeSection insights={insights} />
       <ReportPreview title={title} insights={insights} />
     </div>
+  );
+}
+
+function HelpRequestsSection({ insights }: { insights: ScopedTeachingInsights }) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="text-lg font-semibold">Help requests</h2>
+        <p className="text-sm text-muted-foreground">
+          Student questions matching this exact academic scope and date range.
+        </p>
+      </div>
+      {insights.helpRequests.length === 0 ? (
+        <EmptyState
+          title="No help requests in this scope"
+          description="Try a wider date range or remove an optional topic or challenge filter."
+        />
+      ) : (
+        <>
+          <div className="grid gap-3 md:hidden">
+            {insights.helpRequests.map((request) => (
+              <Card key={request.id}>
+                <CardContent className="space-y-4 p-4">
+                  <div>
+                    <p className="font-semibold">{request.studentName}</p>
+                    <p className="break-all text-xs text-muted-foreground">{request.studentEmail}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{request.subjectName}</Badge>
+                    <Badge variant="outline">{request.topicName}</Badge>
+                  </div>
+                  <p className="whitespace-pre-wrap break-words text-sm leading-6">{request.message}</p>
+                  <p className="text-xs text-muted-foreground">Asked {formatDate(request.createdAt)}</p>
+                  <Button
+                    nativeButton={false}
+                    variant="outline"
+                    className="w-full"
+                    render={<Link href={`/admin/users/${request.userId}/performance`} />}
+                  >
+                    View all-time performance
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <Card className="hidden overflow-hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Subject / topic</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {insights.helpRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <p className="font-medium">{request.studentName}</p>
+                      <p className="max-w-52 truncate text-xs text-muted-foreground">{request.studentEmail}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium">{request.subjectName}</p>
+                      <p className="text-xs text-muted-foreground">{request.topicName}</p>
+                    </TableCell>
+                    <TableCell className="max-w-md whitespace-normal">
+                      <p className="line-clamp-3 break-words text-sm leading-5">{request.message}</p>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(request.createdAt)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        nativeButton={false}
+                        variant="outline"
+                        size="sm"
+                        render={<Link href={`/admin/users/${request.userId}/performance`} />}
+                      >
+                        View all-time performance
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -461,7 +551,12 @@ function AttentionSection({ insights }: { insights: ScopedTeachingInsights }) {
 function TopicSection({ insights }: { insights: ScopedTeachingInsights }) {
   return (
     <section className="space-y-3">
-      <div><h2 className="text-lg font-semibold">Topic intelligence</h2><p className="text-sm text-muted-foreground">Uses relational challenge topics only; at least two attempts are required for strong/weak conclusions.</p></div>
+      <div>
+        <h2 className="text-lg font-semibold">Topic intelligence</h2>
+        <p className="text-sm text-muted-foreground">
+          Uses relational challenge topics only. A topic needs at least 2 scoped attempts before Vexa marks it as strong or weak.
+        </p>
+      </div>
       {insights.topics.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Not enough data to identify topic performance.</CardContent></Card> : (
         <Card className="overflow-hidden"><Table><TableHeader><TableRow><TableHead>Topic</TableHead><TableHead>Attempts</TableHead><TableHead>Average</TableHead><TableHead>Wrong / unanswered</TableHead><TableHead>Students affected</TableHead><TableHead>Suggested action</TableHead></TableRow></TableHeader><TableBody>
           {insights.topics.map((topic) => <TableRow key={topic.topicId ?? "unassigned"}><TableCell><div className="flex items-center gap-2"><span className="font-medium">{topic.topicName}</span>{!topic.sufficientData && <Badge variant="outline">Insufficient data</Badge>}</div></TableCell><TableCell>{topic.attempts}</TableCell><TableCell>{formatScore(topic.averageScore)}</TableCell><TableCell>{topic.wrongOrUnanswered}</TableCell><TableCell>{topic.affectedStudents}</TableCell><TableCell className="max-w-sm whitespace-normal">{topic.suggestedAction}</TableCell></TableRow>)}
