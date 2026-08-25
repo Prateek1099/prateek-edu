@@ -152,10 +152,14 @@ export async function removeStudentFromClass(classId: string, studentId: string)
 
 // === STUDENT ACTIONS ===
 
-export async function joinClassByCode(joinCode: string) {
+export type JoinClassByCodeResult =
+  | { success: true; className: string; workspaceName: string }
+  | { success: false; error: string };
+
+export async function joinClassByCode(joinCode: string): Promise<JoinClassByCodeResult> {
   const user = await requireAuth();
   if (user.role !== "STUDENT") {
-    throw new Error("Only student accounts can join a class");
+    return { success: false, error: "Only student accounts can join a class." };
   }
   const normalizedCode = joinCode.trim().toUpperCase();
 
@@ -203,7 +207,7 @@ export async function joinClassByCode(joinCode: string) {
   }, { isolationLevel: "Serializable" });
 
   revalidatePath("/dashboard");
-  return joined;
+  return { success: true, ...joined };
 }
 
 export async function getMyClasses() {

@@ -21,6 +21,7 @@ const worksheetPage = read(
 );
 const attemptRoute = read("src/app/api/challenges/[id]/attempt/route.ts");
 const classActions = read("src/app/actions/class.ts");
+const joinClassPage = read("src/app/dashboard/join/page.tsx");
 const assignmentActions = read("src/app/actions/workspace-assignments.ts");
 const classDetail = read("src/app/workspace/classes/[id]/page.tsx");
 const studentDirectory = read("src/app/workspace/students/page.tsx");
@@ -50,12 +51,27 @@ test("attempt route authorizes before writes and rejects mutable unsafe states",
 });
 
 test("join class is student-only, securely generated, and transactional", () => {
+  const roleCheckAt = classActions.indexOf('user.role !== "STUDENT"');
+  const transactionAt = classActions.indexOf("prisma.$transaction", roleCheckAt);
+
   assert.match(classActions, /randomInt/);
   assert.doesNotMatch(classActions, /Math\.random/);
   assert.match(classActions, /user\.role !== "STUDENT"/);
+  assert.ok(roleCheckAt >= 0 && roleCheckAt < transactionAt);
+  assert.match(
+    classActions,
+    /return \{ success: false, error: "Only student accounts can join a class\." \}/,
+  );
+  assert.doesNotMatch(
+    classActions,
+    /throw new Error\("Only student accounts can join a class"\)/,
+  );
   assert.match(classActions, /prisma\.\$transaction/);
   assert.match(classActions, /isolationLevel: "Serializable"/);
   assert.match(classActions, /classStudent\.count/);
+  assert.match(joinClassPage, /if \(!result\.success\)/);
+  assert.match(joinClassPage, /setError\(result\.error\)/);
+  assert.match(joinClassPage, /role="alert"/);
 });
 
 test("class assignment display is scoped to the teacher workspace", () => {

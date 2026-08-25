@@ -12,17 +12,24 @@ import Link from "next/link";
 export default function JoinClassPage() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ className: string; workspaceName: string } | null>(null);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
     try {
       const result = await joinClassByCode(code);
-      setSuccess(result);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setSuccess({ className: result.className, workspaceName: result.workspaceName });
       toast.success("Successfully joined class!");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to join";
+      setError(errorMessage);
       toast.error(errorMessage);
     } finally {
       setLoading(false);
@@ -81,12 +88,26 @@ export default function JoinClassPage() {
               <Input
                 required
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase());
+                  if (error) setError(null);
+                }}
                 placeholder="VX-XXXX-XX"
                 className="text-center text-lg font-mono font-bold tracking-widest h-12 rounded-xl bg-background border-border/80"
                 maxLength={10}
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "join-class-error" : undefined}
               />
             </div>
+            {error ? (
+              <p
+                id="join-class-error"
+                role="alert"
+                className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-center text-sm font-medium text-destructive"
+              >
+                {error}
+              </p>
+            ) : null}
             <Button type="submit" className="w-full h-11 rounded-xl text-sm font-semibold shadow-md" disabled={loading}>
               {loading ? "Joining class..." : "Join Class"}
             </Button>
