@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import ChallengeEngine from "./ChallengeEngine";
+import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
 
 export default async function ChallengeAttemptPage({
   params,
@@ -13,6 +14,17 @@ export default async function ChallengeAttemptPage({
 
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
+
+  const sessionUser = session.user as typeof session.user & { id?: string; role?: string };
+  if (!sessionUser.id) redirect("/login");
+
+  const access = await canAccessChallengeOrWorksheet({
+    userId: sessionUser.id,
+    role: sessionUser.role || "",
+    challengeId: id,
+    action: "attempt",
+  });
+  if (!access.allowed) notFound();
 
   const challenge = await prisma.challenge.findUnique({
     where: { id },
@@ -32,29 +44,7 @@ export default async function ChallengeAttemptPage({
     },
   });
 
-  if (!challenge || !challenge.isPublished) {
-    notFound();
-  }
-
-  // Strict Authorization Guard for Workspace Challenges
-  if (challenge.workspaceId) {
-    const sessionUser = session.user as typeof session.user & { id?: string; workspaceId?: string | null };
-    const userId = sessionUser.id;
-    if (!userId) redirect("/login");
-    const isOwner = sessionUser.workspaceId === challenge.workspaceId;
-    
-    if (!isOwner) {
-      const assignment = await prisma.worksheetAssignment.findUnique({
-        where: {
-          userId_worksheetId: {
-            userId,
-            worksheetId: id
-          }
-        }
-      });
-      if (!assignment) notFound();
-    }
-  }
+  if (!challenge) notFound();
 
   if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
     redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);

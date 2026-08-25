@@ -10,7 +10,8 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const user = session.user as any;
+  const user = session.user as typeof session.user & { id?: string };
+  if (!user.id) redirect("/login");
 
   const workspace = await prisma.workspace.findUnique({ where: { ownerId: user.id } });
   if (!workspace) redirect("/dashboard");
@@ -35,7 +36,10 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   // Fetch assignments for these students
   const studentIds = cls.students.map(s => s.studentId);
   const assignments = await prisma.worksheetAssignment.findMany({
-    where: { userId: { in: studentIds } },
+    where: {
+      userId: { in: studentIds },
+      worksheet: { workspaceId: workspace.id },
+    },
     include: { worksheet: true }
   });
 

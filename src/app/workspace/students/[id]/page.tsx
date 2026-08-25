@@ -16,7 +16,8 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
   
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const user = session.user as any;
+  const user = session.user as typeof session.user & { id?: string };
+  if (!user.id) redirect("/login");
 
   const workspace = await prisma.workspace.findUnique({
     where: { ownerId: user.id },
@@ -44,13 +45,13 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
         include: { class: { include: { subject: true } } }
       },
       challengeAttempts: {
-        where: { challenge: { subject: { classes: { some: { workspaceId: workspace.id } } } } },
+        where: { challenge: { workspaceId: workspace.id } },
         include: { challenge: { select: { title: true, difficulty: true, subjectId: true } } },
         orderBy: { completedAt: "desc" },
         take: 10
       },
       mistakeEntries: {
-        where: { challenge: { subject: { classes: { some: { workspaceId: workspace.id } } } } },
+        where: { challenge: { workspaceId: workspace.id } },
         include: { question: { select: { questionText: true } } },
         orderBy: { updatedAt: "desc" },
         take: 10

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Trophy, Clock, Zap, BarChart3, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import QuickPracticeStart from "./QuickPracticeStart";
+import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
@@ -27,9 +28,17 @@ export default async function ChallengeDetailPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const sessionUser = session.user as typeof session.user & { id?: string; workspaceId?: string | null };
+  const sessionUser = session.user as typeof session.user & { id?: string; role?: string };
   const userId = sessionUser.id;
   if (!userId) redirect("/login");
+
+  const access = await canAccessChallengeOrWorksheet({
+    userId,
+    role: sessionUser.role || "",
+    challengeId: id,
+    action: "view",
+  });
+  if (!access.allowed) notFound();
 
   const [challenge, attempts] = await Promise.all([
     prisma.challenge.findUnique({
@@ -47,24 +56,7 @@ export default async function ChallengeDetailPage({
     }),
   ]);
 
-  if (!challenge || !challenge.isPublished) notFound();
-
-  // Strict Authorization Guard for Workspace Challenges
-  if (challenge.workspaceId) {
-    const isOwner = sessionUser.workspaceId === challenge.workspaceId;
-
-    if (!isOwner) {
-      const assignment = await prisma.worksheetAssignment.findUnique({
-        where: {
-          userId_worksheetId: {
-            userId,
-            worksheetId: id
-          }
-        }
-      });
-      if (!assignment) notFound();
-    }
-  }
+  if (!challenge) notFound();
 
   if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
     redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);

@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateRevisionTasks } from "@/lib/plan-engine";
+import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
+import { isInteractiveChallengeType } from "@/lib/challenge-access-rules";
 
 export async function POST(
   request: NextRequest,
@@ -13,13 +15,32 @@ export async function POST(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userId = (session.user as any).id as string;
+  const sessionUser = session.user as typeof session.user & { id?: string; role?: string };
+  const userId = sessionUser.id;
   if (!userId) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
   const { id: challengeId } = await params;
 
   try {
+    const access = await canAccessChallengeOrWorksheet({
+      userId,
+      role: sessionUser.role || "",
+      challengeId,
+      action: "attempt",
+    });
+    if (!access.challenge) {
+      return Response.json({ error: "Challenge not found" }, { status: 404 });
+    }
+    if (!access.allowed) {
+      const error = access.reason === "unpublished"
+        ? "This challenge is not published"
+        : access.reason === "document_not_attemptable"
+          ? "Document worksheets cannot be submitted through challenge scoring"
+          : "Unauthorized";
+      return Response.json({ error }, { status: 403 });
+    }
+
     const body = await request.json();
     const { answers, timeTaken } = body as {
       answers: Record<string, string>;
@@ -40,22 +61,15 @@ export async function POST(
       return Response.json({ error: "Challenge not found" }, { status: 404 });
     }
 
-    // Strict Authorization Guard for Workspace Challenges
-    if (challenge.workspaceId) {
-      const isOwner = (session.user as any).workspaceId === challenge.workspaceId;
-      if (!isOwner) {
-        const assignment = await prisma.worksheetAssignment.findUnique({
-          where: {
-            userId_worksheetId: {
-              userId,
-              worksheetId: challengeId
-            }
-          }
-        });
-        if (!assignment) {
-          return Response.json({ error: "Unauthorized" }, { status: 403 });
-        }
-      }
+    // Re-check mutable challenge state after authorization and before any write.
+    if (!challenge.isPublished) {
+      return Response.json({ error: "This challenge is not published" }, { status: 403 });
+    }
+    if (!isInteractiveChallengeType(challenge.type)) {
+      return Response.json(
+        { error: "Document worksheets cannot be submitted through challenge scoring" },
+        { status: 403 },
+      );
     }
 
     // Score calculation

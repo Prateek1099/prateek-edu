@@ -1,14 +1,16 @@
 "use server";
 
+import { randomInt } from "node:crypto";
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace, requireAuth } from "@/lib/require-role";
-import { isTeacher } from "@/lib/roles";
 
 function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const seg1 = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-  const seg2 = Array.from({ length: 2 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  const randomCharacter = () => chars[randomInt(chars.length)];
+  const seg1 = Array.from({ length: 4 }, randomCharacter).join("");
+  const seg2 = Array.from({ length: 2 }, randomCharacter).join("");
   return `VX-${seg1}-${seg2}`;
 }
 
@@ -116,7 +118,7 @@ export async function addStudentToClass(classId: string, studentEmail: string) {
 
   const student = await prisma.user.findUnique({ where: { email: studentEmail } });
   if (!student) throw new Error("No student found with that email");
-  if (isTeacher(student.role)) throw new Error("Cannot add a teacher as a student");
+  if (student.role !== "STUDENT") throw new Error("Only student accounts can be added to a class");
 
   const enrollment = await prisma.classStudent.upsert({
     where: { classId_studentId: { classId, studentId: student.id } },
@@ -152,40 +154,56 @@ export async function removeStudentFromClass(classId: string, studentId: string)
 
 export async function joinClassByCode(joinCode: string) {
   const user = await requireAuth();
+  if (user.role !== "STUDENT") {
+    throw new Error("Only student accounts can join a class");
+  }
   const normalizedCode = joinCode.trim().toUpperCase();
 
-  const cls = await prisma.class.findUnique({
-    where: { joinCode: normalizedCode },
-    include: {
-      workspace: { select: { id: true, name: true, status: true } },
-      _count: { select: { students: { where: { status: "ACTIVE" } } } },
-    },
-  });
+  const joined = await prisma.$transaction(async (tx) => {
+    const cls = await tx.class.findUnique({
+      where: { joinCode: normalizedCode },
+      include: {
+        workspace: { select: { id: true, name: true, status: true } },
+      },
+    });
 
-  if (!cls) throw new Error("Invalid join code");
-  if (cls.status !== "ACTIVE") throw new Error("This class is no longer active");
-  if (!cls.joinCodeActive) throw new Error("Join code is disabled for this class");
-  if (cls.workspace.status !== "ACTIVE") throw new Error("This workspace is not active");
-  if (cls.maxStudents && cls._count.students >= cls.maxStudents) throw new Error("This class is full");
+    if (!cls) throw new Error("Invalid join code");
+    if (cls.status !== "ACTIVE") throw new Error("This class is no longer active");
+    if (!cls.joinCodeActive) throw new Error("Join code is disabled for this class");
+    if (cls.workspace.status !== "ACTIVE") throw new Error("This workspace is not active");
 
-  const existing = await prisma.classStudent.findUnique({
-    where: { classId_studentId: { classId: cls.id, studentId: user.id } },
-  });
-  if (existing && existing.status === "ACTIVE") throw new Error("You are already enrolled in this class");
+    const existing = await tx.classStudent.findUnique({
+      where: { classId_studentId: { classId: cls.id, studentId: user.id } },
+    });
+    if (existing?.status === "ACTIVE") {
+      throw new Error("You are already enrolled in this class");
+    }
 
-  await prisma.classStudent.upsert({
-    where: { classId_studentId: { classId: cls.id, studentId: user.id } },
-    create: { classId: cls.id, studentId: user.id },
-    update: { status: "ACTIVE" },
-  });
+    const activeStudents = await tx.classStudent.count({
+      where: { classId: cls.id, status: "ACTIVE" },
+    });
+    if (cls.maxStudents && activeStudents >= cls.maxStudents) {
+      throw new Error("This class is full");
+    }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { workspaceId: cls.workspace.id },
-  });
+    await tx.classStudent.upsert({
+      where: { classId_studentId: { classId: cls.id, studentId: user.id } },
+      create: { classId: cls.id, studentId: user.id },
+      update: { status: "ACTIVE" },
+    });
+
+    // Retained for legacy UI/session compatibility only. Authorization must use
+    // ClassStudent membership and exact assignments, never this pointer.
+    await tx.user.update({
+      where: { id: user.id },
+      data: { workspaceId: cls.workspace.id },
+    });
+
+    return { className: cls.name, workspaceName: cls.workspace.name };
+  }, { isolationLevel: "Serializable" });
 
   revalidatePath("/dashboard");
-  return { className: cls.name, workspaceName: cls.workspace.name };
+  return joined;
 }
 
 export async function getMyClasses() {

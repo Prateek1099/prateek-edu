@@ -7,10 +7,23 @@ import { redirect } from "next/navigation";
 import StudentsClient from "./StudentsClient";
 import { UserCircle } from "lucide-react";
 
+type StudentSummary = {
+  id: string;
+  name: string;
+  email: string | null;
+  image: string | null;
+  classes: Array<{ id: string; name: string }>;
+  subjects: Array<{ id: string; name: string }>;
+  averageScore: number | null;
+  weakTopics: string[];
+  enrolledAt: Date;
+};
+
 export default async function WorkspaceStudentsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const user = session.user as any;
+  const user = session.user as typeof session.user & { id?: string };
+  if (!user.id) redirect("/login");
 
   const workspace = await prisma.workspace.findUnique({
     where: { ownerId: user.id },
@@ -28,11 +41,11 @@ export default async function WorkspaceStudentsPage() {
       student: {
         include: {
           challengeAttempts: {
-            where: { challenge: { subject: { classes: { some: { workspaceId: workspace.id } } } } },
+            where: { challenge: { workspaceId: workspace.id } },
             select: { score: true, totalQuestions: true, percentage: true }
           },
           mistakeEntries: {
-            where: { challenge: { subject: { classes: { some: { workspaceId: workspace.id } } } } },
+            where: { challenge: { workspaceId: workspace.id } },
             select: { topicTag: true, mistakeCount: true }
           }
         }
@@ -44,7 +57,7 @@ export default async function WorkspaceStudentsPage() {
   });
 
   // Group by student
-  const studentsMap = new Map();
+  const studentsMap = new Map<string, StudentSummary>();
   classStudents.forEach(cs => {
     if (!studentsMap.has(cs.studentId)) {
       const attempts = cs.student.challengeAttempts;
@@ -78,10 +91,10 @@ export default async function WorkspaceStudentsPage() {
         enrolledAt: cs.enrolledAt
       });
     }
-    const s = studentsMap.get(cs.studentId);
+    const s = studentsMap.get(cs.studentId)!;
     s.classes.push({ id: cs.class.id, name: cs.class.name });
     if (cs.class.subject) {
-      if (!s.subjects.find((sub: any) => sub.id === cs.class.subject!.id)) {
+      if (!s.subjects.find((subject) => subject.id === cs.class.subject!.id)) {
         s.subjects.push({ id: cs.class.subject.id, name: cs.class.subject.name });
       }
     }

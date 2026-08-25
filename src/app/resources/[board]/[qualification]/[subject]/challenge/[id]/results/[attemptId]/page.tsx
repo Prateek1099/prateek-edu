@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import ChallengeResults from "./ChallengeResults";
+import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
 
 export default async function ResultsPage({
   params,
@@ -20,7 +21,7 @@ export default async function ResultsPage({
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  const sessionUser = session.user as typeof session.user & { id?: string };
+  const sessionUser = session.user as typeof session.user & { id?: string; role?: string };
   const userId = sessionUser.id;
   if (!userId) redirect("/login");
 
@@ -40,6 +41,14 @@ export default async function ResultsPage({
   if (!attempt || attempt.userId !== userId || attempt.challengeId !== id) {
     notFound();
   }
+
+  const access = await canAccessChallengeOrWorksheet({
+    userId,
+    role: sessionUser.role || "",
+    challengeId: id,
+    action: "view",
+  });
+  if (!access.allowed) notFound();
 
   if (attempt.challenge.type === "WORKSHEET" || attempt.challenge.type === "PDF_WORKSHEET") {
     redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);

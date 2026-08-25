@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import StudentWorksheetViewer from "@/components/worksheets/StudentWorksheetViewer";
+import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
 
 function getSafeDocumentUrl(value: string | null) {
   if (!value) return null;
@@ -33,39 +34,26 @@ export default async function StudentWorksheetPage({
     },
   });
 
-  if (
-    !worksheet ||
-    !worksheet.isPublished ||
-    (worksheet.type !== "WORKSHEET" && worksheet.type !== "PDF_WORKSHEET")
-  ) {
+  if (!worksheet || (worksheet.type !== "WORKSHEET" && worksheet.type !== "PDF_WORKSHEET")) {
     notFound();
   }
 
-  if (worksheet.type === "WORKSHEET" || worksheet.workspaceId) {
+  const isPublicGlobalPdf =
+    worksheet.type === "PDF_WORKSHEET" && !worksheet.workspaceId && worksheet.isPublished;
+
+  if (!isPublicGlobalPdf) {
     const session = await getServerSession(authOptions);
     if (!session?.user) redirect("/login");
+    const sessionUser = session.user as typeof session.user & { id?: string; role?: string };
+    if (!sessionUser.id) redirect("/login");
 
-    if (worksheet.workspaceId) {
-      const sessionUser = session.user as typeof session.user & {
-        id?: string;
-        workspaceId?: string | null;
-      };
-      if (!sessionUser.id) redirect("/login");
-
-      const isOwner = sessionUser.workspaceId === worksheet.workspaceId;
-      if (!isOwner) {
-        const assignment = await prisma.worksheetAssignment.findUnique({
-          where: {
-            userId_worksheetId: {
-              userId: sessionUser.id,
-              worksheetId: worksheet.id,
-            },
-          },
-          select: { id: true },
-        });
-        if (!assignment) notFound();
-      }
-    }
+    const access = await canAccessChallengeOrWorksheet({
+      userId: sessionUser.id,
+      role: sessionUser.role || "",
+      challengeId: worksheet.id,
+      action: "view",
+    });
+    if (!access.allowed) notFound();
   }
 
   return (

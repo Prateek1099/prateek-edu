@@ -38,17 +38,19 @@ export async function assignWorksheetToClass(data: {
   const existingAssignments = await prisma.worksheetAssignment.findMany({
     where: {
       worksheetId: data.worksheetId,
-      userId: { in: classData.students.map((m: any) => m.studentId) }
+      userId: { in: classData.students.map((membership) => membership.studentId) }
     }
   });
 
-  const existingUserIds = new Set(existingAssignments.map((a: any) => a.userId));
-  const newMembers = classData.students.filter((m: any) => !existingUserIds.has(m.studentId));
+  const existingUserIds = new Set(existingAssignments.map((assignment) => assignment.userId));
+  const newMembers = classData.students.filter(
+    (membership) => !existingUserIds.has(membership.studentId),
+  );
 
   if (newMembers.length > 0) {
     await prisma.worksheetAssignment.createMany({
-      data: newMembers.map((m: any) => ({
-        userId: m.studentId,
+      data: newMembers.map((membership) => ({
+        userId: membership.studentId,
         worksheetId: data.worksheetId,
         dueDate: data.dueDate || null,
         status: "NOT_STARTED"
@@ -66,13 +68,26 @@ export async function assignWorksheetToClass(data: {
 export async function removeAssignment(userId: string, worksheetId: string) {
   const user = await requireActiveWorkspace();
   
-  // Verify worksheet belongs to workspace
-  const worksheet = await prisma.challenge.findUnique({
-    where: { id: worksheetId }
-  });
+  const [worksheet, activeMembership] = await Promise.all([
+    prisma.challenge.findUnique({
+      where: { id: worksheetId },
+      select: { workspaceId: true },
+    }),
+    prisma.classStudent.findFirst({
+      where: {
+        studentId: userId,
+        status: "ACTIVE",
+        class: { workspaceId: user.workspaceId, status: "ACTIVE" },
+      },
+      select: { id: true },
+    }),
+  ]);
 
   if (!worksheet || worksheet.workspaceId !== user.workspaceId) {
     throw new Error("Worksheet not found or unauthorized");
+  }
+  if (!activeMembership) {
+    throw new Error("Student not found in an active class in your workspace");
   }
 
   await prisma.worksheetAssignment.deleteMany({
