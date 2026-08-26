@@ -1,11 +1,12 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileText, Calendar, CheckCircle2, Clock, ChevronLeft } from "lucide-react";
+import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
+import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 
 export default async function StudentWorksheetsPage() {
   const session = await getServerSession(authOptions);
@@ -13,23 +14,7 @@ export default async function StudentWorksheetsPage() {
   const userId = (session.user as typeof session.user & { id?: string }).id;
   if (!userId) redirect("/login");
 
-  const assignments = await prisma.worksheetAssignment.findMany({
-    where: {
-      userId,
-      worksheet: { isPublished: true },
-    },
-    include: {
-      worksheet: {
-        include: {
-          subject: {
-            include: { qualification: { include: { board: true } } }
-          },
-          _count: { select: { questions: true } }
-        }
-      }
-    },
-    orderBy: { assignedAt: "desc" }
-  });
+  const assignments = await getStudentWorkspaceAssignments(userId);
 
   return (
     <div className="relative container px-4 md:px-8 py-8 max-w-5xl mx-auto space-y-8 min-h-[calc(100vh-140px)]">
@@ -51,9 +36,9 @@ export default async function StudentWorksheetsPage() {
           <FileText className="size-6" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">My Assigned Worksheets</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">My Assigned Work</h1>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Open assigned worksheets, submit document practice, and track teacher deadlines.
+            Open work assigned by your teacher and keep track of class deadlines.
           </p>
         </div>
       </div>
@@ -69,15 +54,20 @@ export default async function StudentWorksheetsPage() {
           </div>
         ) : (
           assignments.map(assignment => {
-            const ws = assignment.worksheet;
+            const ws = assignment.challenge;
             const isCompleted = assignment.status === "COMPLETED";
             const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
 
-            const board = ws.subject.qualification.board.name;
-            const qual = ws.subject.qualification.name;
+            const board = ws.subject.boardName;
+            const qual = ws.subject.qualificationName;
             const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
             const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
             const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
+            const contentType = ws.type === "QUICK_PRACTICE"
+              ? "Quick Practice"
+              : ws.type === "PDF_WORKSHEET"
+                ? "PDF Worksheet"
+                : "Worksheet";
 
             return (
               <Card
@@ -105,17 +95,25 @@ export default async function StudentWorksheetsPage() {
                       )}
                     </div>
                     <p className="text-xs sm:text-sm text-muted-foreground font-medium">
-                      {ws.subject.name} · {ws.type === "PDF_WORKSHEET"
-                        ? "PDF assignment"
-                        : `${ws._count.questions} Questions`} · {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
+                      {contentType} · {ws.subject.name} · {assignment.className} · {assignment.workspaceName}
                     </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium">
+                      {ws.type === "PDF_WORKSHEET"
+                        ? "PDF assignment"
+                        : `${ws.questionCount} Questions`} · {ws.difficulty.charAt(0).toUpperCase() + ws.difficulty.slice(1)}
+                    </p>
+                    {isDocumentWorksheet ? (
+                      <p className="text-xs text-muted-foreground">
+                        Completion is not tracked for document worksheets.
+                      </p>
+                    ) : null}
                     <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1.5">
                         <Calendar className="size-3.5" /> Assigned: {new Date(assignment.assignedAt).toLocaleDateString()}
                       </span>
                       {assignment.dueDate && (
                         <span className="flex items-center gap-1.5 font-medium text-foreground/80">
-                          <Clock className="size-3.5" /> Due: {new Date(assignment.dueDate).toLocaleDateString()}
+                          <Clock className="size-3.5" /> Due: {formatAssignmentDueDate(assignment.dueDate)}
                         </span>
                       )}
                     </div>

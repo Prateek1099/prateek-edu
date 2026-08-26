@@ -698,6 +698,7 @@ export async function deleteWorksheet(id: string) {
           select: {
             attempts: true,
             assignments: true,
+            assignmentBatches: true,
             mistakes: true,
           },
         },
@@ -720,6 +721,7 @@ export async function deleteWorksheet(id: string) {
     const hasStudentHistory =
       worksheet._count.attempts > 0 ||
       worksheet._count.assignments > 0 ||
+      worksheet._count.assignmentBatches > 0 ||
       worksheet._count.mistakes > 0;
 
     if (hasStudentHistory) {

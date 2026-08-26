@@ -48,6 +48,21 @@ enum SavedGeneratedPaperOrderMode {
   FULLY_SHUFFLED
 }
 
+enum WorkspaceAssignmentAudience {
+  CLASS
+  SELECTED_STUDENTS
+}
+
+enum WorkspaceAssignmentBatchStatus {
+  ACTIVE
+  CANCELLED
+}
+
+enum WorkspaceAssignmentRecipientStatus {
+  NOT_STARTED
+  COMPLETED
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -100,25 +115,27 @@ model User {
   preferredQualification String?
   workspaceId            String?   @map("workspace_id")
 
-  accounts                Account[]
-  sessions                Session[]
-  plan                    SubscriptionPlan?        @relation(fields: [planId], references: [id])
-  enrollments             Enrollment[]
-  progress                UserProgress[]
-  topicProgress           UserTopicProgress[]
-  payments                Payment[]
-  savedPapers             SavedPaper[]
-  reflections             StudentReflection[]
-  challengeAttempts       ChallengeAttempt[]
-  mistakeEntries          MistakeEntry[]
-  revisionPlan            RevisionPlan?
-  worksheetAssignments    WorksheetAssignment[]
-  paperHeaderTemplates    PaperHeaderTemplate[]
-  paperBlueprintTemplates PaperBlueprintTemplate[]
-  savedGeneratedPapers    SavedGeneratedPaper[]
-  workspace               Workspace?               @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
-  ownedWorkspace          Workspace?               @relation("WorkspaceOwner")
-  classEnrollments        ClassStudent[]
+  accounts                      Account[]
+  sessions                      Session[]
+  plan                          SubscriptionPlan?              @relation(fields: [planId], references: [id])
+  enrollments                   Enrollment[]
+  progress                      UserProgress[]
+  topicProgress                 UserTopicProgress[]
+  payments                      Payment[]
+  savedPapers                   SavedPaper[]
+  reflections                   StudentReflection[]
+  challengeAttempts             ChallengeAttempt[]
+  mistakeEntries                MistakeEntry[]
+  revisionPlan                  RevisionPlan?
+  worksheetAssignments          WorksheetAssignment[]
+  paperHeaderTemplates          PaperHeaderTemplate[]
+  paperBlueprintTemplates       PaperBlueprintTemplate[]
+  savedGeneratedPapers          SavedGeneratedPaper[]
+  assignedWorkspaceBatches      WorkspaceAssignmentBatch[]     @relation("WorkspaceAssignmentAssignedBy")
+  workspaceAssignmentRecipients WorkspaceAssignmentRecipient[]
+  workspace                     Workspace?                     @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
+  ownedWorkspace                Workspace?                     @relation("WorkspaceOwner")
+  classEnrollments              ClassStudent[]
 
   @@index([workspaceId])
   @@index([planId])
@@ -233,9 +250,9 @@ model Course {
   level            String?
   language         String?  @default("English")
   instructorName   String?  @map("instructor_name")
-  learningOutcomes String?  @db.Text @map("learning_outcomes")
+  learningOutcomes String?  @map("learning_outcomes") @db.Text
   requirements     String?  @db.Text
-  targetAudience   String?  @db.Text @map("target_audience")
+  targetAudience   String?  @map("target_audience") @db.Text
   subjectId        String   @map("subject_id")
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -384,11 +401,11 @@ model PaperBlueprintTemplate {
   createdAt             DateTime @default(now()) @map("created_at")
   updatedAt             DateTime @updatedAt @map("updated_at")
 
-  board         Board                           @relation(fields: [boardId], references: [id], onDelete: Restrict)
-  qualification Qualification                   @relation(fields: [qualificationId], references: [id], onDelete: Restrict)
-  subject       Subject                         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
-  createdBy     User                            @relation(fields: [createdById], references: [id], onDelete: Restrict)
-  chapters      PaperBlueprintTemplateChapter[]
+  board                Board                           @relation(fields: [boardId], references: [id], onDelete: Restrict)
+  qualification        Qualification                   @relation(fields: [qualificationId], references: [id], onDelete: Restrict)
+  subject              Subject                         @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  createdBy            User                            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  chapters             PaperBlueprintTemplateChapter[]
   savedGeneratedPapers SavedGeneratedPaper[]
 
   @@unique([subjectId, name])
@@ -460,11 +477,11 @@ model SavedGeneratedPaper {
   createdAt                           DateTime                     @default(now()) @map("created_at")
   updatedAt                           DateTime                     @updatedAt @map("updated_at")
 
-  board                   Board?                           @relation(fields: [boardId], references: [id], onDelete: SetNull)
-  qualification           Qualification?                   @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
-  subject                 Subject?                         @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  sourceBlueprintTemplate PaperBlueprintTemplate?          @relation(fields: [sourceBlueprintTemplateId], references: [id], onDelete: SetNull)
-  createdBy               User                             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  board                   Board?                        @relation(fields: [boardId], references: [id], onDelete: SetNull)
+  qualification           Qualification?                @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
+  subject                 Subject?                      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  sourceBlueprintTemplate PaperBlueprintTemplate?       @relation(fields: [sourceBlueprintTemplateId], references: [id], onDelete: SetNull)
+  createdBy               User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
   sections                SavedGeneratedPaperSection[]
   questions               SavedGeneratedPaperQuestion[]
 
@@ -486,7 +503,7 @@ model SavedGeneratedPaperSection {
   sortOrder        Int               @map("sort_order")
 
   savedPaper SavedGeneratedPaper           @relation(fields: [savedPaperId], references: [id], onDelete: Cascade)
-  questions SavedGeneratedPaperQuestion[]
+  questions  SavedGeneratedPaperQuestion[]
 
   @@unique([savedPaperId, sortOrder])
   @@index([savedPaperId])
@@ -533,13 +550,13 @@ model SavedGeneratedPaperQuestion {
 }
 
 model Note {
-  id          String  @id @default(cuid())
-  subjectId   String  @map("subject_id")
+  id          String   @id @default(cuid())
+  subjectId   String   @map("subject_id")
   title       String
-  content     String? @db.Text
-  pdfUrl      String? @map("pdf_url")
-  topicId     String? @map("topic_id")
-  isPublished Boolean @default(true) @map("is_published")
+  content     String?  @db.Text
+  pdfUrl      String?  @map("pdf_url")
+  topicId     String?  @map("topic_id")
+  isPublished Boolean  @default(true) @map("is_published")
   noteType    NoteType @default(STUDY_NOTES) @map("note_type")
 
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
@@ -649,16 +666,17 @@ model Challenge {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  subject      Subject               @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic        Topic?                @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  questions    Question[]
-  attempts     ChallengeAttempt[]
-  mistakes     MistakeEntry[]
-  type         String                @default("CHALLENGE") // CHALLENGE, WORKSHEET, PDF_WORKSHEET
-  pdfUrl       String?               @map("pdf_url") // Questions-only PDF
-  pdfAnswerUrl String?               @map("pdf_answer_url") // Questions + Answers PDF
-  assignments  WorksheetAssignment[]
-  workspaceId  String?               @map("workspace_id")
+  subject           Subject                    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic             Topic?                     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  questions         Question[]
+  attempts          ChallengeAttempt[]
+  mistakes          MistakeEntry[]
+  type              String                     @default("CHALLENGE") // CHALLENGE, WORKSHEET, PDF_WORKSHEET
+  pdfUrl            String?                    @map("pdf_url") // Questions-only PDF
+  pdfAnswerUrl      String?                    @map("pdf_answer_url") // Questions + Answers PDF
+  assignments       WorksheetAssignment[]
+  assignmentBatches WorkspaceAssignmentBatch[]
+  workspaceId       String?                    @map("workspace_id")
 
   workspace Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
@@ -791,6 +809,55 @@ model WorksheetAssignment {
   @@map("worksheet_assignments")
 }
 
+model WorkspaceAssignmentBatch {
+  id                 String                         @id @default(cuid())
+  workspaceId        String                         @map("workspace_id")
+  classId            String                         @map("class_id")
+  challengeId        String                         @map("challenge_id")
+  assignedById       String                         @map("assigned_by_id")
+  audience           WorkspaceAssignmentAudience
+  dueDate            DateTime?                      @map("due_date")
+  includeLateJoiners Boolean                        @default(true) @map("include_late_joiners")
+  status             WorkspaceAssignmentBatchStatus @default(ACTIVE)
+  createdAt          DateTime                       @default(now()) @map("created_at")
+  updatedAt          DateTime                       @updatedAt @map("updated_at")
+  cancelledAt        DateTime?                      @map("cancelled_at")
+
+  workspace  Workspace                      @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  class      Class                          @relation(fields: [classId], references: [id], onDelete: Restrict)
+  challenge  Challenge                      @relation(fields: [challengeId], references: [id], onDelete: Restrict)
+  assignedBy User                           @relation("WorkspaceAssignmentAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  recipients WorkspaceAssignmentRecipient[]
+
+  @@index([workspaceId])
+  @@index([classId])
+  @@index([challengeId])
+  @@index([assignedById])
+  @@index([status])
+  @@index([classId, challengeId, status])
+  @@map("workspace_assignment_batches")
+}
+
+model WorkspaceAssignmentRecipient {
+  id          String                             @id @default(cuid())
+  batchId     String                             @map("batch_id")
+  studentId   String                             @map("student_id")
+  status      WorkspaceAssignmentRecipientStatus @default(NOT_STARTED)
+  assignedAt  DateTime                           @default(now()) @map("assigned_at")
+  completedAt DateTime?                          @map("completed_at")
+  revokedAt   DateTime?                          @map("revoked_at")
+
+  batch   WorkspaceAssignmentBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  student User                     @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  @@unique([batchId, studentId])
+  @@index([batchId])
+  @@index([studentId])
+  @@index([status])
+  @@index([studentId, status])
+  @@map("workspace_assignment_recipients")
+}
+
 model BankQuestion {
   id            String           @id @default(cuid())
   subjectId     String           @map("subject_id")
@@ -815,10 +882,10 @@ model BankQuestion {
   updatedAt     DateTime         @updatedAt @map("updated_at")
   workspaceId   String?          @map("workspace_id")
 
-  subject            Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topic              Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
-  workspace          Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  generatedQuestions Question[]
+  subject                      Subject                       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topic                        Topic?                        @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  workspace                    Workspace?                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  generatedQuestions           Question[]
   savedGeneratedPaperQuestions SavedGeneratedPaperQuestion[]
 
   @@index([workspaceId])
@@ -841,12 +908,13 @@ model Workspace {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  owner         User               @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members       User[]             @relation("WorkspaceMembers")
-  classes       Class[]
-  content       WorkspaceContent[]
-  bankQuestions BankQuestion[]
-  challenges    Challenge[]
+  owner             User                       @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members           User[]                     @relation("WorkspaceMembers")
+  classes           Class[]
+  content           WorkspaceContent[]
+  bankQuestions     BankQuestion[]
+  challenges        Challenge[]
+  assignmentBatches WorkspaceAssignmentBatch[]
 
   @@map("workspaces")
 }
@@ -864,10 +932,11 @@ model Class {
   status          String   @default("ACTIVE") // ACTIVE, ARCHIVED
   createdAt       DateTime @default(now()) @map("created_at")
 
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  subject       Subject?       @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  qualification Qualification? @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
-  students      ClassStudent[]
+  workspace         Workspace                  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subject           Subject?                   @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  qualification     Qualification?             @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
+  students          ClassStudent[]
+  assignmentBatches WorkspaceAssignmentBatch[]
 
   @@index([workspaceId])
   @@index([qualificationId])

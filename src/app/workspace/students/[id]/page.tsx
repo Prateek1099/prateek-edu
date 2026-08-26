@@ -139,7 +139,9 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
                   <p className="text-sm text-muted-foreground">
                     Student shows frequent mistakes in <strong>{weakestTopic}</strong>. Recommend assigning a targeted Quick Practice to close the gap.
                   </p>
-                  <Button size="sm" className="w-full mt-4">Assign Practice</Button>
+                  <Link href={`/workspace/classes/${isEnrolled.classId}`} className="block mt-4">
+                    <Button size="sm" className="w-full">Open Class Assignments</Button>
+                  </Link>
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">

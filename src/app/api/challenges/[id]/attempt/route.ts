@@ -84,31 +84,53 @@ export async function POST(
 
     const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 1000) / 10 : 0;
 
-    // Save attempt
-    const attempt = await prisma.challengeAttempt.create({
-      data: {
-        userId,
-        challengeId,
-        score,
-        totalQuestions,
-        percentage,
-        answers: JSON.stringify(answers),
-        timeTaken: timeTaken || null,
-      },
-    });
-
-    // Update WorksheetAssignment status to COMPLETED if applicable
-    if (challenge.workspaceId) {
-      await prisma.worksheetAssignment.updateMany({
-        where: {
-          userId,
-          worksheetId: challengeId,
-        },
+    // Save the attempt and assignment completion atomically. Document worksheets
+    // never reach this branch because the access boundary rejects them above.
+    const attempt = await prisma.$transaction(async (tx) => {
+      const savedAttempt = await tx.challengeAttempt.create({
         data: {
-          status: "COMPLETED"
-        }
+          userId,
+          challengeId,
+          score,
+          totalQuestions,
+          percentage,
+          answers: JSON.stringify(answers),
+          timeTaken: timeTaken || null,
+        },
       });
-    }
+
+      if (challenge.workspaceId) {
+        await tx.workspaceAssignmentRecipient.updateMany({
+          where: {
+            studentId: userId,
+            revokedAt: null,
+            batch: {
+              challengeId,
+              workspaceId: challenge.workspaceId,
+              status: "ACTIVE",
+              workspace: { status: "ACTIVE" },
+              class: {
+                status: "ACTIVE",
+                workspaceId: challenge.workspaceId,
+                students: { some: { studentId: userId, status: "ACTIVE" } },
+              },
+            },
+          },
+          data: {
+            status: "COMPLETED",
+            completedAt: new Date(),
+          },
+        });
+
+        // Legacy compatibility only. New teacher assignments are never written here.
+        await tx.worksheetAssignment.updateMany({
+          where: { userId, worksheetId: challengeId },
+          data: { status: "COMPLETED" },
+        });
+      }
+
+      return savedAttempt;
+    });
 
     // AUTO-CAPTURE MISTAKES: Upsert a MistakeEntry for every wrong answer.
     // @@unique([userId, questionId]) prevents duplicates — repeated mistakes

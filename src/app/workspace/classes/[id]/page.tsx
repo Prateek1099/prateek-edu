@@ -1,23 +1,23 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { notFound } from "next/navigation";
+
 import { prisma } from "@/lib/prisma";
-import { redirect, notFound } from "next/navigation";
+import { requireActiveWorkspace } from "@/lib/require-role";
+import { summarizeAssignmentRecipients } from "@/lib/workspace-assignment-rules";
+
 import ClassDetailClient from "./ClassDetailClient";
 
-export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ClassDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const user = session.user as typeof session.user & { id?: string };
-  if (!user.id) redirect("/login");
-
-  const workspace = await prisma.workspace.findUnique({ where: { ownerId: user.id } });
-  if (!workspace) redirect("/dashboard");
+  const user = await requireActiveWorkspace();
 
   const cls = await prisma.class.findFirst({
-    where: { id, workspaceId: workspace.id },
+    where: { id, workspaceId: user.workspaceId },
     include: {
       subject: true,
       qualification: true,
@@ -28,43 +28,81 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
         },
         orderBy: { enrolledAt: "desc" },
       },
+      assignmentBatches: {
+        include: {
+          challenge: {
+            select: {
+              id: true,
+              title: true,
+              type: true,
+              difficulty: true,
+              estimatedTime: true,
+            },
+          },
+          recipients: {
+            include: {
+              student: { select: { id: true, name: true, email: true } },
+            },
+            orderBy: { assignedAt: "asc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
   if (!cls) notFound();
 
-  // Fetch assignments for these students
-  const studentIds = cls.students.map(s => s.studentId);
-  const assignments = await prisma.worksheetAssignment.findMany({
-    where: {
-      userId: { in: studentIds },
-      worksheet: { workspaceId: workspace.id },
-    },
-    include: { worksheet: true }
-  });
-
-  // Deduplicate worksheet assignments to get unique assigned challenges for this class
-  const uniqueAssignedChallenges = Array.from(new Map(assignments.map(a => [a.worksheetId, a.worksheet])).values());
-
   const availableChallenges = await prisma.challenge.findMany({
-    where: { 
-      workspaceId: workspace.id,
-      OR: [
-        { type: "WORKSHEET" },
-        { type: "QUICK_PRACTICE" }
-      ]
+    where: {
+      workspaceId: user.workspaceId,
+      isPublished: true,
+      type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
+      ...(cls.subjectId ? { subjectId: cls.subjectId } : {}),
     },
     select: { id: true, title: true, type: true },
-    orderBy: { createdAt: "desc" }
+    orderBy: { createdAt: "desc" },
   });
 
-  const unassignedChallenges = availableChallenges.filter(
-    c => !uniqueAssignedChallenges.some(ac => ac.id === c.id)
+  const activeStudentIds = new Set(cls.students.map((membership) => membership.studentId));
+  const assignments = cls.assignmentBatches.map((batch) => ({
+    id: batch.id,
+    audience: batch.audience,
+    dueDate: batch.dueDate,
+    includeLateJoiners: batch.includeLateJoiners,
+    status: batch.status,
+    createdAt: batch.createdAt,
+    cancelledAt: batch.cancelledAt,
+    challenge: batch.challenge,
+    summary: summarizeAssignmentRecipients(
+      batch.recipients.filter((recipient) => activeStudentIds.has(recipient.studentId)),
+      batch.dueDate,
+    ),
+    recipients: batch.recipients.map((recipient) => ({
+      id: recipient.id,
+      studentId: recipient.studentId,
+      status: recipient.status,
+      assignedAt: recipient.assignedAt,
+      completedAt: recipient.completedAt,
+      revokedAt: recipient.revokedAt,
+      membershipActive: activeStudentIds.has(recipient.studentId),
+      student: recipient.student,
+    })),
+  }));
+
+  const activeChallengeIds = new Set(
+    assignments
+      .filter((assignment) => assignment.status === "ACTIVE")
+      .map((assignment) => assignment.challenge.id),
   );
 
-  return <ClassDetailClient 
-    classData={cls} 
-    unassignedChallenges={unassignedChallenges} 
-    assignedChallenges={uniqueAssignedChallenges} 
-  />;
+  return (
+    <ClassDetailClient
+      classData={cls}
+      availableChallenges={availableChallenges.filter(
+        (challenge) => !activeChallengeIds.has(challenge.id),
+      )}
+      assignments={assignments}
+    />
+  );
 }

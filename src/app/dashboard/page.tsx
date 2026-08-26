@@ -10,6 +10,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AiInsightCard } from "./AiInsightCard";
+import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
+import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -87,28 +89,7 @@ export default async function DashboardPage() {
         },
       },
     }),
-    prisma.worksheetAssignment.findMany({
-      where: {
-        userId,
-        worksheet: { isPublished: true },
-      },
-      select: {
-        id: true,
-        dueDate: true,
-        status: true,
-        worksheet: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            subject: { select: { name: true, slug: true, qualification: { select: { name: true, board: { select: { name: true } } } } } },
-            _count: { select: { questions: true } }
-          }
-        }
-      },
-      orderBy: { assignedAt: "desc" },
-      take: 3
-    })
+    getStudentWorkspaceAssignments(userId, 3),
   ]);
 
   const mistakeNeedsRevision = mistakeStats.find(s => s.status === "needs_revision")?._count.id || 0;
@@ -371,12 +352,12 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         </section>
       </div>
 
-      {/* ── 6. ASSIGNED WORKSHEETS ── */}
+      {/* ── 6. ASSIGNED WORK ── */}
       {worksheetAssignments.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" /> Assigned Worksheets
+              <FileText className="w-4 h-4 text-primary" /> Assigned Work
             </h2>
             <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs font-semibold")}>
               View All <ArrowRight className="size-3.5 ml-1" />
@@ -384,12 +365,17 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {worksheetAssignments.map((assignment) => {
-              const ws = assignment.worksheet;
+              const ws = assignment.challenge;
               const isCompleted = assignment.status === "COMPLETED";
               const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
-              const board = ws.subject.qualification.board.name;
-              const qual = ws.subject.qualification.name;
+              const board = ws.subject.boardName;
+              const qual = ws.subject.qualificationName;
               const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
+              const contentType = ws.type === "QUICK_PRACTICE"
+                ? "Quick Practice"
+                : ws.type === "PDF_WORKSHEET"
+                  ? "PDF Worksheet"
+                  : "Worksheet";
               const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
               const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
               const assignmentLink = isDocumentWorksheet ? worksheetLink : attemptLink;
@@ -418,15 +404,17 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                           )}
                           {assignment.dueDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="size-3 text-muted-foreground" /> {new Date(assignment.dueDate).toLocaleDateString()}
+                              <Clock className="size-3 text-muted-foreground" /> {formatAssignmentDueDate(assignment.dueDate)}
                             </span>
                           )}
                         </div>
                         <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2 leading-snug">{ws.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-1">{ws.subject.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {contentType} · {ws.subject.name} · {assignment.className} · {assignment.workspaceName}
+                        </p>
                       </div>
                       <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60 pt-3">
-                        <span className="font-medium">{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws._count.questions} questions`}</span>
+                        <span className="font-medium">{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws.questionCount} questions`}</span>
                         {isDocumentWorksheet ? (
                           <span className="text-primary font-semibold group-hover:underline">View worksheet →</span>
                         ) : (

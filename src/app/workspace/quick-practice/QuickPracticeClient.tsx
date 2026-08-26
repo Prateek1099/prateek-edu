@@ -9,13 +9,25 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Zap, Trash2, Clock, Users, Play, ExternalLink, Shuffle } from "lucide-react";
+import { Zap, Trash2, Clock, Users, ExternalLink, Shuffle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createQuickPractice, deleteWorkspaceChallenge } from "@/app/actions/workspace-worksheets";
+import AssignContentDialog, { type AssignmentClassOption } from "@/components/workspace/AssignContentDialog";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
+type WorkspaceQuickPractice = {
+  id: string;
+  title: string;
+  subjectId: string;
+  difficulty: string;
+  estimatedTime: number;
+  assignedRecipientCount: number;
+  subject: { name: string };
+  topic: { topicName: string } | null;
+  _count: { questions: number };
+};
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 bg-emerald-500/10",
@@ -28,13 +40,13 @@ export default function QuickPracticeClient({
   subjectOptions,
   topicOptions,
   bankQuestions,
-  workspaceId,
+  assignmentClasses,
 }: {
-  practices: any[];
+  practices: WorkspaceQuickPractice[];
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
   bankQuestions: { id: string, subjectId: string, topicId: string | null, difficulty: string }[];
-  workspaceId: string;
+  assignmentClasses: AssignmentClassOption[];
 }) {
   const [data, setData] = useState(practices);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,8 +101,8 @@ export default function QuickPracticeClient({
       toast.success("Quick Practice generated!");
       setBuilderOpen(false);
       window.location.reload();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create quick practice");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to create quick practice");
     } finally {
       setIsSubmitting(false);
     }
@@ -103,8 +115,8 @@ export default function QuickPracticeClient({
       await deleteWorkspaceChallenge(id);
       toast.success("Deleted successfully");
       setData(prev => prev.filter(w => w.id !== id));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete");
     }
   };
 
@@ -172,10 +184,16 @@ export default function QuickPracticeClient({
                   </Badge>
                   <Badge variant="secondary" className="gap-1"><Clock className="size-3" /> {w.estimatedTime}m</Badge>
                   <Badge variant="secondary" className="gap-1"><Zap className="size-3 text-amber-500" /> {w._count.questions} Qs</Badge>
-                  <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"><Users className="size-3" /> {w._count.assignments} assigned</Badge>
+                  <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"><Users className="size-3" /> {w.assignedRecipientCount} assigned</Badge>
                 </div>
                 
                 <div className="flex gap-2">
+                  <AssignContentDialog
+                    challengeId={w.id}
+                    challengeTitle={w.title}
+                    subjectId={w.subjectId}
+                    classes={assignmentClasses}
+                  />
                   <Link href={`/admin/worksheets/${w.id}/print`} className="flex-1">
                     <Button variant="outline" className="w-full gap-2 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900/50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400">
                       <ExternalLink className="size-4" /> Print / PDF

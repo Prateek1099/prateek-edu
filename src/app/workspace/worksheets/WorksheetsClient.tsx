@@ -10,13 +10,35 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, FileText, Clock, Users, Play, ExternalLink } from "lucide-react";
+import { Plus, Trash2, FileText, Clock, Users, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createWorksheet, deleteWorkspaceChallenge } from "@/app/actions/workspace-worksheets";
+import AssignContentDialog, { type AssignmentClassOption } from "@/components/workspace/AssignContentDialog";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
+type WorkspaceWorksheet = {
+  id: string;
+  title: string;
+  subjectId: string;
+  difficulty: string;
+  estimatedTime: number;
+  assignedRecipientCount: number;
+  subject: { name: string };
+  topic: { topicName: string } | null;
+  _count: { questions: number };
+};
+type WorkspaceBankQuestion = {
+  id: string;
+  subjectId: string;
+  topicId: string | null;
+  questionText: string;
+  topicTag: string | null;
+  marks: number;
+  difficulty: string;
+  workspaceId: string | null;
+};
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 bg-emerald-500/10",
@@ -29,13 +51,13 @@ export default function WorksheetsClient({
   subjectOptions,
   topicOptions,
   bankQuestions,
-  workspaceId,
+  assignmentClasses,
 }: {
-  worksheets: any[];
+  worksheets: WorkspaceWorksheet[];
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
-  bankQuestions: any[];
-  workspaceId: string;
+  bankQuestions: WorkspaceBankQuestion[];
+  assignmentClasses: AssignmentClassOption[];
 }) {
   const [data, setData] = useState(worksheets);
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,8 +113,8 @@ export default function WorksheetsClient({
       // We would normally re-fetch or rely on Next.js server actions revalidatePath
       // But we can trigger a hard refresh if needed to see it instantly
       window.location.reload();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to create worksheet");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to create worksheet");
     } finally {
       setIsSubmitting(false);
     }
@@ -105,8 +127,8 @@ export default function WorksheetsClient({
       await deleteWorkspaceChallenge(id);
       toast.success("Worksheet deleted");
       setData(prev => prev.filter(w => w.id !== id));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete");
     }
   };
 
@@ -174,10 +196,16 @@ export default function WorksheetsClient({
                   </Badge>
                   <Badge variant="secondary" className="gap-1"><Clock className="size-3" /> {w.estimatedTime}m</Badge>
                   <Badge variant="secondary" className="gap-1"><FileText className="size-3" /> {w._count.questions} Qs</Badge>
-                  <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"><Users className="size-3" /> {w._count.assignments} assigned</Badge>
+                  <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"><Users className="size-3" /> {w.assignedRecipientCount} assigned</Badge>
                 </div>
                 
                 <div className="flex gap-2">
+                  <AssignContentDialog
+                    challengeId={w.id}
+                    challengeTitle={w.title}
+                    subjectId={w.subjectId}
+                    classes={assignmentClasses}
+                  />
                   <Link href={`/admin/worksheets/${w.id}/print`} className="flex-1">
                     <Button variant="outline" className="w-full gap-2">
                       <ExternalLink className="size-4" /> Print / PDF

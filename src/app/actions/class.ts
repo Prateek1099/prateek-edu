@@ -5,6 +5,7 @@ import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace, requireAuth } from "@/lib/require-role";
+import { syncLateJoinerAssignmentRecipients } from "@/lib/workspace-assignment-service";
 
 function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -109,31 +110,49 @@ export async function getClassWithStudents(classId: string) {
 
 export async function addStudentToClass(classId: string, studentEmail: string) {
   const user = await requireActiveWorkspace();
-  const cls = await prisma.class.findFirst({
-    where: { id: classId, workspaceId: user.workspaceId },
-    include: { _count: { select: { students: { where: { status: "ACTIVE" } } } } },
-  });
-  if (!cls) throw new Error("Class not found in your workspace");
-  if (cls.maxStudents && cls._count.students >= cls.maxStudents) throw new Error("Class is full");
-
-  const student = await prisma.user.findUnique({ where: { email: studentEmail } });
-  if (!student) throw new Error("No student found with that email");
-  if (student.role !== "STUDENT") throw new Error("Only student accounts can be added to a class");
-
-  const enrollment = await prisma.classStudent.upsert({
-    where: { classId_studentId: { classId, studentId: student.id } },
-    create: { classId, studentId: student.id },
-    update: { status: "ACTIVE" },
-  });
-
-  if (!student.workspaceId) {
-    await prisma.user.update({
-      where: { id: student.id },
-      data: { workspaceId: user.workspaceId },
+  const enrollment = await prisma.$transaction(async (tx) => {
+    const cls = await tx.class.findFirst({
+      where: {
+        id: classId,
+        workspaceId: user.workspaceId,
+        status: "ACTIVE",
+        workspace: { status: "ACTIVE" },
+      },
+      include: { _count: { select: { students: { where: { status: "ACTIVE" } } } } },
     });
-  }
+    if (!cls) throw new Error("Active class not found in your workspace");
+
+    const student = await tx.user.findUnique({ where: { email: studentEmail.trim() } });
+    if (!student) throw new Error("No student found with that email");
+    if (student.role !== "STUDENT") throw new Error("Only student accounts can be added to a class");
+
+    const existing = await tx.classStudent.findUnique({
+      where: { classId_studentId: { classId, studentId: student.id } },
+    });
+    if (!existing || existing.status !== "ACTIVE") {
+      if (cls.maxStudents && cls._count.students >= cls.maxStudents) throw new Error("Class is full");
+    }
+
+    const nextEnrollment = await tx.classStudent.upsert({
+      where: { classId_studentId: { classId, studentId: student.id } },
+      create: { classId, studentId: student.id },
+      update: { status: "ACTIVE" },
+    });
+
+    await syncLateJoinerAssignmentRecipients(tx, classId, student.id);
+
+    if (!student.workspaceId) {
+      await tx.user.update({
+        where: { id: student.id },
+        data: { workspaceId: user.workspaceId },
+      });
+    }
+    return nextEnrollment;
+  }, { isolationLevel: "Serializable" });
 
   revalidatePath(`/workspace/classes/${classId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/worksheets");
   return enrollment;
 }
 
@@ -148,6 +167,8 @@ export async function removeStudentFromClass(classId: string, studentId: string)
     data: { status: "REMOVED" },
   });
   revalidatePath(`/workspace/classes/${classId}`);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/worksheets");
 }
 
 // === STUDENT ACTIONS ===
@@ -196,6 +217,8 @@ export async function joinClassByCode(joinCode: string): Promise<JoinClassByCode
       update: { status: "ACTIVE" },
     });
 
+    await syncLateJoinerAssignmentRecipients(tx, cls.id, user.id);
+
     // Retained for legacy UI/session compatibility only. Authorization must use
     // ClassStudent membership and exact assignments, never this pointer.
     await tx.user.update({
@@ -207,6 +230,7 @@ export async function joinClassByCode(joinCode: string): Promise<JoinClassByCode
   }, { isolationLevel: "Serializable" });
 
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/worksheets");
   return { success: true, ...joined };
 }
 
@@ -235,4 +259,5 @@ export async function leaveClass(classId: string) {
     data: { status: "REMOVED" },
   });
   revalidatePath("/dashboard");
+  revalidatePath("/dashboard/worksheets");
 }

@@ -32,6 +32,8 @@ export async function deleteUserAction(id: string) {
               challengeAttempts: true,
               mistakeEntries: true,
               worksheetAssignments: true,
+              workspaceAssignmentRecipients: true,
+              assignedWorkspaceBatches: true,
               classEnrollments: true,
             },
           },
@@ -72,6 +74,12 @@ export async function deleteUserAction(id: string) {
       if (counts.savedPapers > 0) blockers.push(`${counts.savedPapers} saved paper record(s)`);
       if (counts.worksheetAssignments > 0) {
         blockers.push(`${counts.worksheetAssignments} worksheet assignment(s)`);
+      }
+      if (counts.workspaceAssignmentRecipients > 0) {
+        blockers.push(`${counts.workspaceAssignmentRecipients} workspace assignment recipient record(s)`);
+      }
+      if (counts.assignedWorkspaceBatches > 0) {
+        blockers.push(`${counts.assignedWorkspaceBatches} assigned workspace batch(es)`);
       }
       if (counts.classEnrollments > 0) {
         blockers.push(`${counts.classEnrollments} class enrollment(s)`);

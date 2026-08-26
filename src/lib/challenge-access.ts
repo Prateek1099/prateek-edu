@@ -53,7 +53,25 @@ export async function canAccessChallengeOrWorksheet({
   let hasActiveWorkspaceMembership = false;
 
   if (role === "STUDENT" && challenge.workspaceId) {
-    const [assignment, membership] = await Promise.all([
+    const [recipient, legacyAssignment, legacyMembership] = await Promise.all([
+      prisma.workspaceAssignmentRecipient.findFirst({
+        where: {
+          studentId: userId,
+          revokedAt: null,
+          batch: {
+            challengeId: challenge.id,
+            workspaceId: challenge.workspaceId,
+            status: "ACTIVE",
+            workspace: { status: "ACTIVE" },
+            class: {
+              status: "ACTIVE",
+              workspaceId: challenge.workspaceId,
+              students: { some: { studentId: userId, status: "ACTIVE" } },
+            },
+          },
+        },
+        select: { id: true },
+      }),
       prisma.worksheetAssignment.findUnique({
         where: {
           userId_worksheetId: {
@@ -76,8 +94,8 @@ export async function canAccessChallengeOrWorksheet({
         select: { id: true },
       }),
     ]);
-    hasExactAssignment = Boolean(assignment);
-    hasActiveWorkspaceMembership = Boolean(membership);
+    hasExactAssignment = Boolean(recipient || legacyAssignment);
+    hasActiveWorkspaceMembership = Boolean(recipient || legacyMembership);
   }
 
   const decision = decideChallengeAccess({

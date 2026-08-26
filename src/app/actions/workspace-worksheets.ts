@@ -150,17 +150,39 @@ export async function createQuickPractice(data: {
 
 export async function deleteWorkspaceChallenge(id: string) {
   const user = await requireActiveWorkspace();
-  
-  const existing = await prisma.challenge.findUnique({
-    where: { id },
-  });
 
-  if (!existing || existing.workspaceId !== user.workspaceId) {
-    throw new Error("Challenge not found or unauthorized");
-  }
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.challenge.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        workspaceId: true,
+        _count: {
+          select: {
+            assignmentBatches: true,
+            assignments: true,
+            attempts: true,
+            mistakes: true,
+          },
+        },
+      },
+    });
 
-  await prisma.challenge.delete({
-    where: { id },
+    if (!existing || existing.workspaceId !== user.workspaceId) {
+      throw new Error("Challenge not found or unauthorized");
+    }
+    if (
+      existing._count.assignmentBatches > 0 ||
+      existing._count.assignments > 0 ||
+      existing._count.attempts > 0 ||
+      existing._count.mistakes > 0
+    ) {
+      throw new Error(
+        "This content has assignment or student history and cannot be permanently deleted.",
+      );
+    }
+
+    await tx.challenge.delete({ where: { id } });
   });
 
   revalidatePath("/workspace/worksheets");

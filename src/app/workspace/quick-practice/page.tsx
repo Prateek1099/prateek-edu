@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function WorkspaceQuickPracticePage() {
   const user = await requireActiveWorkspace();
 
-  const [practices, subjects, topics, bankQuestions] = await Promise.all([
+  const [practices, subjects, topics, bankQuestions, assignmentClasses] = await Promise.all([
     prisma.challenge.findMany({
       where: {
         workspaceId: user.workspaceId,
@@ -16,7 +16,11 @@ export default async function WorkspaceQuickPracticePage() {
       include: {
         subject: { include: { qualification: { include: { board: true } } } },
         topic: true,
-        _count: { select: { questions: true, assignments: true } }
+        _count: { select: { questions: true, assignments: true } },
+        assignmentBatches: {
+          where: { status: "ACTIVE" },
+          select: { _count: { select: { recipients: { where: { revokedAt: null } } } } },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -41,7 +45,20 @@ export default async function WorkspaceQuickPracticePage() {
         topicId: true,
         difficulty: true
       }
-    })
+    }),
+    prisma.class.findMany({
+      where: { workspaceId: user.workspaceId, status: "ACTIVE" },
+      select: {
+        id: true,
+        name: true,
+        subjectId: true,
+        students: {
+          where: { status: "ACTIVE" },
+          select: { student: { select: { id: true, name: true, email: true } } },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const subjectOptions = subjects.map((s) => ({
@@ -67,11 +84,22 @@ export default async function WorkspaceQuickPracticePage() {
         </p>
       </div>
       <QuickPracticeClient
-        practices={practices}
+        practices={practices.map((practice) => ({
+          ...practice,
+          assignedRecipientCount:
+            practice._count.assignments +
+            practice.assignmentBatches.reduce(
+              (total, batch) => total + batch._count.recipients,
+              0,
+            ),
+        }))}
         subjectOptions={subjectOptions}
         topicOptions={topicOptions}
         bankQuestions={bankQuestions}
-        workspaceId={user.workspaceId}
+        assignmentClasses={assignmentClasses.map((classOption) => ({
+          ...classOption,
+          students: classOption.students.map((membership) => membership.student),
+        }))}
       />
     </div>
   );

@@ -35,6 +35,9 @@ test("workspace resource routes share the centralized access service", () => {
 });
 
 test("student access uses exact assignment and active relational membership", () => {
+  assert.match(accessService, /workspaceAssignmentRecipient\.findFirst/);
+  assert.match(accessService, /challengeId: challenge\.id/);
+  assert.match(accessService, /students: \{ some: \{ studentId: userId, status: "ACTIVE" \} \}/);
   assert.match(accessService, /worksheetAssignment\.findUnique/);
   assert.match(accessService, /userId_worksheetId/);
   assert.match(accessService, /classStudent\.findFirst/);
@@ -75,14 +78,17 @@ test("join class is student-only, securely generated, and transactional", () => 
 });
 
 test("class assignment display is scoped to the teacher workspace", () => {
-  assert.match(classDetail, /worksheet: \{ workspaceId: workspace\.id \}/);
+  assert.match(classDetail, /where: \{ id, workspaceId: user\.workspaceId \}/);
+  assert.match(classDetail, /assignmentBatches:/);
+  assert.match(classDetail, /workspaceId: user\.workspaceId/);
 });
 
-test("assignment removal verifies teacher worksheet and active student membership", () => {
-  assert.match(assignmentActions, /worksheet\.workspaceId !== user\.workspaceId/);
-  assert.match(assignmentActions, /classStudent\.findFirst/);
-  assert.match(assignmentActions, /studentId: userId/);
-  assert.match(assignmentActions, /class: \{ workspaceId: user\.workspaceId, status: "ACTIVE" \}/);
+test("assignment cancellation and recipient revocation verify the teacher workspace", () => {
+  assert.match(assignmentActions, /cancelWorkspaceAssignment/);
+  assert.match(assignmentActions, /revokeWorkspaceAssignmentRecipient/);
+  assert.match(assignmentActions, /workspaceId: user\.workspaceId/);
+  assert.match(assignmentActions, /status: "CANCELLED"/);
+  assert.match(assignmentActions, /revokedAt: new Date/);
 });
 
 test("teacher student performance includes only teacher-owned workspace challenges", () => {
