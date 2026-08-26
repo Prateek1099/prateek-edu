@@ -83,6 +83,10 @@ export default async function WorkspaceQuickPracticePage() {
           Rapid-fire assessments for exit tickets and quick reviews.
         </p>
       </div>
+      <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
+        <span className="font-semibold">Published but private until assigned.</span>{" "}
+        Students will see a practice only after you assign it to their class or account.
+      </div>
       <QuickPracticeClient
         practices={practices.map((practice) => ({
           ...practice,

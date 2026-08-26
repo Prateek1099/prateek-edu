@@ -8,6 +8,10 @@ import {
   isWorkspaceAssignableChallengeType,
   normalizeDueDate,
 } from "@/lib/workspace-assignment-rules";
+import {
+  workspaceActionErrorMessage,
+  workspaceExpectedError,
+} from "@/lib/workspace-action-errors";
 
 export type CreateWorkspaceAssignmentInput = {
   classId: string;
@@ -77,18 +81,18 @@ export async function createWorkspaceAssignment(
           }),
         ]);
 
-        if (!classData) throw new Error("Active class not found in your workspace.");
+        if (!classData) workspaceExpectedError("Choose an active class from your workspace.");
         if (!challenge || challenge.workspaceId !== user.workspaceId) {
-          throw new Error("Assignment content not found in your workspace.");
+          workspaceExpectedError("This content is not available in your workspace.");
         }
         if (!challenge.isPublished) {
-          throw new Error("Publish this content before assigning it to students.");
+          workspaceExpectedError("Publish this content before assigning it to students.");
         }
         if (!isWorkspaceAssignableChallengeType(challenge.type)) {
-          throw new Error("Only worksheets, PDF worksheets, and Quick Practice can be assigned.");
+          workspaceExpectedError("Only worksheets, PDF worksheets, and Quick Practice can be assigned.");
         }
         if (classData.subjectId && classData.subjectId !== challenge.subjectId) {
-          throw new Error("This content does not match the class subject.");
+          workspaceExpectedError("This content does not match the class subject.");
         }
 
         const activeStudentIds = classData.students.map((student) => student.studentId);
@@ -96,7 +100,7 @@ export async function createWorkspaceAssignment(
         const recipientIds = input.audience === "CLASS" ? activeStudentIds : requestedIds;
 
         if (recipientIds.length === 0) {
-          throw new Error(
+          workspaceExpectedError(
             input.audience === "CLASS"
               ? "This class has no active students to assign."
               : "Select at least one student.",
@@ -106,7 +110,7 @@ export async function createWorkspaceAssignment(
           input.audience === "SELECTED_STUDENTS" &&
           recipientIds.some((studentId) => !activeStudentIds.includes(studentId))
         ) {
-          throw new Error("Every selected student must be active in this exact class.");
+          workspaceExpectedError("Every selected student must be active in this exact class.");
         }
 
         let batch = await tx.workspaceAssignmentBatch.findFirst({
@@ -190,7 +194,7 @@ export async function createWorkspaceAssignment(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Could not create the assignment.",
+      error: workspaceActionErrorMessage(error, "Could not create the assignment. Please try again."),
     };
   }
 }
@@ -216,7 +220,7 @@ export async function updateWorkspaceAssignmentDueDate(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Could not update the due date.",
+      error: workspaceActionErrorMessage(error, "Could not update the due date."),
     };
   }
 }

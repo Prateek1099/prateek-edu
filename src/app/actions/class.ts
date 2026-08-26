@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace, requireAuth } from "@/lib/require-role";
 import { syncLateJoinerAssignmentRecipients } from "@/lib/workspace-assignment-service";
+import {
+  validateClassAcademicRelationship,
+  validateClassCreationFields,
+} from "@/lib/teacher-trial-ux-rules";
+import {
+  workspaceActionErrorMessage,
+  workspaceExpectedError,
+} from "@/lib/workspace-action-errors";
 
 function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -26,28 +34,63 @@ async function uniqueJoinCode(): Promise<string> {
 
 // === TEACHER ACTIONS ===
 
+export type CreateClassResult =
+  | { success: true; classId: string; joinCode: string }
+  | { success: false; error: string };
+
 export async function createClass(data: {
   name: string;
   subjectId?: string | null;
   qualificationId?: string | null;
   academicYear: string;
   maxStudents?: number | null;
-}) {
-  const user = await requireActiveWorkspace();
-  const joinCode = await uniqueJoinCode();
-  const cls = await prisma.class.create({
-    data: {
-      name: data.name,
-      workspaceId: user.workspaceId,
-      subjectId: data.subjectId || null,
-      qualificationId: data.qualificationId || null,
-      academicYear: data.academicYear,
-      joinCode,
-      maxStudents: data.maxStudents || null,
-    },
-  });
-  revalidatePath("/workspace/classes");
-  return cls;
+}): Promise<CreateClassResult> {
+  try {
+    const fieldError = validateClassCreationFields(data);
+    if (fieldError) return { success: false, error: fieldError };
+
+    const user = await requireActiveWorkspace();
+    const [subject, qualification] = await Promise.all([
+      data.subjectId
+        ? prisma.subject.findFirst({
+            where: { id: data.subjectId, status: "PUBLISHED" },
+            select: { qualificationId: true },
+          })
+        : null,
+      data.qualificationId
+        ? prisma.qualification.findFirst({
+            where: { id: data.qualificationId, status: "PUBLISHED" },
+            select: { id: true },
+          })
+        : null,
+    ]);
+    const academicError = validateClassAcademicRelationship({
+      subjectId: data.subjectId,
+      qualificationId: data.qualificationId,
+      subjectQualificationId: subject?.qualificationId,
+      subjectExists: !data.subjectId || Boolean(subject),
+      qualificationExists: !data.qualificationId || Boolean(qualification),
+    });
+    if (academicError) return { success: false, error: academicError };
+
+    const joinCode = await uniqueJoinCode();
+    const cls = await prisma.class.create({
+      data: {
+        name: data.name.trim(),
+        workspaceId: user.workspaceId,
+        subjectId: data.subjectId || null,
+        qualificationId: data.qualificationId || null,
+        academicYear: data.academicYear.trim(),
+        joinCode,
+        maxStudents: data.maxStudents ?? null,
+      },
+      select: { id: true, joinCode: true },
+    });
+    revalidatePath("/workspace/classes");
+    return { success: true, classId: cls.id, joinCode: cls.joinCode };
+  } catch {
+    return { success: false, error: "Could not create the class. Please try again." };
+  }
 }
 
 export async function updateClass(classId: string, data: {
@@ -178,60 +221,72 @@ export type JoinClassByCodeResult =
   | { success: false; error: string };
 
 export async function joinClassByCode(joinCode: string): Promise<JoinClassByCodeResult> {
-  const user = await requireAuth();
-  if (user.role !== "STUDENT") {
-    return { success: false, error: "Only student accounts can join a class." };
+  try {
+    const user = await requireAuth();
+    if (user.role !== "STUDENT") {
+      return { success: false, error: "Only student accounts can join a class." };
+    }
+    const normalizedCode = joinCode.trim().toUpperCase();
+    if (!/^VX-[A-HJ-NP-Z2-9]{4}-[A-HJ-NP-Z2-9]{2}$/.test(normalizedCode)) {
+      return { success: false, error: "Enter a valid class code in the format VX-XXXX-XX." };
+    }
+
+    const joined = await prisma.$transaction(async (tx) => {
+      const cls = await tx.class.findUnique({
+        where: { joinCode: normalizedCode },
+        include: {
+          workspace: { select: { id: true, name: true, status: true } },
+        },
+      });
+
+      if (!cls) workspaceExpectedError("That class code is invalid. Check the code and try again.");
+      if (cls.status !== "ACTIVE") workspaceExpectedError("This class is no longer active.");
+      if (!cls.joinCodeActive) workspaceExpectedError("This class code has been disabled.");
+      if (cls.workspace.status !== "ACTIVE") {
+        workspaceExpectedError("This class workspace is not currently active.");
+      }
+
+      const existing = await tx.classStudent.findUnique({
+        where: { classId_studentId: { classId: cls.id, studentId: user.id } },
+      });
+      if (existing?.status === "ACTIVE") {
+        workspaceExpectedError("You have already joined this class.");
+      }
+
+      const activeStudents = await tx.classStudent.count({
+        where: { classId: cls.id, status: "ACTIVE" },
+      });
+      if (cls.maxStudents && activeStudents >= cls.maxStudents) {
+        workspaceExpectedError("This class is full. Ask your teacher for help.");
+      }
+
+      await tx.classStudent.upsert({
+        where: { classId_studentId: { classId: cls.id, studentId: user.id } },
+        create: { classId: cls.id, studentId: user.id },
+        update: { status: "ACTIVE" },
+      });
+
+      await syncLateJoinerAssignmentRecipients(tx, cls.id, user.id);
+
+      // Retained for legacy UI/session compatibility only. Authorization must use
+      // ClassStudent membership and exact assignments, never this pointer.
+      await tx.user.update({
+        where: { id: user.id },
+        data: { workspaceId: cls.workspace.id },
+      });
+
+      return { className: cls.name, workspaceName: cls.workspace.name };
+    }, { isolationLevel: "Serializable" });
+
+    revalidatePath("/dashboard");
+    revalidatePath("/dashboard/worksheets");
+    return { success: true, ...joined };
+  } catch (error) {
+    return {
+      success: false,
+      error: workspaceActionErrorMessage(error, "Could not join the class. Please try again."),
+    };
   }
-  const normalizedCode = joinCode.trim().toUpperCase();
-
-  const joined = await prisma.$transaction(async (tx) => {
-    const cls = await tx.class.findUnique({
-      where: { joinCode: normalizedCode },
-      include: {
-        workspace: { select: { id: true, name: true, status: true } },
-      },
-    });
-
-    if (!cls) throw new Error("Invalid join code");
-    if (cls.status !== "ACTIVE") throw new Error("This class is no longer active");
-    if (!cls.joinCodeActive) throw new Error("Join code is disabled for this class");
-    if (cls.workspace.status !== "ACTIVE") throw new Error("This workspace is not active");
-
-    const existing = await tx.classStudent.findUnique({
-      where: { classId_studentId: { classId: cls.id, studentId: user.id } },
-    });
-    if (existing?.status === "ACTIVE") {
-      throw new Error("You are already enrolled in this class");
-    }
-
-    const activeStudents = await tx.classStudent.count({
-      where: { classId: cls.id, status: "ACTIVE" },
-    });
-    if (cls.maxStudents && activeStudents >= cls.maxStudents) {
-      throw new Error("This class is full");
-    }
-
-    await tx.classStudent.upsert({
-      where: { classId_studentId: { classId: cls.id, studentId: user.id } },
-      create: { classId: cls.id, studentId: user.id },
-      update: { status: "ACTIVE" },
-    });
-
-    await syncLateJoinerAssignmentRecipients(tx, cls.id, user.id);
-
-    // Retained for legacy UI/session compatibility only. Authorization must use
-    // ClassStudent membership and exact assignments, never this pointer.
-    await tx.user.update({
-      where: { id: user.id },
-      data: { workspaceId: cls.workspace.id },
-    });
-
-    return { className: cls.name, workspaceName: cls.workspace.name };
-  }, { isolationLevel: "Serializable" });
-
-  revalidatePath("/dashboard");
-  revalidatePath("/dashboard/worksheets");
-  return { success: true, ...joined };
 }
 
 export async function getMyClasses() {

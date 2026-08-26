@@ -91,12 +91,17 @@ export default function QuickPracticeClient({
       const shuffled = [...availableQuestions].sort(() => 0.5 - Math.random());
       const selected = shuffled.slice(0, questionCount).map(q => q.id);
       
-      await createQuickPractice({
+      const result = await createQuickPractice({
         title: newTitle,
         subjectId: newSubject,
         topicId: newTopic === "none" ? null : newTopic,
         questionIds: selected,
+        requestedQuestionCount: questionCount,
       });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       
       toast.success("Quick Practice generated!");
       setBuilderOpen(false);
@@ -194,7 +199,7 @@ export default function QuickPracticeClient({
                     subjectId={w.subjectId}
                     classes={assignmentClasses}
                   />
-                  <Link href={`/admin/worksheets/${w.id}/print`} className="flex-1">
+                  <Link href={`/workspace/print/${w.id}`} className="flex-1">
                     <Button variant="outline" className="w-full gap-2 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900/50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400">
                       <ExternalLink className="size-4" /> Print / PDF
                     </Button>
@@ -213,7 +218,9 @@ export default function QuickPracticeClient({
             <DialogTitle className="flex items-center gap-2">
               <Zap className="size-5 text-amber-500" /> Auto-Generate Practice
             </DialogTitle>
-            <DialogDescription>Let Vexa assemble a quick practice automatically.</DialogDescription>
+            <DialogDescription>
+              Let Vexa assemble a quick practice automatically. Students will not see it until you assign it.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">

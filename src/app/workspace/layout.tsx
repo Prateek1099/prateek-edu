@@ -9,8 +9,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
 
-  // Type assertion since we augmented the session user
-  const user = session.user as any;
+  const user = session.user as typeof session.user & { id: string; role?: string };
   if (user.role !== "TEACHER") redirect("/dashboard");
 
   const workspace = await prisma.workspace.findUnique({
@@ -34,7 +33,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           </div>
           <h1 className="text-2xl font-bold tracking-tight mb-2">Workspace Pending Approval</h1>
           <p className="text-muted-foreground mb-4">
-            Your workspace <strong>"{workspace.name}"</strong> is awaiting approval from the Vexa admin team.
+            Your workspace <strong>&ldquo;{workspace.name}&rdquo;</strong> is awaiting approval from the Vexa admin team.
           </p>
           <p className="text-sm text-muted-foreground">
             You will receive access once your workspace has been reviewed and activated. This usually takes less than 24 hours.
@@ -46,9 +45,9 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
 
   return (
     <WorkspaceProvider workspace={workspace}>
-      <div className="flex min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:flex">
         <WorkspaceSidebar workspaceName={workspace.name} />
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10">
+        <main className="min-w-0 flex-1 overflow-y-auto px-4 pb-6 pt-20 sm:px-6 lg:p-10 print:p-0">
           {children}
         </main>
       </div>

@@ -4,6 +4,63 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { isMcqCompatibleQuestion } from "@/lib/bank-questions";
+import { validateWorkspaceAssessmentFields } from "@/lib/teacher-trial-ux-rules";
+import {
+  workspaceActionErrorMessage,
+  workspaceExpectedError,
+} from "@/lib/workspace-action-errors";
+
+export type CreateWorkspaceChallengeResult =
+  | { success: true; challengeId: string }
+  | { success: false; error: string };
+
+async function loadEligibleWorkspaceMcqs({
+  workspaceId,
+  subjectId,
+  topicId,
+  questionIds,
+  contentLabel,
+}: {
+  workspaceId: string;
+  subjectId: string;
+  topicId?: string | null;
+  questionIds: string[];
+  contentLabel: "Worksheet" | "Quick Practice";
+}) {
+  const [subject, topic, questions] = await Promise.all([
+    prisma.subject.findFirst({
+      where: { id: subjectId, status: "PUBLISHED" },
+      select: { id: true },
+    }),
+    topicId
+      ? prisma.topic.findFirst({
+          where: { id: topicId, subjectId },
+          select: { id: true },
+        })
+      : null,
+    prisma.bankQuestion.findMany({
+      where: {
+        id: { in: questionIds },
+        subjectId,
+        questionType: "MCQ",
+        OR: [{ workspaceId: null }, { workspaceId }],
+        ...(topicId ? { topicId } : {}),
+      },
+    }),
+  ]);
+
+  if (!subject) workspaceExpectedError("Choose a valid published subject.");
+  if (topicId && !topic) workspaceExpectedError("The selected topic does not belong to this subject.");
+  if (questions.length !== questionIds.length) {
+    workspaceExpectedError(
+      "One or more selected questions are unavailable for this subject, topic, or workspace.",
+    );
+  }
+  if (questions.some((question) => !isMcqCompatibleQuestion(question))) {
+    workspaceExpectedError(`${contentLabel} can currently use complete MCQ questions only.`);
+  }
+  return questions;
+}
 
 export async function createWorksheet(data: {
   title: string;
@@ -11,70 +68,68 @@ export async function createWorksheet(data: {
   topicId?: string | null;
   estimatedTime: number;
   questionIds: string[];
-}) {
-  const user = await requireActiveWorkspace();
-  
-  // Verify questions exist and get their details
-  const questions = await prisma.bankQuestion.findMany({
-    where: {
-      id: { in: data.questionIds },
-      subjectId: data.subjectId,
-      questionType: "MCQ",
-      OR: [{ workspaceId: null }, { workspaceId: user.workspaceId }],
-      ...(data.topicId ? { topicId: data.topicId } : {}),
-    }
-  });
-  
-  if (questions.length !== data.questionIds.length) {
-    throw new Error("One or more selected questions could not be found.");
-  }
-  if (questions.some((question) => !isMcqCompatibleQuestion(question))) {
-    throw new Error("Worksheets can currently use complete MCQ questions only.");
-  }
-  
-  // Calculate difficulty based on questions
-  const hardCount = questions.filter(q => q.difficulty === 'hard').length;
-  const easyCount = questions.filter(q => q.difficulty === 'easy').length;
-  
-  let difficulty = "medium";
-  if (hardCount > questions.length * 0.5) difficulty = "hard";
-  else if (easyCount > questions.length * 0.5) difficulty = "easy";
-  else if (hardCount > 0 && easyCount > 0) difficulty = "mixed";
-
-  const challenge = await prisma.challenge.create({
-    data: {
+}): Promise<CreateWorkspaceChallengeResult> {
+  try {
+    const fieldError = validateWorkspaceAssessmentFields(data);
+    if (fieldError) return { success: false, error: fieldError };
+    const user = await requireActiveWorkspace();
+    const questions = await loadEligibleWorkspaceMcqs({
       workspaceId: user.workspaceId,
-      title: data.title,
       subjectId: data.subjectId,
-      topicId: data.topicId || null,
-      difficulty,
-      estimatedTime: data.estimatedTime,
-      isPublished: true, // Worksheets are published by default within the workspace
-      type: "WORKSHEET",
-      questions: {
-        create: data.questionIds.map((bankQuestionId, idx) => {
-          const bq = questions.find(q => q.id === bankQuestionId)!;
-          return {
-            questionText: bq.questionText,
-            optionA: bq.optionA!,
-            optionB: bq.optionB!,
-            optionC: bq.optionC!,
-            optionD: bq.optionD!,
-            correctAnswer: bq.correctAnswer!,
-            explanation: bq.explanation,
-            topicTag: bq.topicTag,
-            difficulty: bq.difficulty,
-            marks: bq.marks,
-            sortOrder: idx,
-            bankQuestionId: bq.id,
-          };
-        })
-      }
-    }
-  });
+      topicId: data.topicId,
+      questionIds: data.questionIds,
+      contentLabel: "Worksheet",
+    });
 
-  revalidatePath("/workspace/worksheets");
-  return challenge;
+    // Calculate difficulty based on questions.
+    const hardCount = questions.filter((question) => question.difficulty === "hard").length;
+    const easyCount = questions.filter((question) => question.difficulty === "easy").length;
+
+    let difficulty = "medium";
+    if (hardCount > questions.length * 0.5) difficulty = "hard";
+    else if (easyCount > questions.length * 0.5) difficulty = "easy";
+    else if (hardCount > 0 && easyCount > 0) difficulty = "mixed";
+
+    const challenge = await prisma.challenge.create({
+      data: {
+        workspaceId: user.workspaceId,
+        title: data.title.trim(),
+        subjectId: data.subjectId,
+        topicId: data.topicId || null,
+        difficulty,
+        estimatedTime: data.estimatedTime,
+        isPublished: true, // Published inside the workspace; student visibility still requires assignment.
+        type: "WORKSHEET",
+        questions: {
+          create: data.questionIds.map((bankQuestionId, idx) => {
+            const bq = questions.find(q => q.id === bankQuestionId)!;
+            return {
+              questionText: bq.questionText,
+              optionA: bq.optionA!,
+              optionB: bq.optionB!,
+              optionC: bq.optionC!,
+              optionD: bq.optionD!,
+              correctAnswer: bq.correctAnswer!,
+              explanation: bq.explanation,
+              topicTag: bq.topicTag,
+              difficulty: bq.difficulty,
+              marks: bq.marks,
+              sortOrder: idx,
+              bankQuestionId: bq.id,
+            };
+          }),
+        },
+      },
+    });
+
+    revalidatePath("/workspace/worksheets");
+    return { success: true, challengeId: challenge.id };
+  } catch (error) {
+    return {
+      success: false,
+      error: workspaceActionErrorMessage(error, "Could not create the worksheet. Please try again."),
+    };
+  }
 }
 
 export async function createQuickPractice(data: {
@@ -82,70 +137,69 @@ export async function createQuickPractice(data: {
   subjectId: string;
   topicId?: string | null;
   questionIds: string[];
-}) {
-  const user = await requireActiveWorkspace();
-  
-  // Verify questions exist and get their details
-  const questions = await prisma.bankQuestion.findMany({
-    where: {
-      id: { in: data.questionIds },
-      subjectId: data.subjectId,
-      questionType: "MCQ",
-      OR: [{ workspaceId: null }, { workspaceId: user.workspaceId }],
-      ...(data.topicId ? { topicId: data.topicId } : {}),
-    }
-  });
-  
-  if (questions.length !== data.questionIds.length) {
-    throw new Error("One or more selected questions could not be found.");
-  }
-  if (questions.some((question) => !isMcqCompatibleQuestion(question))) {
-    throw new Error("Quick Practice can currently use complete MCQ questions only.");
-  }
-  
-  // Calculate difficulty based on questions
-  const hardCount = questions.filter(q => q.difficulty === 'hard').length;
-  const easyCount = questions.filter(q => q.difficulty === 'easy').length;
-  
-  let difficulty = "medium";
-  if (hardCount > questions.length * 0.5) difficulty = "hard";
-  else if (easyCount > questions.length * 0.5) difficulty = "easy";
-  else if (hardCount > 0 && easyCount > 0) difficulty = "mixed";
-
-  const challenge = await prisma.challenge.create({
-    data: {
+  requestedQuestionCount?: number;
+}): Promise<CreateWorkspaceChallengeResult> {
+  try {
+    const fieldError = validateWorkspaceAssessmentFields(data);
+    if (fieldError) return { success: false, error: fieldError };
+    const user = await requireActiveWorkspace();
+    const questions = await loadEligibleWorkspaceMcqs({
       workspaceId: user.workspaceId,
-      title: data.title,
       subjectId: data.subjectId,
-      topicId: data.topicId || null,
-      difficulty,
-      estimatedTime: questions.length * 2, // roughly 2 mins per question for quick practice
-      isPublished: true, 
-      type: "QUICK_PRACTICE",
-      questions: {
-        create: data.questionIds.map((bankQuestionId, idx) => {
-          const bq = questions.find(q => q.id === bankQuestionId)!;
-          return {
-            questionText: bq.questionText,
-            optionA: bq.optionA!,
-            optionB: bq.optionB!,
-            optionC: bq.optionC!,
-            optionD: bq.optionD!,
-            correctAnswer: bq.correctAnswer!,
-            explanation: bq.explanation,
-            topicTag: bq.topicTag,
-            difficulty: bq.difficulty,
-            marks: bq.marks,
-            sortOrder: idx,
-            bankQuestionId: bq.id,
-          };
-        })
-      }
-    }
-  });
+      topicId: data.topicId,
+      questionIds: data.questionIds,
+      contentLabel: "Quick Practice",
+    });
 
-  revalidatePath("/workspace/quick-practice");
-  return challenge;
+    // Calculate difficulty based on questions.
+    const hardCount = questions.filter((question) => question.difficulty === "hard").length;
+    const easyCount = questions.filter((question) => question.difficulty === "easy").length;
+
+    let difficulty = "medium";
+    if (hardCount > questions.length * 0.5) difficulty = "hard";
+    else if (easyCount > questions.length * 0.5) difficulty = "easy";
+    else if (hardCount > 0 && easyCount > 0) difficulty = "mixed";
+
+    const challenge = await prisma.challenge.create({
+      data: {
+        workspaceId: user.workspaceId,
+        title: data.title.trim(),
+        subjectId: data.subjectId,
+        topicId: data.topicId || null,
+        difficulty,
+        estimatedTime: questions.length * 2,
+        isPublished: true,
+        type: "QUICK_PRACTICE",
+        questions: {
+          create: data.questionIds.map((bankQuestionId, idx) => {
+            const bq = questions.find(q => q.id === bankQuestionId)!;
+            return {
+              questionText: bq.questionText,
+              optionA: bq.optionA!,
+              optionB: bq.optionB!,
+              optionC: bq.optionC!,
+              optionD: bq.optionD!,
+              correctAnswer: bq.correctAnswer!,
+              explanation: bq.explanation,
+              topicTag: bq.topicTag,
+              difficulty: bq.difficulty,
+              marks: bq.marks,
+              sortOrder: idx,
+              bankQuestionId: bq.id,
+            };
+          }),
+        },
+      },
+    });
+
+    revalidatePath("/workspace/quick-practice");
+    return { success: true, challengeId: challenge.id };
+  } catch (error) {
+    return {
+      success: false,
+      error: workspaceActionErrorMessage(error, "Could not create Quick Practice. Please try again."),
+    };
+  }
 }
 
 export async function deleteWorkspaceChallenge(id: string) {

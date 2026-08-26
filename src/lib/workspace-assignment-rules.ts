@@ -1,3 +1,5 @@
+import { workspaceExpectedError } from "@/lib/workspace-action-errors";
+
 export const WORKSPACE_ASSIGNABLE_CHALLENGE_TYPES = [
   "WORKSHEET",
   "PDF_WORKSHEET",
@@ -16,12 +18,12 @@ export function isWorkspaceAssignableChallengeType(
 export function normalizeDueDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error("Choose a valid due date.");
+    workspaceExpectedError("Choose a valid due date.");
   }
 
   const dueDate = new Date(`${value}T23:59:59.999Z`);
   if (Number.isNaN(dueDate.getTime()) || dueDate.toISOString().slice(0, 10) !== value) {
-    throw new Error("Choose a valid due date.");
+    workspaceExpectedError("Choose a valid due date.");
   }
 
   const today = new Date();
@@ -31,7 +33,7 @@ export function normalizeDueDate(value: string | null | undefined): Date | null 
     today.getUTCDate(),
   );
   if (dueDate.getTime() < todayStart) {
-    throw new Error("Due date cannot be in the past.");
+    workspaceExpectedError("Due date cannot be in the past.");
   }
   return dueDate;
 }

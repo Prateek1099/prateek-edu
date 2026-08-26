@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Users, BookOpen, FileText, Briefcase, Zap, Database, 
   PlusCircle, FilePlus, BookPlus, UploadCloud, ClipboardList,
@@ -13,6 +13,25 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import type { LucideIcon } from "lucide-react";
+
+type WorkspaceSessionUser = { id: string; name?: string | null };
+
+type WorkspaceSubjectSummary = {
+  id: string;
+  name: string;
+  code: string | null;
+};
+
+type TimelineEvent = {
+  id: string;
+  type: string;
+  title: string;
+  date: Date;
+  icon: LucideIcon;
+  color: string;
+  bgColor: string;
+};
 
 // Helper function to format relative time
 function getRelativeTime(date: Date) {
@@ -33,7 +52,7 @@ function getRelativeTime(date: Date) {
 export default async function WorkspaceDashboardPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
-  const user = session.user as any;
+  const user = session.user as typeof session.user & WorkspaceSessionUser;
 
   // 1. Fetch Workspace and Base Stats
   const workspace = await prisma.workspace.findUnique({
@@ -52,7 +71,7 @@ export default async function WorkspaceDashboardPage() {
   if (!workspace) redirect("/dashboard");
 
   // 2. Compute "My Subjects" (Unique subjects taught in active classes)
-  const activeSubjectsMap = new Map();
+  const activeSubjectsMap = new Map<string, WorkspaceSubjectSummary>();
   workspace.classes.forEach(cls => {
     if (cls.subject) {
       if (!activeSubjectsMap.has(cls.subject.id)) {
@@ -101,8 +120,6 @@ export default async function WorkspaceDashboardPage() {
   ]);
 
   const worksheetsCount = contentStats.find(s => s.type === "WORKSHEET")?._count.id || 0;
-  const quickPracticeCount = contentStats.find(s => s.type === "CHALLENGE")?._count.id || 0;
-
   // Temporarily query global BankQuestion count filtered by active subjects taught by this teacher.
   // In the future, this will be filtered by Workspace ID if the Question Bank becomes tenant-scoped.
   const questionBankSize = mySubjectIds.length > 0 ? await prisma.bankQuestion.count({
@@ -110,7 +127,7 @@ export default async function WorkspaceDashboardPage() {
   }) : 0;
 
   // Merge and sort timeline
-  const timeline: any[] = [
+  const timeline: TimelineEvent[] = [
     ...recentStudents.map(s => ({
       id: `student-${s.id}`,
       type: "STUDENT_JOINED",
@@ -141,7 +158,7 @@ export default async function WorkspaceDashboardPage() {
             Welcome back, {user.name?.split(" ")[0] || "Teacher"}
           </h1>
           <p className="text-muted-foreground mt-1 text-lg">
-            Here's what's happening in <span className="font-semibold text-foreground">{workspace.name}</span> today.
+            Here&apos;s what&apos;s happening in <span className="font-semibold text-foreground">{workspace.name}</span> today.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -215,7 +232,7 @@ export default async function WorkspaceDashboardPage() {
               <Zap className="w-5 h-5 text-primary" /> Quick Actions
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <Link href="/workspace/content">
+              <Link href="/workspace/worksheets">
                 <Card className="group cursor-pointer hover:border-primary/50 transition-all hover:bg-muted/30">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600 group-hover:bg-blue-500 group-hover:text-white transition-colors">
@@ -225,7 +242,7 @@ export default async function WorkspaceDashboardPage() {
                   </CardContent>
                 </Card>
               </Link>
-              <Link href="/workspace/content">
+              <Link href="/workspace/quick-practice">
                 <Card className="group cursor-pointer hover:border-primary/50 transition-all hover:bg-muted/30">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
@@ -235,7 +252,7 @@ export default async function WorkspaceDashboardPage() {
                   </CardContent>
                 </Card>
               </Link>
-              <Link href="/workspace/content">
+              <Link href="/workspace/question-bank">
                 <Card className="group cursor-pointer hover:border-primary/50 transition-all hover:bg-muted/30">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
@@ -288,7 +305,7 @@ export default async function WorkspaceDashboardPage() {
             <Card className="shadow-sm overflow-hidden border-border">
               {timeline.length > 0 ? (
                 <div className="divide-y divide-border">
-                  {timeline.map((event, i) => (
+                  {timeline.map((event) => (
                     <div key={event.id} className="flex items-start gap-4 p-4 hover:bg-muted/20 transition-colors">
                       <div className={`mt-1 p-2 rounded-full ${event.bgColor}`}>
                         <event.icon className={`w-4 h-4 ${event.color}`} />

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Plus, Users, Copy, BookOpen, Archive } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,21 +58,25 @@ export default function WorkspaceClassesClient({
     e.preventDefault();
     setLoading(true);
     try {
-      await createClass({
+      const result = await createClass({
         name,
         subjectId: subjectId || null,
         qualificationId: qualificationId || null,
         academicYear,
         maxStudents: maxStudents ? parseInt(maxStudents) : null,
       });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success("Class created successfully!");
       setIsOpen(false);
       setName("");
       setSubjectId("");
       setQualificationId("");
       setMaxStudents("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to create class");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to create class");
     } finally {
       setLoading(false);
     }
@@ -82,8 +86,8 @@ export default function WorkspaceClassesClient({
     try {
       await archiveClass(classId);
       toast.success("Class archived");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     }
   };
 
@@ -204,7 +208,7 @@ export default function WorkspaceClassesClient({
               </div>
               <div className="space-y-2">
                 <Label>Max Students</Label>
-                <Input type="number" value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="Unlimited" />
+                <Input type="number" min={1} max={500} value={maxStudents} onChange={(e) => setMaxStudents(e.target.value)} placeholder="Unlimited" />
               </div>
             </div>
             <div className="pt-2 flex justify-end">

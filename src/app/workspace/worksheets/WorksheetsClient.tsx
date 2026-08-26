@@ -100,13 +100,17 @@ export default function WorksheetsClient({
 
     setIsSubmitting(true);
     try {
-      await createWorksheet({
+      const result = await createWorksheet({
         title: newTitle,
         subjectId: newSubject,
         topicId: newTopic === "none" ? null : newTopic,
         estimatedTime: newEstimatedTime,
         questionIds: selectedQuestions,
       });
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
       toast.success("Worksheet created");
       setBuilderOpen(false);
       
@@ -206,7 +210,7 @@ export default function WorksheetsClient({
                     subjectId={w.subjectId}
                     classes={assignmentClasses}
                   />
-                  <Link href={`/admin/worksheets/${w.id}/print`} className="flex-1">
+                  <Link href={`/workspace/print/${w.id}`} className="flex-1">
                     <Button variant="outline" className="w-full gap-2">
                       <ExternalLink className="size-4" /> Print / PDF
                     </Button>
@@ -224,7 +228,9 @@ export default function WorksheetsClient({
           <div className="p-6 border-b shrink-0">
             <DialogHeader>
               <DialogTitle>Create Worksheet</DialogTitle>
-              <DialogDescription>Build a new worksheet from the Question Bank.</DialogDescription>
+              <DialogDescription>
+                Build a new worksheet from the Question Bank. Students will not see it until you assign it.
+              </DialogDescription>
             </DialogHeader>
           </div>
 
