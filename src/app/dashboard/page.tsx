@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Users } from "lucide-react";
+import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Users, School } from "lucide-react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { AiInsightCard } from "./AiInsightCard";
 import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
+import { getStudentWorkspaceClasses } from "@/lib/student-workspace-classes";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 
 export default async function DashboardPage() {
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [enrollments, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments] = await Promise.all([
+  const [enrollments, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments, myClasses] = await Promise.all([
     prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
     prisma.userTopicProgress.findMany({
       where: { userId },
@@ -90,6 +91,7 @@ export default async function DashboardPage() {
       },
     }),
     getStudentWorkspaceAssignments(userId, 3),
+    getStudentWorkspaceClasses(userId),
   ]);
 
   const mistakeNeedsRevision = mistakeStats.find(s => s.status === "needs_revision")?._count.id || 0;
@@ -352,7 +354,50 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         </section>
       </div>
 
-      {/* ── 6. ASSIGNED WORK ── */}
+      {/* ── 6. MY CLASSES ── */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-bold">
+            <School className="size-4 text-primary" /> My Classes
+          </h2>
+          {myClasses.length > 0 ? (
+            <Link href="/dashboard/classes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-xs font-semibold text-primary")}>
+              View All <ArrowRight className="ml-1 size-3.5" />
+            </Link>
+          ) : null}
+        </div>
+        {myClasses.length === 0 ? (
+          <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20">
+            <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+              <div>
+                <h3 className="font-bold">You have not joined a class yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Use the class code shared by your teacher to join your class workspace.</p>
+              </div>
+              <Link href="/dashboard/join" className={cn(buttonVariants({ variant: "outline" }), "w-full shrink-0 rounded-xl sm:w-auto")}>Join Class</Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myClasses.slice(0, 3).map((studentClass) => (
+              <Card key={studentClass.id} className="rounded-2xl border-border/80 bg-card shadow-sm">
+                <CardContent className="p-5">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">{studentClass.subject?.name || "Class workspace"}</p>
+                  <h3 className="mt-1 line-clamp-1 font-bold">{studentClass.name}</h3>
+                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{studentClass.workspace.name} · {studentClass.academicYear}</p>
+                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-lg bg-primary/10 px-2 py-1 font-semibold text-primary">{studentClass.assignmentCounts.pending} pending</span>
+                    <span className="rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed} done</span>
+                    {studentClass.assignmentCounts.overdue > 0 ? <span className="rounded-lg bg-destructive/10 px-2 py-1 font-semibold text-destructive">{studentClass.assignmentCounts.overdue} overdue</span> : null}
+                  </div>
+                  <Link href={`/dashboard/classes/${studentClass.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 w-full rounded-xl")}>Open Class</Link>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── 7. ASSIGNED WORK ── */}
       {worksheetAssignments.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
@@ -430,7 +475,7 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         </section>
       )}
 
-      {/* ── 7. RECENT ACTIVITY (secondary) ── */}
+      {/* ── 8. RECENT ACTIVITY (secondary) ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold flex items-center gap-2">

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Users, BookOpen, FileText, Briefcase, Zap, Database, 
   PlusCircle, FilePlus, BookPlus, UploadCloud, ClipboardList,
-  UserPlus, Activity, Target, Sparkles, Clock, AlertTriangle, Lightbulb
+  UserPlus, Activity, Target, Clock
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -80,23 +80,29 @@ export default async function WorkspaceDashboardPage() {
     }
   });
   const mySubjects = Array.from(activeSubjectsMap.values());
-  const mySubjectIds = mySubjects.map(sub => sub.id);
 
   // 3. Aggregate Stats
-  const [totalStudents, contentStats, recentStudents, recentContent] = await Promise.all([
+  const [totalStudents, worksheetsCount, questionBankSize, recentStudents, recentContent, practiceAttempts] = await Promise.all([
     prisma.classStudent.count({
       where: {
-        class: { workspaceId: workspace.id },
+        class: { workspaceId: workspace.id, status: "ACTIVE" },
         status: "ACTIVE",
       },
     }),
-    prisma.workspaceContent.groupBy({
-      by: ["type"],
+    prisma.challenge.count({
+      where: {
+        workspaceId: workspace.id,
+        type: { in: ["WORKSHEET", "PDF_WORKSHEET"] },
+      },
+    }),
+    prisma.bankQuestion.count({
       where: { workspaceId: workspace.id },
-      _count: { id: true }
     }),
     prisma.classStudent.findMany({
-      where: { class: { workspaceId: workspace.id } },
+      where: {
+        status: "ACTIVE",
+        class: { workspaceId: workspace.id, status: "ACTIVE" },
+      },
       select: {
         id: true,
         enrolledAt: true,
@@ -106,8 +112,11 @@ export default async function WorkspaceDashboardPage() {
       orderBy: { enrolledAt: "desc" },
       take: 5
     }),
-    prisma.workspaceContent.findMany({
-      where: { workspaceId: workspace.id },
+    prisma.challenge.findMany({
+      where: {
+        workspaceId: workspace.id,
+        type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
+      },
       select: {
         id: true,
         type: true,
@@ -116,17 +125,17 @@ export default async function WorkspaceDashboardPage() {
       },
       orderBy: { createdAt: "desc" },
       take: 5
-    })
+    }),
+    prisma.challengeAttempt.aggregate({
+      where: {
+        challenge: { workspaceId: workspace.id, type: "QUICK_PRACTICE" },
+      },
+      _count: true,
+      _avg: { percentage: true },
+    }),
   ]);
 
-  const worksheetsCount = contentStats.find(s => s.type === "WORKSHEET")?._count.id || 0;
-  // Temporarily query global BankQuestion count filtered by active subjects taught by this teacher.
-  // In the future, this will be filtered by Workspace ID if the Question Bank becomes tenant-scoped.
-  const questionBankSize = mySubjectIds.length > 0 ? await prisma.bankQuestion.count({
-    where: { subjectId: { in: mySubjectIds }, questionType: "MCQ" }
-  }) : 0;
-
-  // Merge and sort timeline
+  // The timeline is based only on real active memberships and workspace-owned content.
   const timeline: TimelineEvent[] = [
     ...recentStudents.map(s => ({
       id: `student-${s.id}`,
@@ -142,7 +151,7 @@ export default async function WorkspaceDashboardPage() {
       type: "CONTENT_CREATED",
       title: `Created ${c.type.toLowerCase()}: ${c.title}`,
       date: c.createdAt,
-      icon: c.type === "WORKSHEET" ? FileText : Zap,
+      icon: c.type === "QUICK_PRACTICE" ? Zap : FileText,
       color: "text-blue-500",
       bgColor: "bg-blue-500/10"
     }))
@@ -365,68 +374,40 @@ export default async function WorkspaceDashboardPage() {
             </Card>
           </section>
 
-          {/* Teaching Intelligence (Placeholders) */}
+          {/* Teaching activity */}
           <section>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" /> Teaching Intelligence
+              <Activity className="w-5 h-5 text-primary" /> Teaching Activity
             </h2>
-            
             <div className="space-y-4">
-              {/* AI Insight Mock */}
-              <Card className="shadow-sm border-primary/20 bg-primary/5 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
-                  <Lightbulb className="w-24 h-24 text-primary" />
-                </div>
+              <Card className="shadow-sm border-border">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
-                    <Sparkles className="w-4 h-4" /> AI Insight
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-primary" /> Quick Practice activity
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Students in <span className="font-medium text-foreground">Computer Science 0478</span> are struggling with <span className="font-medium text-amber-500">Logic Gates</span>. Consider creating a targeted Quick Practice.
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-3 w-full border-primary/20 text-primary hover:bg-primary/10">
-                    Generate Practice
-                  </Button>
+                  {practiceAttempts._count > 0 ? (
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Students have completed <span className="font-semibold text-foreground">{practiceAttempts._count}</span> workspace Quick Practice attempt{practiceAttempts._count === 1 ? "" : "s"}, with an average score of <span className="font-semibold text-foreground">{Math.round(practiceAttempts._avg.percentage ?? 0)}%</span>.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No student activity yet. Assigned Quick Practice attempts will appear here after students complete them.</p>
+                  )}
+                  <Link href="/workspace/students" className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline">Review students →</Link>
                 </CardContent>
               </Card>
 
-              {/* Needs Intervention Mock */}
-              <Card className="shadow-sm border-amber-500/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 text-amber-600 dark:text-amber-500">
-                    <AlertTriangle className="w-4 h-4" /> Needs Intervention
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold">AS</div>
-                      <span className="text-sm font-medium">Alex Smith</span>
-                    </div>
-                    <span className="text-xs font-semibold text-destructive">45% Avg</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold">JD</div>
-                      <span className="text-sm font-medium">John Doe</span>
-                    </div>
-                    <span className="text-xs font-semibold text-amber-500">Missing HW</span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Ask Teacher Requests Mock */}
               <Card className="shadow-sm border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                    <Activity className="w-4 h-4" /> Ask Teacher Requests
+                    <Target className="w-4 h-4 text-primary" /> Needs Intervention
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="p-4 border border-dashed rounded-lg text-center text-sm text-muted-foreground">
-                    <p>No pending questions from students.</p>
+                    <p className="font-medium text-foreground">No intervention data yet.</p>
+                    <p className="mt-1 text-xs">Review student performance after more assigned practice is completed.</p>
                   </div>
                 </CardContent>
               </Card>
