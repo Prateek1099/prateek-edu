@@ -10,5 +10,8 @@ export function workspaceExpectedError(message: string): never {
 }
 
 export function workspaceActionErrorMessage(error: unknown, fallback: string) {
-  return error instanceof WorkspaceExpectedError ? error.message : fallback;
+  return error instanceof Error &&
+    (error instanceof WorkspaceExpectedError || error.name === "WorkspaceAcademicScopeError")
+    ? error.message
+    : fallback;
 }

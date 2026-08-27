@@ -28,7 +28,7 @@ type ClassItem = {
 type SubjectOption = {
   id: string;
   name: string;
-  qualification: { title: string; board: { title: string } };
+  qualification: { id: string; title: string; board: { title: string } };
 };
 
 type QualOption = {
@@ -41,10 +41,12 @@ export default function WorkspaceClassesClient({
   classes,
   subjects,
   qualifications,
+  hasAcademicScope,
 }: {
   classes: ClassItem[];
   subjects: SubjectOption[];
   qualifications: QualOption[];
+  hasAcademicScope: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -106,10 +108,16 @@ export default function WorkspaceClassesClient({
           </h1>
           <p className="text-muted-foreground mt-1">Manage your classes and students.</p>
         </div>
-        <Button onClick={() => setIsOpen(true)}>
+        <Button onClick={() => setIsOpen(true)} disabled={!hasAcademicScope}>
           <Plus className="size-4 mr-2" /> Create Class
         </Button>
       </div>
+
+      {!hasAcademicScope ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          Your academic access has not been configured yet. Please contact the administrator.
+        </div>
+      ) : null}
 
       {classes.length === 0 ? (
         <Card className="border-dashed">
@@ -117,7 +125,7 @@ export default function WorkspaceClassesClient({
             <BookOpen className="size-12 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="text-xl font-semibold mb-2">No classes yet</h3>
             <p className="text-muted-foreground mb-6">Create your first class to start managing students.</p>
-            <Button onClick={() => setIsOpen(true)}>
+            <Button onClick={() => setIsOpen(true)} disabled={!hasAcademicScope}>
               <Plus className="size-4 mr-2" /> Create Your First Class
             </Button>
           </CardContent>
@@ -180,8 +188,12 @@ export default function WorkspaceClassesClient({
               <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Class 10-A Computer Science" />
             </div>
             <div className="space-y-2">
-              <Label>Subject (Optional)</Label>
-              <Select value={subjectId} onValueChange={(val) => val && setSubjectId(val)}>
+              <Label>Subject</Label>
+              <Select value={subjectId} onValueChange={(val) => {
+                if (!val) return;
+                setSubjectId(val);
+                setQualificationId(subjects.find((subject) => subject.id === val)?.qualification.id ?? "");
+              }}>
                 <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
                 <SelectContent>
                   {subjects.map((s) => (
@@ -191,7 +203,7 @@ export default function WorkspaceClassesClient({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Qualification (Optional)</Label>
+              <Label>Qualification / Class</Label>
               <Select value={qualificationId} onValueChange={(val) => val && setQualificationId(val)}>
                 <SelectTrigger><SelectValue placeholder="Select Qualification" /></SelectTrigger>
                 <SelectContent>
@@ -212,7 +224,9 @@ export default function WorkspaceClassesClient({
               </div>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Class"}</Button>
+              <Button type="submit" disabled={loading || !subjectId || !qualificationId}>
+                {loading ? "Creating..." : "Create Class"}
+              </Button>
             </div>
           </form>
         </DialogContent>

@@ -1,35 +1,27 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Target, AlertTriangle, Activity, BookOpen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { requireActiveWorkspace } from "@/lib/require-role";
+import { listActiveWorkspaceSubjectIds } from "@/lib/workspace-academic-scope";
 
 export default async function StudentProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: studentId } = await params;
   
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const user = session.user as typeof session.user & { id?: string };
-  if (!user.id) redirect("/login");
-
-  const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: user.id },
-  });
-
-  if (!workspace) redirect("/dashboard");
+  const user = await requireActiveWorkspace();
+  const subjectIds = await listActiveWorkspaceSubjectIds(user.workspaceId);
 
   // Verify the student is enrolled in a class owned by this teacher
   const isEnrolled = await prisma.classStudent.findFirst({
     where: {
       studentId: studentId,
-      class: { workspaceId: workspace.id, status: "ACTIVE" },
+      class: { workspaceId: user.workspaceId, status: "ACTIVE", subjectId: { in: subjectIds } },
       status: "ACTIVE"
     }
   });
@@ -41,17 +33,17 @@ export default async function StudentProfilePage({ params }: { params: Promise<{
     where: { id: studentId },
     include: {
       classEnrollments: {
-        where: { class: { workspaceId: workspace.id, status: "ACTIVE" }, status: "ACTIVE" },
+        where: { class: { workspaceId: user.workspaceId, status: "ACTIVE", subjectId: { in: subjectIds } }, status: "ACTIVE" },
         include: { class: { include: { subject: true } } }
       },
       challengeAttempts: {
-        where: { challenge: { workspaceId: workspace.id } },
+        where: { challenge: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } } },
         include: { challenge: { select: { title: true, difficulty: true, subjectId: true } } },
         orderBy: { completedAt: "desc" },
         take: 10
       },
       mistakeEntries: {
-        where: { challenge: { workspaceId: workspace.id } },
+        where: { challenge: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } } },
         include: { question: { select: { questionText: true } } },
         orderBy: { updatedAt: "desc" },
         take: 10

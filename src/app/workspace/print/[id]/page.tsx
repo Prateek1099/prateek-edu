@@ -8,6 +8,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { WorksheetPaper, WorksheetSolutions } from "@/components/worksheets/WorksheetDocument";
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 
 export default async function WorkspaceContentPrintPage({
   params,
@@ -31,6 +32,7 @@ export default async function WorkspaceContentPrintPage({
   });
 
   if (!content) notFound();
+  await requireWorkspaceSubjectScope(user.workspaceId, content.subjectId);
 
   const document = {
     title: content.title,

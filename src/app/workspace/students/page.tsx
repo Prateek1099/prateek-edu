@@ -1,11 +1,10 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import StudentsClient from "./StudentsClient";
 import { UserCircle } from "lucide-react";
+import { requireActiveWorkspace } from "@/lib/require-role";
+import { listActiveWorkspaceSubjectIds } from "@/lib/workspace-academic-scope";
 
 type StudentSummary = {
   id: string;
@@ -20,32 +19,24 @@ type StudentSummary = {
 };
 
 export default async function WorkspaceStudentsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const user = session.user as typeof session.user & { id?: string };
-  if (!user.id) redirect("/login");
-
-  const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: user.id },
-  });
-
-  if (!workspace) redirect("/dashboard");
+  const user = await requireActiveWorkspace();
+  const subjectIds = await listActiveWorkspaceSubjectIds(user.workspaceId);
 
   // Fetch all active students in the workspace's active classes
   const classStudents = await prisma.classStudent.findMany({
     where: { 
-      class: { workspaceId: workspace.id, status: "ACTIVE" }, 
+      class: { workspaceId: user.workspaceId, status: "ACTIVE", subjectId: { in: subjectIds } },
       status: "ACTIVE" 
     },
     include: {
       student: {
         include: {
           challengeAttempts: {
-            where: { challenge: { workspaceId: workspace.id } },
+            where: { challenge: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } } },
             select: { score: true, totalQuestions: true, percentage: true }
           },
           mistakeEntries: {
-            where: { challenge: { workspaceId: workspace.id } },
+            where: { challenge: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } } },
             select: { topicTag: true, mistakeCount: true }
           }
         }

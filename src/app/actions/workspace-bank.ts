@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { validateBankQuestionInput } from "@/lib/bank-questions";
+import {
+  listActiveWorkspaceSubjectIds,
+  requireWorkspaceSubjectScope,
+  requireWorkspaceTopicScope,
+} from "@/lib/workspace-academic-scope";
 
 type WorkspaceQuestionInput = {
   subjectId: string;
@@ -22,7 +27,7 @@ type WorkspaceQuestionInput = {
   marks?: number;
 };
 
-async function validateWorkspaceMcq(data: WorkspaceQuestionInput) {
+async function validateWorkspaceMcq(workspaceId: string, data: WorkspaceQuestionInput) {
   const validation = validateBankQuestionInput({
     ...data,
     topicId: data.topicId ?? null,
@@ -32,21 +37,17 @@ async function validateWorkspaceMcq(data: WorkspaceQuestionInput) {
   });
   if (!validation.success) throw new Error(validation.errors.join(" "));
 
-  const subject = await prisma.subject.findUnique({ where: { id: validation.data.subjectId }, select: { id: true } });
-  if (!subject) throw new Error("Selected subject was not found.");
-  if (validation.data.topicId) {
-    const topic = await prisma.topic.findFirst({
-      where: { id: validation.data.topicId, subjectId: validation.data.subjectId },
-      select: { id: true },
-    });
-    if (!topic) throw new Error("Selected topic does not belong to the subject.");
-  }
+  await requireWorkspaceTopicScope(
+    workspaceId,
+    validation.data.subjectId,
+    validation.data.topicId,
+  );
   return validation.data;
 }
 
 export async function createWorkspaceQuestion(data: WorkspaceQuestionInput) {
   const user = await requireActiveWorkspace();
-  const validated = await validateWorkspaceMcq(data);
+  const validated = await validateWorkspaceMcq(user.workspaceId, data);
 
   const question = await prisma.bankQuestion.create({
     data: {
@@ -61,7 +62,7 @@ export async function createWorkspaceQuestion(data: WorkspaceQuestionInput) {
 
 export async function updateWorkspaceQuestion(id: string, data: WorkspaceQuestionInput) {
   const user = await requireActiveWorkspace();
-  const validated = await validateWorkspaceMcq(data);
+  const validated = await validateWorkspaceMcq(user.workspaceId, data);
 
   const existing = await prisma.bankQuestion.findUnique({
     where: { id },
@@ -70,6 +71,7 @@ export async function updateWorkspaceQuestion(id: string, data: WorkspaceQuestio
   if (!existing || existing.workspaceId !== user.workspaceId) {
     throw new Error("Question not found or unauthorized");
   }
+  await requireWorkspaceSubjectScope(user.workspaceId, existing.subjectId);
 
   const updated = await prisma.bankQuestion.update({
     where: { id },
@@ -90,6 +92,7 @@ export async function deleteWorkspaceQuestion(id: string) {
   if (!existing || existing.workspaceId !== user.workspaceId) {
     throw new Error("Question not found or unauthorized");
   }
+  await requireWorkspaceSubjectScope(user.workspaceId, existing.subjectId);
 
   await prisma.bankQuestion.delete({
     where: { id },
@@ -100,14 +103,28 @@ export async function deleteWorkspaceQuestion(id: string) {
 
 export async function getWorkspaceQuestions(filters?: { subjectId?: string, topicId?: string, view?: 'all' | 'my' | 'vexa' }) {
   const user = await requireActiveWorkspace();
+  const subjectIds = await listActiveWorkspaceSubjectIds(user.workspaceId);
   
-  const where: Prisma.BankQuestionWhereInput = { questionType: "MCQ" };
+  const where: Prisma.BankQuestionWhereInput = {
+    questionType: "MCQ",
+    subjectId: { in: subjectIds },
+  };
   
   if (filters?.subjectId && filters.subjectId !== "all") {
+    await requireWorkspaceSubjectScope(user.workspaceId, filters.subjectId);
     where.subjectId = filters.subjectId;
   }
   
   if (filters?.topicId && filters.topicId !== "all") {
+    const topic = await prisma.topic.findUnique({
+      where: { id: filters.topicId },
+      select: { subjectId: true },
+    });
+    if (!topic) throw new Error("Selected topic was not found.");
+    await requireWorkspaceTopicScope(user.workspaceId, topic.subjectId, filters.topicId);
+    if (filters.subjectId && filters.subjectId !== "all" && topic.subjectId !== filters.subjectId) {
+      throw new Error("The selected topic does not belong to the selected subject.");
+    }
     where.topicId = filters.topicId;
   }
   

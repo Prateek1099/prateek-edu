@@ -3,6 +3,10 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import {
+  listActiveWorkspaceSubjectIds,
+  requireWorkspaceTopicScope,
+} from "@/lib/workspace-academic-scope";
 
 export async function createWorkspaceContent(data: {
   type: string;
@@ -14,6 +18,7 @@ export async function createWorkspaceContent(data: {
   status?: string;
 }) {
   const user = await requireActiveWorkspace();
+  await requireWorkspaceTopicScope(user.workspaceId, data.subjectId, data.topicId);
   const content = await prisma.workspaceContent.create({
     data: {
       workspaceId: user.workspaceId,
@@ -43,6 +48,9 @@ export async function updateWorkspaceContent(contentId: string, data: {
     where: { id: contentId, workspaceId: user.workspaceId },
   });
   if (!content) throw new Error("Content not found in your workspace");
+  const subjectId = data.subjectId === undefined ? content.subjectId : data.subjectId;
+  const topicId = data.topicId === undefined ? content.topicId : data.topicId;
+  await requireWorkspaceTopicScope(user.workspaceId, subjectId, topicId);
   const updated = await prisma.workspaceContent.update({ where: { id: contentId }, data });
   revalidatePath("/workspace/content");
   return updated;
@@ -60,7 +68,11 @@ export async function deleteWorkspaceContent(contentId: string) {
 
 export async function listWorkspaceContent(filters?: { type?: string; status?: string }) {
   const user = await requireActiveWorkspace();
-  const where: Record<string, string> = { workspaceId: user.workspaceId };
+  const subjectIds = await listActiveWorkspaceSubjectIds(user.workspaceId);
+  const where: Record<string, unknown> = {
+    workspaceId: user.workspaceId,
+    subjectId: { in: subjectIds },
+  };
   if (filters?.type && filters.type !== "all") where.type = filters.type;
   if (filters?.status && filters.status !== "all") where.status = filters.status;
   return prisma.workspaceContent.findMany({

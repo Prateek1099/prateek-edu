@@ -1,17 +1,21 @@
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { prisma } from "@/lib/prisma";
 import QuickPracticeClient from "./QuickPracticeClient";
+import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkspaceQuickPracticePage() {
   const user = await requireActiveWorkspace();
+  const scopes = await listActiveWorkspaceScopes(user.workspaceId);
+  const subjectIds = scopes.map((scope) => scope.subjectId);
 
   const [practices, subjects, topics, bankQuestions, assignmentClasses] = await Promise.all([
     prisma.challenge.findMany({
       where: {
         workspaceId: user.workspaceId,
-        type: "QUICK_PRACTICE"
+        type: "QUICK_PRACTICE",
+        subjectId: { in: subjectIds },
       },
       include: {
         subject: { include: { qualification: { include: { board: true } } } },
@@ -24,16 +28,15 @@ export default async function WorkspaceQuickPracticePage() {
       },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.subject.findMany({
-      include: { qualification: { include: { board: true } } },
-      orderBy: { name: "asc" },
-    }),
+    Promise.resolve(scopes.map((scope) => scope.subject)),
     prisma.topic.findMany({
+      where: { subjectId: { in: subjectIds } },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.bankQuestion.findMany({
       where: {
         questionType: "MCQ",
+        subjectId: { in: subjectIds },
         OR: [
           { workspaceId: null },
           { workspaceId: user.workspaceId }
@@ -47,7 +50,7 @@ export default async function WorkspaceQuickPracticePage() {
       }
     }),
     prisma.class.findMany({
-      where: { workspaceId: user.workspaceId, status: "ACTIVE" },
+      where: { workspaceId: user.workspaceId, status: "ACTIVE", subjectId: { in: subjectIds } },
       select: {
         id: true,
         name: true,
@@ -83,6 +86,11 @@ export default async function WorkspaceQuickPracticePage() {
           Rapid-fire assessments for exit tickets and quick reviews.
         </p>
       </div>
+      {scopes.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          Your academic access has not been configured yet. Please contact the administrator.
+        </div>
+      ) : null}
       <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
         <span className="font-semibold">Published but private until assigned.</span>{" "}
         Students will see a practice only after you assign it to their class or account.

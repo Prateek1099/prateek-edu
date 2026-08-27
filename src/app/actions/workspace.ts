@@ -25,6 +25,13 @@ export async function listWorkspaces(statusFilter?: string) {
 
 export async function approveWorkspace(workspaceId: string) {
   await requireSuperAdmin();
+  const activeScope = await prisma.workspaceAcademicScope.findFirst({
+    where: { workspaceId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (!activeScope) {
+    throw new Error("Assign at least one academic scope before approving this workspace.");
+  }
   const ws = await prisma.workspace.update({
     where: { id: workspaceId },
     data: { status: "ACTIVE" },
@@ -45,6 +52,13 @@ export async function suspendWorkspace(workspaceId: string) {
 
 export async function reactivateWorkspace(workspaceId: string) {
   await requireSuperAdmin();
+  const activeScope = await prisma.workspaceAcademicScope.findFirst({
+    where: { workspaceId, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (!activeScope) {
+    throw new Error("Assign at least one academic scope before approving this workspace.");
+  }
   const ws = await prisma.workspace.update({
     where: { id: workspaceId },
     data: { status: "ACTIVE" },

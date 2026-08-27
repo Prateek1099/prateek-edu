@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { LucideIcon } from "lucide-react";
+import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 type WorkspaceSessionUser = { id: string; name?: string | null };
 
@@ -55,53 +56,44 @@ export default async function WorkspaceDashboardPage() {
   const user = session.user as typeof session.user & WorkspaceSessionUser;
 
   // 1. Fetch Workspace and Base Stats
-  const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: user.id },
+  const workspace = await prisma.workspace.findUnique({ where: { ownerId: user.id } });
+
+  if (!workspace) redirect("/dashboard");
+  const scopes = await listActiveWorkspaceScopes(workspace.id);
+  const subjectIds = scopes.map((scope) => scope.subjectId);
+  const activeClasses = await prisma.class.findMany({
+    where: { workspaceId: workspace.id, status: "ACTIVE", subjectId: { in: subjectIds } },
     include: {
-      classes: {
-        where: { status: "ACTIVE" },
-        include: {
-          subject: true,
-          _count: { select: { students: { where: { status: "ACTIVE" } } } },
-        },
-      },
+      subject: true,
+      _count: { select: { students: { where: { status: "ACTIVE" } } } },
     },
   });
 
-  if (!workspace) redirect("/dashboard");
-
-  // 2. Compute "My Subjects" (Unique subjects taught in active classes)
-  const activeSubjectsMap = new Map<string, WorkspaceSubjectSummary>();
-  workspace.classes.forEach(cls => {
-    if (cls.subject) {
-      if (!activeSubjectsMap.has(cls.subject.id)) {
-        activeSubjectsMap.set(cls.subject.id, cls.subject);
-      }
-    }
-  });
-  const mySubjects = Array.from(activeSubjectsMap.values());
+  // Assigned scopes are authoritative; class counts below remain usage indicators.
+  const mySubjects: WorkspaceSubjectSummary[] = scopes.map((scope) => scope.subject);
 
   // 3. Aggregate Stats
   const [totalStudents, worksheetsCount, questionBankSize, recentStudents, recentContent, practiceAttempts] = await Promise.all([
     prisma.classStudent.count({
       where: {
-        class: { workspaceId: workspace.id, status: "ACTIVE" },
+        class: { workspaceId: workspace.id, status: "ACTIVE", subjectId: { in: subjectIds } },
         status: "ACTIVE",
       },
     }),
     prisma.challenge.count({
       where: {
         workspaceId: workspace.id,
+        subjectId: { in: subjectIds },
         type: { in: ["WORKSHEET", "PDF_WORKSHEET"] },
       },
     }),
     prisma.bankQuestion.count({
-      where: { workspaceId: workspace.id },
+      where: { workspaceId: workspace.id, subjectId: { in: subjectIds } },
     }),
     prisma.classStudent.findMany({
       where: {
         status: "ACTIVE",
-        class: { workspaceId: workspace.id, status: "ACTIVE" },
+        class: { workspaceId: workspace.id, status: "ACTIVE", subjectId: { in: subjectIds } },
       },
       select: {
         id: true,
@@ -115,6 +107,7 @@ export default async function WorkspaceDashboardPage() {
     prisma.challenge.findMany({
       where: {
         workspaceId: workspace.id,
+        subjectId: { in: subjectIds },
         type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
       },
       select: {
@@ -128,7 +121,7 @@ export default async function WorkspaceDashboardPage() {
     }),
     prisma.challengeAttempt.aggregate({
       where: {
-        challenge: { workspaceId: workspace.id, type: "QUICK_PRACTICE" },
+        challenge: { workspaceId: workspace.id, type: "QUICK_PRACTICE", subjectId: { in: subjectIds } },
       },
       _count: true,
       _avg: { percentage: true },
@@ -184,6 +177,12 @@ export default async function WorkspaceDashboardPage() {
         </div>
       </div>
 
+      {scopes.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          Your academic access has not been configured yet. Please contact the administrator.
+        </div>
+      ) : null}
+
       {/* 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -211,7 +210,7 @@ export default async function WorkspaceDashboardPage() {
                     <p className="text-sm font-medium text-muted-foreground">Active Classes</p>
                     <BookOpen className="w-4 h-4 text-primary" />
                   </div>
-                  <p className="text-3xl font-bold">{workspace.classes.length}</p>
+                  <p className="text-3xl font-bold">{activeClasses.length}</p>
                 </CardContent>
               </Card>
               <Card className="shadow-sm hover:border-primary/40 transition-colors">
@@ -359,7 +358,7 @@ export default async function WorkspaceDashboardPage() {
                           <p className="text-xs text-muted-foreground mt-0.5">{sub.code || "No code"}</p>
                         </div>
                         <Badge variant="secondary" className="font-mono text-xs">
-                          {workspace.classes.filter(c => c.subjectId === sub.id).length} Classes
+                          {activeClasses.filter(c => c.subjectId === sub.id).length} Classes
                         </Badge>
                       </div>
                     ))}

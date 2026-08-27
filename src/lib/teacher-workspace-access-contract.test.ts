@@ -93,7 +93,8 @@ test("assignment cancellation and recipient revocation verify the teacher worksp
 
 test("teacher student performance includes only teacher-owned workspace challenges", () => {
   for (const source of [studentDirectory, studentProfile]) {
-    assert.match(source, /challenge: \{ workspaceId: workspace\.id \}/);
+    assert.match(source, /challenge: \{ workspaceId: user\.workspaceId, subjectId: \{ in: subjectIds \} \}/);
+    assert.match(source, /listActiveWorkspaceSubjectIds/);
     assert.doesNotMatch(source, /subject: \{ classes:/);
   }
 });

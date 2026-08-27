@@ -1,21 +1,17 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import WorkspaceContentClient from "./WorkspaceContentClient";
+import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
+import { requireActiveWorkspace } from "@/lib/require-role";
 
 export default async function WorkspaceContentPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const user = session.user as any;
-
-  const workspace = await prisma.workspace.findUnique({ where: { ownerId: user.id } });
-  if (!workspace) redirect("/dashboard");
+  const user = await requireActiveWorkspace();
+  const scopes = await listActiveWorkspaceScopes(user.workspaceId);
+  const subjectIds = scopes.map((scope) => scope.subjectId);
 
   const content = await prisma.workspaceContent.findMany({
-    where: { workspaceId: workspace.id },
+    where: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } },
     include: {
       subject: { select: { name: true } },
       topic: { select: { topicName: true } },
@@ -23,11 +19,16 @@ export default async function WorkspaceContentPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const subjects = await prisma.subject.findMany({
-    where: { status: "PUBLISHED" },
-    include: { qualification: { include: { board: true } } },
-    orderBy: [{ qualification: { board: { title: "asc" } } }, { name: "asc" }],
-  });
+  const subjects = scopes.map((scope) => scope.subject);
 
-  return <WorkspaceContentClient content={content} subjects={subjects} />;
+  return (
+    <div className="space-y-6">
+      {scopes.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
+          Your academic access has not been configured yet. Please contact the administrator.
+        </div>
+      ) : null}
+      <WorkspaceContentClient content={content} subjects={subjects} />
+    </div>
+  );
 }

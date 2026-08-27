@@ -1,23 +1,17 @@
 export const dynamic = "force-dynamic";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
 import WorkspaceClassesClient from "./WorkspaceClassesClient";
+import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
+import { requireActiveWorkspace } from "@/lib/require-role";
 
 export default async function WorkspaceClassesPage() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) redirect("/login");
-  const user = session.user as any;
-
-  const workspace = await prisma.workspace.findUnique({
-    where: { ownerId: user.id },
-  });
-  if (!workspace) redirect("/dashboard");
+  const user = await requireActiveWorkspace();
+  const scopes = await listActiveWorkspaceScopes(user.workspaceId);
+  const subjectIds = scopes.map((scope) => scope.subjectId);
 
   const classes = await prisma.class.findMany({
-    where: { workspaceId: workspace.id },
+    where: { workspaceId: user.workspaceId, subjectId: { in: subjectIds } },
     include: {
       subject: { select: { name: true } },
       qualification: { select: { title: true } },
@@ -26,17 +20,10 @@ export default async function WorkspaceClassesPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  const subjects = await prisma.subject.findMany({
-    where: { status: "PUBLISHED" },
-    include: { qualification: { include: { board: true } } },
-    orderBy: [{ qualification: { board: { title: "asc" } } }, { name: "asc" }],
-  });
+  const subjects = scopes.map((scope) => scope.subject);
+  const qualifications = Array.from(
+    new Map(subjects.map((subject) => [subject.qualification.id, subject.qualification])).values(),
+  );
 
-  const qualifications = await prisma.qualification.findMany({
-    where: { status: "PUBLISHED" },
-    include: { board: true },
-    orderBy: [{ board: { title: "asc" } }, { sortOrder: "asc" }],
-  });
-
-  return <WorkspaceClassesClient classes={classes} subjects={subjects} qualifications={qualifications} />;
+  return <WorkspaceClassesClient classes={classes} subjects={subjects} qualifications={qualifications} hasAcademicScope={scopes.length > 0} />;
 }

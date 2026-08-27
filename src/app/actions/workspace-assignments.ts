@@ -12,6 +12,7 @@ import {
   workspaceActionErrorMessage,
   workspaceExpectedError,
 } from "@/lib/workspace-action-errors";
+import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 
 export type CreateWorkspaceAssignmentInput = {
   classId: string;
@@ -91,7 +92,12 @@ export async function createWorkspaceAssignment(
         if (!isWorkspaceAssignableChallengeType(challenge.type)) {
           workspaceExpectedError("Only worksheets, PDF worksheets, and Quick Practice can be assigned.");
         }
-        if (classData.subjectId && classData.subjectId !== challenge.subjectId) {
+        if (!classData.subjectId) {
+          workspaceExpectedError("This class has no assigned subject and cannot receive work.");
+        }
+        await requireWorkspaceSubjectScope(user.workspaceId, classData.subjectId, tx);
+        await requireWorkspaceSubjectScope(user.workspaceId, challenge.subjectId, tx);
+        if (classData.subjectId !== challenge.subjectId) {
           workspaceExpectedError("This content does not match the class subject.");
         }
 

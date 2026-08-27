@@ -9,6 +9,10 @@ import {
   workspaceActionErrorMessage,
   workspaceExpectedError,
 } from "@/lib/workspace-action-errors";
+import {
+  requireWorkspaceSubjectScope,
+  requireWorkspaceTopicScope,
+} from "@/lib/workspace-academic-scope";
 
 export type CreateWorkspaceChallengeResult =
   | { success: true; challengeId: string }
@@ -27,6 +31,7 @@ async function loadEligibleWorkspaceMcqs({
   questionIds: string[];
   contentLabel: "Worksheet" | "Quick Practice";
 }) {
+  await requireWorkspaceTopicScope(workspaceId, subjectId, topicId);
   const [subject, topic, questions] = await Promise.all([
     prisma.subject.findFirst({
       where: { id: subjectId, status: "PUBLISHED" },
@@ -211,6 +216,7 @@ export async function deleteWorkspaceChallenge(id: string) {
       select: {
         id: true,
         workspaceId: true,
+        subjectId: true,
         _count: {
           select: {
             assignmentBatches: true,
@@ -225,6 +231,7 @@ export async function deleteWorkspaceChallenge(id: string) {
     if (!existing || existing.workspaceId !== user.workspaceId) {
       throw new Error("Challenge not found or unauthorized");
     }
+    await requireWorkspaceSubjectScope(user.workspaceId, existing.subjectId, tx);
     if (
       existing._count.assignmentBatches > 0 ||
       existing._count.assignments > 0 ||

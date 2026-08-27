@@ -63,6 +63,11 @@ enum WorkspaceAssignmentRecipientStatus {
   COMPLETED
 }
 
+enum WorkspaceAcademicScopeStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String  @map("user_id")
@@ -132,6 +137,7 @@ model User {
   paperBlueprintTemplates       PaperBlueprintTemplate[]
   savedGeneratedPapers          SavedGeneratedPaper[]
   assignedWorkspaceBatches      WorkspaceAssignmentBatch[]     @relation("WorkspaceAssignmentAssignedBy")
+  assignedWorkspaceScopes       WorkspaceAcademicScope[]       @relation("WorkspaceAcademicScopeAssignedBy")
   workspaceAssignmentRecipients WorkspaceAssignmentRecipient[]
   workspace                     Workspace?                     @relation("WorkspaceMembers", fields: [workspaceId], references: [id])
   ownedWorkspace                Workspace?                     @relation("WorkspaceOwner")
@@ -233,6 +239,7 @@ model Subject {
   studentReflections      StudentReflection[]
   paperBlueprintTemplates PaperBlueprintTemplate[]
   savedGeneratedPapers    SavedGeneratedPaper[]
+  workspaceAcademicScopes WorkspaceAcademicScope[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -915,8 +922,30 @@ model Workspace {
   bankQuestions     BankQuestion[]
   challenges        Challenge[]
   assignmentBatches WorkspaceAssignmentBatch[]
+  academicScopes    WorkspaceAcademicScope[]
 
   @@map("workspaces")
+}
+
+model WorkspaceAcademicScope {
+  id            String                       @id @default(cuid())
+  workspaceId   String                       @map("workspace_id")
+  subjectId     String                       @map("subject_id")
+  assignedById  String                       @map("assigned_by_id")
+  status        WorkspaceAcademicScopeStatus @default(ACTIVE)
+  deactivatedAt DateTime?                    @map("deactivated_at")
+  createdAt     DateTime                     @default(now()) @map("created_at")
+  updatedAt     DateTime                     @updatedAt @map("updated_at")
+
+  workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  subject    Subject   @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  assignedBy User      @relation("WorkspaceAcademicScopeAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, subjectId])
+  @@index([workspaceId, status])
+  @@index([subjectId, status])
+  @@index([assignedById])
+  @@map("workspace_academic_scopes")
 }
 
 model Class {

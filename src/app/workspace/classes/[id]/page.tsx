@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { summarizeAssignmentRecipients } from "@/lib/workspace-assignment-rules";
+import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 
 import ClassDetailClient from "./ClassDetailClient";
 
@@ -52,13 +53,14 @@ export default async function ClassDetailPage({
   });
 
   if (!cls) notFound();
+  await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId);
 
   const availableChallenges = await prisma.challenge.findMany({
     where: {
       workspaceId: user.workspaceId,
       isPublished: true,
       type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
-      ...(cls.subjectId ? { subjectId: cls.subjectId } : {}),
+      subjectId: cls.subjectId!,
     },
     select: { id: true, title: true, type: true },
     orderBy: { createdAt: "desc" },

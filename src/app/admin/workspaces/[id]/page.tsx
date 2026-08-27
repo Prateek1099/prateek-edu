@@ -9,28 +9,73 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Briefcase, Users, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
 import ArchiveWorkspaceButton from "./ArchiveWorkspaceButton";
+import AcademicScopesManager from "./AcademicScopesManager";
+import { getWorkspaceScopeDependencyCounts } from "@/lib/workspace-academic-scope";
 
 export default async function AdminWorkspaceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const workspace = await prisma.workspace.findUnique({
-    where: { id },
-    include: {
-      owner: { select: { id: true, name: true, email: true, createdAt: true } },
-      classes: {
-        include: {
-          subject: { select: { name: true } },
-          qualification: { select: { title: true } },
-          _count: { select: { students: true } },
+  const [workspace, academicOptions] = await Promise.all([
+    prisma.workspace.findUnique({
+      where: { id },
+      include: {
+        owner: { select: { id: true, name: true, email: true, createdAt: true } },
+        classes: {
+          include: {
+            subject: { select: { name: true } },
+            qualification: { select: { title: true } },
+            _count: { select: { students: true } },
+          },
+          orderBy: { createdAt: "desc" },
         },
-        orderBy: { createdAt: "desc" },
+        content: { orderBy: { createdAt: "desc" }, take: 20 },
+        academicScopes: {
+          include: {
+            subject: { include: { qualification: { include: { board: true } } } },
+            assignedBy: { select: { name: true, email: true } },
+          },
+          orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+        },
+        _count: { select: { classes: true, members: true, content: true } },
       },
-      content: { orderBy: { createdAt: "desc" }, take: 20 },
-      _count: { select: { classes: true, members: true, content: true } },
-    },
-  });
+    }),
+    prisma.board.findMany({
+      where: { status: "PUBLISHED" },
+      select: {
+        id: true,
+        title: true,
+        qualifications: {
+          where: { status: "PUBLISHED" },
+          select: {
+            id: true,
+            title: true,
+            subjects: {
+              where: { status: "PUBLISHED" },
+              select: { id: true, name: true, code: true },
+              orderBy: { name: "asc" },
+            },
+          },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+      orderBy: { title: "asc" },
+    }),
+  ]);
 
   if (!workspace) notFound();
+
+  const scopeDependencyCounts = await Promise.all(
+    workspace.academicScopes.map((scope) =>
+      getWorkspaceScopeDependencyCounts(workspace.id, scope.subjectId),
+    ),
+  );
+  const scopes = workspace.academicScopes.map((scope, index) => ({
+    ...scope,
+    dependencyCount: Object.values(scopeDependencyCounts[index]).reduce(
+      (total, count) => total + count,
+      0,
+    ),
+  }));
 
   const statusColor = (status: string) => {
     switch (status) {
@@ -70,6 +115,12 @@ export default async function AdminWorkspaceDetailPage({ params }: { params: Pro
           </div>
         </div>
       </div>
+
+      <AcademicScopesManager
+        workspaceId={workspace.id}
+        academicOptions={academicOptions}
+        scopes={scopes}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

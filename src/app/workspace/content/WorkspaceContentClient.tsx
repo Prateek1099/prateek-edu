@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FileText, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,8 @@ type ContentItem = {
   pdfUrl: string | null;
   status: string;
   createdAt: Date | string;
+  subjectId: string | null;
+  topicId: string | null;
   subject: { name: string } | null;
   topic: { topicName: string } | null;
 };
@@ -68,7 +70,7 @@ export default function WorkspaceContentClient({
     setTitle(item.title);
     setDescription(item.description || "");
     setPdfUrl(item.pdfUrl || "");
-    setSubjectId(item.subject ? subjects.find(s => s.name === item.subject!.name)?.id || "" : "");
+    setSubjectId(item.subjectId || "");
     setStatus(item.status);
     setIsOpen(true);
   };
@@ -99,8 +101,8 @@ export default function WorkspaceContentClient({
       }
       setIsOpen(false);
       resetForm();
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     } finally {
       setLoading(false);
     }
@@ -110,8 +112,8 @@ export default function WorkspaceContentClient({
     try {
       await deleteWorkspaceContent(id);
       toast.success("Content deleted");
-    } catch (err: any) {
-      toast.error(err.message || "Failed");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed");
     }
   };
 
@@ -215,7 +217,7 @@ export default function WorkspaceContentClient({
               <Input value={pdfUrl} onChange={(e) => setPdfUrl(e.target.value)} placeholder="https://..." />
             </div>
             <div className="space-y-2">
-              <Label>Subject (Optional)</Label>
+              <Label>Subject</Label>
               <Select value={subjectId} onValueChange={(val) => val && setSubjectId(val)}>
                 <SelectTrigger><SelectValue placeholder="Select Subject" /></SelectTrigger>
                 <SelectContent>
@@ -237,7 +239,9 @@ export default function WorkspaceContentClient({
               </Select>
             </div>
             <div className="pt-2 flex justify-end">
-              <Button type="submit" disabled={loading}>{loading ? "Saving..." : "Save"}</Button>
+              <Button type="submit" disabled={loading || !subjectId}>
+                {loading ? "Saving..." : "Save"}
+              </Button>
             </div>
           </form>
         </DialogContent>

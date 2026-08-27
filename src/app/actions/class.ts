@@ -14,6 +14,7 @@ import {
   workspaceActionErrorMessage,
   workspaceExpectedError,
 } from "@/lib/workspace-action-errors";
+import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 
 function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -72,6 +73,8 @@ export async function createClass(data: {
       qualificationExists: !data.qualificationId || Boolean(qualification),
     });
     if (academicError) return { success: false, error: academicError };
+    await requireWorkspaceSubjectScope(user.workspaceId, data.subjectId);
+    const resolvedQualificationId = subject!.qualificationId;
 
     const joinCode = await uniqueJoinCode();
     const cls = await prisma.class.create({
@@ -79,7 +82,7 @@ export async function createClass(data: {
         name: data.name.trim(),
         workspaceId: user.workspaceId,
         subjectId: data.subjectId || null,
-        qualificationId: data.qualificationId || null,
+        qualificationId: resolvedQualificationId,
         academicYear: data.academicYear.trim(),
         joinCode,
         maxStudents: data.maxStudents ?? null,
@@ -88,8 +91,11 @@ export async function createClass(data: {
     });
     revalidatePath("/workspace/classes");
     return { success: true, classId: cls.id, joinCode: cls.joinCode };
-  } catch {
-    return { success: false, error: "Could not create the class. Please try again." };
+  } catch (error) {
+    return {
+      success: false,
+      error: workspaceActionErrorMessage(error, "Could not create the class. Please try again."),
+    };
   }
 }
 
@@ -106,7 +112,33 @@ export async function updateClass(classId: string, data: {
     where: { id: classId, workspaceId: user.workspaceId },
   });
   if (!cls) throw new Error("Class not found in your workspace");
-  const updated = await prisma.class.update({ where: { id: classId }, data });
+  const academicFieldsChanged = data.subjectId !== undefined || data.qualificationId !== undefined;
+  const finalSubjectId = data.subjectId === undefined ? cls.subjectId : data.subjectId;
+  const requestedQualificationId =
+    data.qualificationId === undefined ? cls.qualificationId : data.qualificationId;
+  let resolvedQualificationId = requestedQualificationId;
+  if (academicFieldsChanged || data.status !== "ARCHIVED") {
+    await requireWorkspaceSubjectScope(user.workspaceId, finalSubjectId);
+    const subject = await prisma.subject.findFirst({
+      where: { id: finalSubjectId || "", status: "PUBLISHED" },
+      select: { qualificationId: true },
+    });
+    const academicError = validateClassAcademicRelationship({
+      subjectId: finalSubjectId,
+      qualificationId: requestedQualificationId,
+      subjectQualificationId: subject?.qualificationId,
+      subjectExists: Boolean(subject),
+      qualificationExists: Boolean(requestedQualificationId),
+    });
+    if (academicError) throw new Error(academicError);
+    resolvedQualificationId = subject!.qualificationId;
+  }
+  const updated = await prisma.class.update({
+    where: { id: classId },
+    data: academicFieldsChanged
+      ? { ...data, subjectId: finalSubjectId, qualificationId: resolvedQualificationId }
+      : data,
+  });
   revalidatePath("/workspace/classes");
   revalidatePath(`/workspace/classes/${classId}`);
   return updated;
@@ -122,6 +154,7 @@ export async function regenerateJoinCode(classId: string) {
     where: { id: classId, workspaceId: user.workspaceId },
   });
   if (!cls) throw new Error("Class not found in your workspace");
+  await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId);
   const newCode = await uniqueJoinCode();
   const updated = await prisma.class.update({
     where: { id: classId },
@@ -148,6 +181,7 @@ export async function getClassWithStudents(classId: string) {
     },
   });
   if (!cls) throw new Error("Class not found in your workspace");
+  await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId);
   return cls;
 }
 
@@ -164,6 +198,7 @@ export async function addStudentToClass(classId: string, studentEmail: string) {
       include: { _count: { select: { students: { where: { status: "ACTIVE" } } } } },
     });
     if (!cls) throw new Error("Active class not found in your workspace");
+    await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId, tx);
 
     const student = await tx.user.findUnique({ where: { email: studentEmail.trim() } });
     if (!student) throw new Error("No student found with that email");
@@ -205,6 +240,7 @@ export async function removeStudentFromClass(classId: string, studentId: string)
     where: { id: classId, workspaceId: user.workspaceId },
   });
   if (!cls) throw new Error("Class not found in your workspace");
+  await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId);
   await prisma.classStudent.updateMany({
     where: { classId, studentId },
     data: { status: "REMOVED" },
@@ -244,6 +280,11 @@ export async function joinClassByCode(joinCode: string): Promise<JoinClassByCode
       if (!cls.joinCodeActive) workspaceExpectedError("This class code has been disabled.");
       if (cls.workspace.status !== "ACTIVE") {
         workspaceExpectedError("This class workspace is not currently active.");
+      }
+      try {
+        await requireWorkspaceSubjectScope(cls.workspace.id, cls.subjectId, tx);
+      } catch {
+        workspaceExpectedError("This class is not currently available for joining.");
       }
 
       const existing = await tx.classStudent.findUnique({
