@@ -20,6 +20,7 @@ const assignmentActions = read("src/app/actions/workspace-assignments.ts");
 const printPage = read("src/app/workspace/print/[id]/page.tsx");
 const dashboard = read("src/app/workspace/page.tsx");
 const students = read("src/app/workspace/students/page.tsx");
+const scopeManager = read("src/app/admin/workspaces/[id]/AcademicScopesManager.tsx");
 
 test("schema adds a normalized workspace-to-subject authorization grant", () => {
   const scopeModel = schema.slice(
@@ -85,4 +86,11 @@ test("scope deactivation blocks active dependencies and preserves records", () =
   assert.match(scopeActions, /getWorkspaceScopeDependencyCounts/);
   assert.match(scopeActions, /scopeDeactivationError/);
   assert.doesNotMatch(scopeActions, /\.delete\(|deleteMany/);
+});
+
+test("scope dates render deterministically across server and browser timezones", () => {
+  assert.match(scopeManager, /getUTCDate\(\)/);
+  assert.match(scopeManager, /getUTCMonth\(\)/);
+  assert.match(scopeManager, /getUTCFullYear\(\)/);
+  assert.doesNotMatch(scopeManager, /toLocaleDateString/);
 });

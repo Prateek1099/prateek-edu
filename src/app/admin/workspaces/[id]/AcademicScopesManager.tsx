@@ -37,6 +37,13 @@ type ScopeItem = {
   dependencyCount: number;
 };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatScopeDate(value: Date | string) {
+  const date = new Date(value);
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
+}
+
 export default function AcademicScopesManager({
   workspaceId,
   academicOptions,
@@ -116,8 +123,8 @@ export default function AcademicScopesManager({
                     <Badge variant={scope.status === "ACTIVE" ? "default" : "secondary"}>{scope.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Assigned {new Date(scope.createdAt).toLocaleDateString()} by {scope.assignedBy.name || scope.assignedBy.email || "Administrator"}
-                    {scope.deactivatedAt ? ` · Deactivated ${new Date(scope.deactivatedAt).toLocaleDateString()}` : ""}
+                    Assigned {formatScopeDate(scope.createdAt)} by {scope.assignedBy.name || scope.assignedBy.email || "Administrator"}
+                    {scope.deactivatedAt ? ` · Deactivated ${formatScopeDate(scope.deactivatedAt)}` : ""}
                   </p>
                   {scope.status === "ACTIVE" && scope.dependencyCount > 0 ? (
                     <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
