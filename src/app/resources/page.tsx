@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma";
 import { getEcosystemPreference } from "@/app/actions/resources-actions";
 import ResourcesClient from "./ResourcesClient";
