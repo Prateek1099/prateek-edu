@@ -23,9 +23,10 @@ type StudentWorksheetViewerProps = {
     pdfAnswerUrl: string | null;
   };
   backUrl: string;
+  backLabel?: string;
 };
 
-export default function StudentWorksheetViewer({ worksheet, backUrl }: StudentWorksheetViewerProps) {
+export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel = "Back to Practice" }: StudentWorksheetViewerProps) {
   const isPdf = worksheet.type === "PDF_WORKSHEET";
   const hasSolutions = isPdf ? Boolean(worksheet.pdfAnswerUrl) : worksheet.questions.length > 0;
 
@@ -44,7 +45,7 @@ export default function StudentWorksheetViewer({ worksheet, backUrl }: StudentWo
             className="inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 -ml-3 text-muted-foreground gap-1.5"
           >
             <ArrowLeft className="size-4" />
-            <span>Back to Practice</span>
+            <span>{backLabel}</span>
           </Link>
         </div>
 

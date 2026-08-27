@@ -54,6 +54,7 @@ type Props = {
     questions: QuestionData[];
   };
   backUrl: string;
+  backLabel?: string;
   retryUrl: string;
   trackedMistakes?: Record<string, { count: number; status: string }>;
 };
@@ -87,7 +88,7 @@ export default function ChallengeResults(props: Props) {
   return <LegacyChallengeResults {...props} />;
 }
 
-function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, trackedMistakes = {} }: Props) {
+function LegacyChallengeResults({ attempt, challenge, backUrl, backLabel = "Back to Challenges", retryUrl, trackedMistakes = {} }: Props) {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const perf = getPerformanceMessage(attempt.percentage);
   const incorrect = attempt.totalQuestions - attempt.score;
@@ -192,7 +193,7 @@ function LegacyChallengeResults({ attempt, challenge, backUrl, retryUrl, tracked
                 </Link>
                 <Link href={backUrl}>
                   <Button variant="ghost" className="rounded-xl h-10 px-4 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="size-3.5 mr-2" /> Back to Challenges
+                    <ArrowLeft className="size-3.5 mr-2" /> {backLabel}
                   </Button>
                 </Link>
               </div>

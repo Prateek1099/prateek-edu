@@ -5,6 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import StudentWorksheetViewer from "@/components/worksheets/StudentWorksheetViewer";
 import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
+import {
+  getSafeStudentReturnPath,
+  getStudentReturnLabel,
+} from "@/lib/student-assignment-navigation";
 
 function getSafeDocumentUrl(value: string | null) {
   if (!value) return null;
@@ -20,10 +24,15 @@ function getSafeDocumentUrl(value: string | null) {
 
 export default async function StudentWorksheetPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ board: string; qualification: string; subject: string; id: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const { board, qualification, subject, id } = await params;
+  const query = await searchParams;
+  const publicBackUrl = `/resources/${board}/${qualification}/${subject}`;
+  const backUrl = getSafeStudentReturnPath(query.returnTo, publicBackUrl);
 
   const worksheet = await prisma.challenge.findUnique({
     where: { id },
@@ -80,7 +89,8 @@ export default async function StudentWorksheetPage({
           marks: question.marks,
         })),
       }}
-      backUrl={`/resources/${board}/${qualification}/${subject}`}
+      backUrl={backUrl}
+      backLabel={getStudentReturnLabel(backUrl, "Back to Practice")}
     />
   );
 }

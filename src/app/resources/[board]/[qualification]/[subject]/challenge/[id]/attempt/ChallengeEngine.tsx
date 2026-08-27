@@ -31,6 +31,7 @@ type Props = {
   board: string;
   qualification: string;
   subject: string;
+  returnTo: string;
 };
 
 const OPTIONS = ["A", "B", "C", "D"] as const;
@@ -41,7 +42,7 @@ function formatTimer(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function ChallengeEngine({ challenge, board, qualification, subject }: Props) {
+export default function ChallengeEngine({ challenge, board, qualification, subject, returnTo }: Props) {
   const router = useRouter();
   const { questions } = challenge;
   const total = questions.length;
@@ -115,7 +116,7 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
       const data = await res.json();
       if (res.ok && data.attemptId) {
         router.push(
-          `/resources/${board}/${qualification}/${subject}/challenge/${challenge.id}/results/${data.attemptId}`
+          `/resources/${board}/${qualification}/${subject}/challenge/${challenge.id}/results/${data.attemptId}?returnTo=${encodeURIComponent(returnTo)}`
         );
       } else {
         const message = data.error || "Submission failed";
@@ -145,7 +146,7 @@ export default function ChallengeEngine({ challenge, board, qualification, subje
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             This practice set does not have any published questions yet. Please return to the subject page and choose another set.
           </p>
-          <Button className="mt-6 h-11" onClick={() => router.back()}>
+          <Button className="mt-6 h-11" onClick={() => router.push(returnTo)}>
             Go back
           </Button>
         </div>

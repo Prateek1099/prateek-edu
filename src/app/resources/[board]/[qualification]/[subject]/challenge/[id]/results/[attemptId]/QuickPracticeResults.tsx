@@ -53,6 +53,7 @@ type QuickPracticeResultsProps = {
     questions: QuestionData[];
   };
   backUrl: string;
+  backLabel?: string;
   retryUrl: string;
   trackedMistakes?: Record<string, { count: number; status: string }>;
 };
@@ -87,6 +88,7 @@ export default function QuickPracticeResults({
   attempt,
   challenge,
   backUrl,
+  backLabel = "Back to subject",
   retryUrl,
   trackedMistakes = {},
 }: QuickPracticeResultsProps) {
@@ -436,7 +438,7 @@ export default function QuickPracticeResults({
           <Link href={backUrl}>
             <Button variant="ghost" size="lg" className="h-11 w-full sm:w-auto">
               <ArrowLeft className="size-4" />
-              Back to subject
+              {backLabel}
             </Button>
           </Link>
           <Link href={retryUrl}>

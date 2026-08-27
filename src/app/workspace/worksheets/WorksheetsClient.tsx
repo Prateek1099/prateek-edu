@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Trash2, FileText, Clock, Users, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ import Link from "next/link";
 import { createWorksheet, deleteWorkspaceChallenge } from "@/app/actions/workspace-worksheets";
 import AssignContentDialog, { type AssignmentClassOption } from "@/components/workspace/AssignContentDialog";
 
-type SubjectOption = { id: string; label: string; board: string };
+type SubjectOption = { id: string; label: string };
 type TopicOption = { id: string; label: string; subjectId: string };
 type WorkspaceWorksheet = {
   id: string;
@@ -65,7 +66,7 @@ export default function WorksheetsClient({
   // Builder state
   const [builderOpen, setBuilderOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  const [newSubject, setNewSubject] = useState("");
+  const [newSubject, setNewSubject] = useState(subjectOptions.length === 1 ? subjectOptions[0].id : "");
   const [newTopic, setNewTopic] = useState("none");
   const [newEstimatedTime, setNewEstimatedTime] = useState(30);
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -86,6 +87,21 @@ export default function WorksheetsClient({
       return true;
     });
   }, [newSubject, newTopic, bankQuestions]);
+
+  const selectedSubjectLabel = subjectOptions.find((subject) => subject.id === newSubject)?.label;
+  const selectedTopicLabel = !newSubject
+    ? undefined
+    : newTopic === "none"
+      ? "All topics in subject"
+      : filteredTopicOptions.find((topic) => topic.id === newTopic)?.label;
+
+  const openBuilder = () => {
+    setBuilderOpen(true);
+    setNewTitle("");
+    setNewSubject(subjectOptions.length === 1 ? subjectOptions[0].id : "");
+    setNewTopic("none");
+    setSelectedQuestions([]);
+  };
 
   const toggleQuestionSelection = (id: string) => {
     setSelectedQuestions(prev => 
@@ -154,13 +170,7 @@ export default function WorksheetsClient({
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-64"
         />
-        <Button onClick={() => {
-          setBuilderOpen(true);
-          setNewTitle("");
-          setNewSubject("");
-          setNewTopic("none");
-          setSelectedQuestions([]);
-        }} className="w-full sm:w-auto gap-2">
+        <Button onClick={openBuilder} className="w-full sm:w-auto gap-2">
           <Plus className="h-4 w-4" /> Create Worksheet
         </Button>
       </div>
@@ -176,7 +186,7 @@ export default function WorksheetsClient({
             <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
               Create your first worksheet by selecting questions from the Question Bank.
             </p>
-            <Button className="mt-4" onClick={() => setBuilderOpen(true)}>Create Worksheet</Button>
+            <Button className="mt-4" onClick={openBuilder}>Create Worksheet</Button>
           </div>
         ) : (
           filteredWorksheets.map(w => (
@@ -224,31 +234,31 @@ export default function WorksheetsClient({
 
       {/* Builder Dialog */}
       <Dialog open={builderOpen} onOpenChange={setBuilderOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col p-0">
-          <div className="p-6 border-b shrink-0">
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-5xl flex-col overflow-hidden p-0 sm:max-h-[90vh]">
+          <div className="shrink-0 border-b p-4 pr-12 sm:p-6 sm:pr-14">
             <DialogHeader>
-              <DialogTitle>Create Worksheet</DialogTitle>
+              <DialogTitle className="text-xl">Create Worksheet</DialogTitle>
               <DialogDescription>
                 Build a new worksheet from the Question Bank. Students will not see it until you assign it.
               </DialogDescription>
             </DialogHeader>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-4 sm:p-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label>Title</Label>
-                <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. End of Year Revision" />
+                <Label htmlFor="workspace-worksheet-title">Title</Label>
+                <Input id="workspace-worksheet-title" value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="e.g. End of Year Revision" />
               </div>
               <div className="space-y-2">
-                <Label>Estimated Time (minutes)</Label>
-                <Input type="number" value={newEstimatedTime} onChange={e => setNewEstimatedTime(parseInt(e.target.value) || 0)} min={5} />
+                <Label htmlFor="workspace-worksheet-time">Estimated Time (minutes)</Label>
+                <Input id="workspace-worksheet-time" type="number" value={newEstimatedTime} onChange={e => setNewEstimatedTime(parseInt(e.target.value) || 0)} min={5} />
               </div>
               <div className="space-y-2">
-                <Label>Subject</Label>
+                <Label htmlFor="workspace-worksheet-subject">Subject</Label>
                 <Select value={newSubject} onValueChange={(v) => { setNewSubject(v || ""); setNewTopic("none"); setSelectedQuestions([]); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
+                  <SelectTrigger id="workspace-worksheet-subject" className="h-11 w-full">
+                    <SelectValue placeholder="Select subject">{selectedSubjectLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {subjectOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
@@ -256,13 +266,13 @@ export default function WorksheetsClient({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Topic (Optional)</Label>
+                <Label htmlFor="workspace-worksheet-topic">Topic (Optional)</Label>
                 <Select value={newTopic} onValueChange={(v) => { setNewTopic(v || ""); setSelectedQuestions([]); }} disabled={!newSubject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select topic" />
+                  <SelectTrigger id="workspace-worksheet-topic" className="h-11 w-full">
+                    <SelectValue placeholder="Select topic">{selectedTopicLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">All Topics in Subject</SelectItem>
+                    <SelectItem value="none">All topics in subject</SelectItem>
                     {filteredTopicOptions.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -271,79 +281,110 @@ export default function WorksheetsClient({
 
             {newSubject && (
               <div className="space-y-4 border-t pt-4">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-wrap items-end justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">Select Questions</h3>
-                    <p className="text-sm text-muted-foreground">{selectedQuestions.length} selected</p>
+                    <p className="text-sm text-muted-foreground">
+                      {availableQuestions.length} available for this selection
+                    </p>
                   </div>
+                  <Badge variant="secondary" className="rounded-lg px-3 py-1 text-sm">
+                    {selectedQuestions.length} selected
+                  </Badge>
                 </div>
 
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-muted">
-                      <TableRow>
-                        <TableHead className="w-[50px]"></TableHead>
-                        <TableHead>Question Preview</TableHead>
-                        <TableHead>Source</TableHead>
-                        <TableHead className="w-[100px]">Difficulty</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {availableQuestions.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            No questions found for this subject/topic in the Question Bank.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        availableQuestions.map(q => {
-                          const isSelected = selectedQuestions.includes(q.id);
-                          return (
-                            <TableRow 
-                              key={q.id} 
-                              className={cn("cursor-pointer", isSelected && "bg-primary/5 hover:bg-primary/10")}
-                              onClick={() => toggleQuestionSelection(q.id)}
-                            >
-                              <TableCell>
-                                <div className={cn(
-                                  "size-5 rounded border flex items-center justify-center",
-                                  isSelected ? "bg-primary border-primary text-primary-foreground" : "border-input"
-                                )}>
-                                  {isSelected && <div className="size-2.5 bg-current rounded-sm" />}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <p className="font-medium line-clamp-2 text-sm">{q.questionText}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  {q.topicTag && <Badge variant="secondary" className="text-[10px] py-0 px-1.5">{q.topicTag}</Badge>}
-                                  <span className="text-xs text-muted-foreground">{q.marks} Mark{q.marks !== 1 && 's'}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={q.workspaceId ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-blue-50 text-blue-700 border-blue-200"}>
-                                  {q.workspaceId ? "Workspace" : "Vexa"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0", difficultyColor[q.difficulty] || difficultyColor.medium)}>
-                                  {q.difficulty}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                {availableQuestions.length === 0 ? (
+                  <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">
+                    No questions found for this subject or topic in the Question Bank.
+                  </div>
+                ) : (
+                  <div className="max-h-[48vh] overflow-y-auto overscroll-contain rounded-xl border">
+                    <div className="space-y-2 p-2 md:hidden">
+                      {availableQuestions.map((question) => {
+                        const isSelected = selectedQuestions.includes(question.id);
+                        return (
+                          <label
+                            key={question.id}
+                            className={cn(
+                              "flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors",
+                              isSelected ? "border-primary/40 bg-primary/5" : "border-border/70 bg-card",
+                            )}
+                          >
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleQuestionSelection(question.id)}
+                              aria-label={`Select ${question.questionText}`}
+                              className="mt-1"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block whitespace-normal break-words text-sm font-medium leading-6 [overflow-wrap:anywhere]">
+                                {question.questionText}
+                              </span>
+                              <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                                {question.topicTag ? <Badge variant="secondary" className="max-w-full truncate text-[10px]">{question.topicTag}</Badge> : null}
+                                <Badge variant="outline" className="text-[10px]">{question.marks} mark{question.marks === 1 ? "" : "s"}</Badge>
+                                <Badge variant="outline" className={cn("capitalize text-[10px]", difficultyColor[question.difficulty] || difficultyColor.medium)}>{question.difficulty}</Badge>
+                                <Badge variant="outline" className="text-[10px]">{question.workspaceId ? "Workspace" : "Vexa"}</Badge>
+                              </span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <div className="hidden md:block">
+                      <Table>
+                        <TableHeader className="sticky top-0 z-10 bg-muted">
+                          <TableRow>
+                            <TableHead className="w-12"><span className="sr-only">Select</span></TableHead>
+                            <TableHead>Question Preview</TableHead>
+                            <TableHead>Source</TableHead>
+                            <TableHead className="w-28">Difficulty</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {availableQuestions.map((question) => {
+                            const isSelected = selectedQuestions.includes(question.id);
+                            return (
+                              <TableRow key={question.id} className={cn(isSelected && "bg-primary/5")}>
+                                <TableCell>
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleQuestionSelection(question.id)}
+                                    aria-label={`Select ${question.questionText}`}
+                                  />
+                                </TableCell>
+                                <TableCell className="max-w-0">
+                                  <p className="whitespace-normal break-words text-sm font-medium leading-6 [overflow-wrap:anywhere]">{question.questionText}</p>
+                                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                                    {question.topicTag ? <Badge variant="secondary" className="max-w-full truncate text-[10px]">{question.topicTag}</Badge> : null}
+                                    <span className="text-xs text-muted-foreground">{question.marks} mark{question.marks === 1 ? "" : "s"}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={question.workspaceId ? "border-violet-200 bg-violet-50 text-violet-700" : "border-blue-200 bg-blue-50 text-blue-700"}>
+                                    {question.workspaceId ? "Workspace" : "Vexa"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline" className={cn("capitalize text-[10px]", difficultyColor[question.difficulty] || difficultyColor.medium)}>{question.difficulty}</Badge>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          <div className="p-6 border-t bg-muted/20 shrink-0">
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setBuilderOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={isSubmitting || selectedQuestions.length === 0}>
+          <div className="shrink-0 border-t bg-background/95 p-4 backdrop-blur sm:p-6">
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setBuilderOpen(false)} className="h-11 w-full sm:w-auto">Cancel</Button>
+              <Button onClick={handleCreate} disabled={isSubmitting || selectedQuestions.length === 0} className="h-11 w-full sm:w-auto">
                 {isSubmitting ? "Creating..." : `Create Worksheet (${selectedQuestions.length} Qs)`}
               </Button>
             </DialogFooter>

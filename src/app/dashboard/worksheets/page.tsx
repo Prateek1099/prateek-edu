@@ -7,6 +7,7 @@ import Link from "next/link";
 import { FileText, Calendar, CheckCircle2, Clock, ChevronLeft } from "lucide-react";
 import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
+import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
 
 export default async function StudentWorksheetsPage() {
   const session = await getServerSession(authOptions);
@@ -60,8 +61,14 @@ export default async function StudentWorksheetsPage() {
 
             const board = ws.subject.boardName;
             const qual = ws.subject.qualificationName;
-            const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
-            const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
+            const worksheetLink = withStudentReturnTo(
+              `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`,
+              "/dashboard/worksheets",
+            );
+            const attemptLink = withStudentReturnTo(
+              `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`,
+              "/dashboard/worksheets",
+            );
             const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
             const contentType = ws.type === "QUICK_PRACTICE"
               ? "Quick Practice"

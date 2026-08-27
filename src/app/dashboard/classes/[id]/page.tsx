@@ -18,6 +18,7 @@ import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
 
 export default async function StudentClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -88,8 +89,15 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
             {studentClass.assignments.map((assignment) => {
               const challenge = assignment.challenge;
               const isDocument = challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET";
-              const worksheetLink = `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/worksheet/${challenge.id}`;
-              const practiceLink = `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`;
+              const returnTo = `/dashboard/classes/${studentClass.id}`;
+              const worksheetLink = withStudentReturnTo(
+                `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/worksheet/${challenge.id}`,
+                returnTo,
+              );
+              const practiceLink = withStudentReturnTo(
+                `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`,
+                returnTo,
+              );
               const stateClass = assignment.status === "COMPLETED"
                 ? "text-emerald-600 dark:text-emerald-400"
                 : assignment.status === "OVERDUE" ? "text-destructive" : "text-primary";

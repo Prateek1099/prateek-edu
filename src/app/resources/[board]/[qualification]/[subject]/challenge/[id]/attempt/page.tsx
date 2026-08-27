@@ -4,13 +4,19 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import ChallengeEngine from "./ChallengeEngine";
 import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
+import { getSafeStudentReturnPath } from "@/lib/student-assignment-navigation";
 
 export default async function ChallengeAttemptPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ board: string; qualification: string; subject: string; id: string }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const { board, qualification, subject, id } = await params;
+  const query = await searchParams;
+  const publicBackUrl = `/resources/${board}/${qualification}/${subject}`;
+  const returnTo = getSafeStudentReturnPath(query.returnTo, publicBackUrl);
 
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -47,7 +53,9 @@ export default async function ChallengeAttemptPage({
   if (!challenge) notFound();
 
   if (challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET") {
-    redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);
+    redirect(
+      `/resources/${board}/${qualification}/${subject}/worksheet/${id}?returnTo=${encodeURIComponent(returnTo)}`,
+    );
   }
 
   if (challenge.questions.length === 0 && challenge.type !== "QUICK_PRACTICE") notFound();
@@ -64,6 +72,7 @@ export default async function ChallengeAttemptPage({
       board={board}
       qualification={qualification}
       subject={subject}
+      returnTo={returnTo}
     />
   );
 }

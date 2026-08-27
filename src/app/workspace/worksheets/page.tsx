@@ -65,10 +65,7 @@ export default async function WorkspaceWorksheetsPage() {
 
   const subjectOptions = subjects.map((s) => ({
     id: s.id,
-    label: s.code
-      ? `${s.name} (${s.code}) · ${s.qualification.title} · ${s.qualification.board.title}`
-      : `${s.name} · ${s.qualification.title} · ${s.qualification.board.title}`,
-    board: s.qualification.board.name,
+    label: `${s.name}${s.code ? ` (${s.code})` : ""} — ${s.qualification.board.title} ${s.qualification.title}`,
   }));
 
   const topicOptions = topics.map((t) => ({

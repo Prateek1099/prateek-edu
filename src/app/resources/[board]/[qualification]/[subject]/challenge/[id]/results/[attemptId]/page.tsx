@@ -4,9 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import ChallengeResults from "./ChallengeResults";
 import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
+import {
+  getSafeStudentReturnPath,
+  getStudentReturnLabel,
+  withStudentReturnTo,
+} from "@/lib/student-assignment-navigation";
 
 export default async function ResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     board: string;
@@ -15,8 +21,12 @@ export default async function ResultsPage({
     id: string;
     attemptId: string;
   }>;
+  searchParams: Promise<{ returnTo?: string | string[] }>;
 }) {
   const { board, qualification, subject, id, attemptId } = await params;
+  const query = await searchParams;
+  const publicBackUrl = `/resources/${board}/${qualification}/${subject}`;
+  const backUrl = getSafeStudentReturnPath(query.returnTo, publicBackUrl);
 
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/login");
@@ -51,7 +61,9 @@ export default async function ResultsPage({
   if (!access.allowed) notFound();
 
   if (attempt.challenge.type === "WORKSHEET" || attempt.challenge.type === "PDF_WORKSHEET") {
-    redirect(`/resources/${board}/${qualification}/${subject}/worksheet/${id}`);
+    redirect(
+      `/resources/${board}/${qualification}/${subject}/worksheet/${id}?returnTo=${encodeURIComponent(backUrl)}`,
+    );
   }
 
   let parsedAnswers: Record<string, string> = {};
@@ -103,8 +115,12 @@ export default async function ResultsPage({
           topicTag: q.topicTag,
         })),
       }}
-      backUrl={`/resources/${board}/${qualification}/${subject}`}
-      retryUrl={`/resources/${board}/${qualification}/${subject}/challenge/${id}/attempt`}
+      backUrl={backUrl}
+      backLabel={getStudentReturnLabel(backUrl, "Back to subject")}
+      retryUrl={withStudentReturnTo(
+        `/resources/${board}/${qualification}/${subject}/challenge/${id}/attempt`,
+        backUrl,
+      )}
       trackedMistakes={trackedMistakeMap}
     />
   );

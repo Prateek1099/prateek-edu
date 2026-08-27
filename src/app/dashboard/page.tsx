@@ -13,6 +13,7 @@ import { AiInsightCard } from "./AiInsightCard";
 import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
 import { getStudentWorkspaceClasses } from "@/lib/student-workspace-classes";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
+import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -421,8 +422,14 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
                 : ws.type === "PDF_WORKSHEET"
                   ? "PDF Worksheet"
                   : "Worksheet";
-              const worksheetLink = `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`;
-              const attemptLink = `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`;
+              const worksheetLink = withStudentReturnTo(
+                `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`,
+                "/dashboard",
+              );
+              const attemptLink = withStudentReturnTo(
+                `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`,
+                "/dashboard",
+              );
               const assignmentLink = isDocumentWorksheet ? worksheetLink : attemptLink;
               return (
                 <Link
