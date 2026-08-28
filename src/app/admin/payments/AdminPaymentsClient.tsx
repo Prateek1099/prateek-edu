@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatAdminDate, formatAdminDateTime } from "@/lib/admin-date-format";
 import {
   Select,
   SelectContent,
@@ -148,7 +149,7 @@ export default function AdminPaymentsClient({ payments }: { payments: PaymentIte
                       <div className="text-xs capitalize text-muted-foreground">{payment.purchaseType}</div>
                     </TableCell>
                     <TableCell className="max-w-64 break-all font-mono text-xs">{payment.paymentId || "N/A"}</TableCell>
-                    <TableCell>{new Date(payment.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatAdminDate(payment.createdAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -167,7 +168,7 @@ export default function AdminPaymentsClient({ payments }: { payments: PaymentIte
                 </div>
                 <div className="text-2xl font-bold">₹{payment.amount.toLocaleString("en-IN")}</div>
                 <div className="break-all font-mono text-xs text-muted-foreground">{payment.paymentId || "No payment ID"}</div>
-                <div className="text-xs text-muted-foreground">{new Date(payment.createdAt).toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">{formatAdminDateTime(payment.createdAt)}</div>
               </Card>
             ))}
           </div>

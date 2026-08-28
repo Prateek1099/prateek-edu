@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatAdminDate } from "@/lib/admin-date-format";
 import {
   Select,
   SelectContent,
@@ -161,7 +162,7 @@ export default function AdminUsersClient({ users }: { users: UserItem[] }) {
                         <div className="text-xs text-amber-600">{user.pendingEnrollments} pending</div>
                       )}
                     </TableCell>
-                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatAdminDate(user.createdAt)}</TableCell>
                     <TableCell><UserActions user={user} /></TableCell>
                   </TableRow>
                 ))}
@@ -181,7 +182,7 @@ export default function AdminUsersClient({ users }: { users: UserItem[] }) {
                     {user.role.replaceAll("_", " ")}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    Joined {new Date(user.createdAt).toLocaleDateString()}
+                    Joined {formatAdminDate(user.createdAt)}
                   </span>
                 </div>
                 <div className="rounded-lg bg-muted/40 p-3 text-sm">

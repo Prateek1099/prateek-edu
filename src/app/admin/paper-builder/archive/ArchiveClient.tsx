@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { formatAdminDateTime } from "@/lib/admin-date-format";
 import { FINAL_PAPER_ORDER_LABELS } from "@/lib/paper-builder/final-paper-order";
 import type { SavedGeneratedPaperSummary } from "@/lib/paper-builder/saved-paper-types";
 
@@ -59,7 +60,7 @@ export default function ArchiveClient({ papers }: { papers: SavedGeneratedPaperS
                 <Summary label="Academic scope" value={`${paper.boardTitle} · ${paper.qualificationTitle} · ${paper.subjectName}`} />
                 <Summary label="Paper" value={`${paper.totalMarks} marks · ${paper.durationMinutes} minutes`} />
                 <Summary label="Final order" value={FINAL_PAPER_ORDER_LABELS[paper.finalOrderMode]} />
-                <Summary label="Created" value={new Date(paper.createdAt).toLocaleString()} />
+                <Summary label="Created" value={formatAdminDateTime(paper.createdAt)} />
                 <Summary label="Created by" value={paper.createdByName || paper.createdByEmail || "SUPER_ADMIN"} />
                 <Summary label="Source template" value={paper.sourceBlueprintTemplateName || "Manual blueprint"} />
               </div>

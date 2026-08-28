@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { formatAdminDate, formatAdminDateTime } from "@/lib/admin-date-format";
 import {
   Select,
   SelectContent,
@@ -116,7 +117,7 @@ export default function AdminQueriesClient({ queries }: { queries: QueryItem[] }
                         {query.resolved ? "Resolved" : "Pending"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(query.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatAdminDate(query.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       {!query.resolved && <ResolveQueryButton queryId={query.id} />}
                     </TableCell>
@@ -142,7 +143,7 @@ export default function AdminQueriesClient({ queries }: { queries: QueryItem[] }
                   {query.message}
                 </p>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-xs text-muted-foreground">{new Date(query.createdAt).toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground">{formatAdminDateTime(query.createdAt)}</span>
                   {!query.resolved && <ResolveQueryButton queryId={query.id} />}
                 </div>
               </Card>

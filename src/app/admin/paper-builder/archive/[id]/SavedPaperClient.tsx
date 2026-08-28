@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { PaperAnswerKeyDocument, PaperQuestionDocument } from "@/components/paper-builder/PaperBuilderDocuments";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { formatAdminDateTime } from "@/lib/admin-date-format";
 import { FINAL_PAPER_ORDER_LABELS } from "@/lib/paper-builder/final-paper-order";
 import type { SavedGeneratedPaperDetail } from "@/lib/paper-builder/saved-paper-types";
 import { cn } from "@/lib/utils";
@@ -53,7 +54,7 @@ export default function SavedPaperClient({ saved }: { saved: SavedGeneratedPaper
           <Summary label="Academic scope" value={`${saved.boardTitle} · ${saved.qualificationTitle} · ${saved.subjectName}`} />
           <Summary label="Paper" value={`${saved.totalMarks} marks · ${saved.durationMinutes} minutes`} />
           <Summary label="Final order" value={FINAL_PAPER_ORDER_LABELS[saved.finalOrderMode]} />
-          <Summary label="Created" value={new Date(saved.createdAt).toLocaleString()} />
+          <Summary label="Created" value={formatAdminDateTime(saved.createdAt)} />
           <Summary label="Created by" value={saved.createdByName || saved.createdByEmail || "SUPER_ADMIN"} />
           <Summary label="Source template" value={saved.sourceBlueprintTemplateName || "Manual blueprint"} />
         </div>
