@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock,
   FileText,
+  Sparkles,
   Target,
   Users,
 } from "lucide-react";
@@ -16,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
+import { getTeacherRemedialPracticeContext } from "@/lib/remedial-practice/service";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 import { getWorkspaceClassAssignmentTracking } from "@/lib/workspace-assignment-tracking";
@@ -63,6 +65,9 @@ export default async function WorkspaceAssignmentDetailPage({
   if (!assignment || assignment.challenge.subjectId !== classData.subjectId) notFound();
 
   const isPractice = assignment.challenge.type === "QUICK_PRACTICE";
+  const remedialResult = isPractice
+    ? await getTeacherRemedialPracticeContext({ classId, batchId })
+    : null;
   const contentLabel = isPractice
     ? "Quick Practice"
     : assignment.challenge.type === "PDF_WORKSHEET"
@@ -110,6 +115,55 @@ export default async function WorkspaceAssignmentDetailPage({
           <p className="flex items-center gap-2"><Users className="size-4 text-muted-foreground" /> {assignment.audience === "CLASS" ? "Entire class" : "Selected students"}</p>
         </CardContent>
       </Card>
+
+      {isPractice && remedialResult?.success ? (
+        <Card className="border-violet-500/20">
+          <CardHeader className="gap-3 border-b sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="size-4 text-violet-500" /> Remedial practice
+              </CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create focused repractice from wrong answers made after this assignment was issued.
+              </p>
+            </div>
+            {remedialResult.data.weakTopics.length > 0 &&
+            remedialResult.data.candidates.length > 0 &&
+            remedialResult.data.suggestedStudentIds.length > 0 ? (
+              <Link href={`/workspace/classes/${classId}/assignments/${batchId}/remedial`}>
+                <Button size="sm" className="w-full sm:w-auto">
+                  <Sparkles className="mr-2 size-4" /> Create Remedial Practice
+                </Button>
+              </Link>
+            ) : null}
+          </CardHeader>
+          <CardContent className="p-4">
+            {remedialResult.data.weakTopics.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No post-assignment wrong answers are linked to a real topic yet. A remedial practice can be created after students make topic-linked mistakes.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {remedialResult.data.weakTopics.map((topic) => (
+                    <Badge key={topic.id} variant="outline">
+                      {topic.name} · {topic.mistakeCount} mistake{topic.mistakeCount === 1 ? "" : "s"}
+                    </Badge>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {remedialResult.data.suggestedStudentIds.length} student{remedialResult.data.suggestedStudentIds.length === 1 ? "" : "s"} with mistakes · {remedialResult.data.candidates.length} scoped MCQ candidate{remedialResult.data.candidates.length === 1 ? "" : "s"}
+                </p>
+                {remedialResult.data.candidates.length === 0 ? (
+                  <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+                    No complete MCQs are available in the weak topics for this assigned subject and workspace.
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <section className="space-y-3">
         <div>
