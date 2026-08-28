@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
-import { summarizeAssignmentRecipients } from "@/lib/workspace-assignment-rules";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
+import { getWorkspaceClassAssignmentTracking } from "@/lib/workspace-assignment-tracking";
 
 import ClassDetailClient from "./ClassDetailClient";
 
@@ -29,68 +29,28 @@ export default async function ClassDetailPage({
         },
         orderBy: { enrolledAt: "desc" },
       },
-      assignmentBatches: {
-        include: {
-          challenge: {
-            select: {
-              id: true,
-              title: true,
-              type: true,
-              difficulty: true,
-              estimatedTime: true,
-            },
-          },
-          recipients: {
-            include: {
-              student: { select: { id: true, name: true, email: true } },
-            },
-            orderBy: { assignedAt: "asc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
     },
   });
 
   if (!cls) notFound();
   await requireWorkspaceSubjectScope(user.workspaceId, cls.subjectId);
 
-  const availableChallenges = await prisma.challenge.findMany({
-    where: {
+  const [availableChallenges, assignments] = await Promise.all([
+    prisma.challenge.findMany({
+      where: {
+        workspaceId: user.workspaceId,
+        isPublished: true,
+        type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
+        subjectId: cls.subjectId!,
+      },
+      select: { id: true, title: true, type: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    getWorkspaceClassAssignmentTracking({
       workspaceId: user.workspaceId,
-      isPublished: true,
-      type: { in: ["WORKSHEET", "PDF_WORKSHEET", "QUICK_PRACTICE"] },
-      subjectId: cls.subjectId!,
-    },
-    select: { id: true, title: true, type: true },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const activeStudentIds = new Set(cls.students.map((membership) => membership.studentId));
-  const assignments = cls.assignmentBatches.map((batch) => ({
-    id: batch.id,
-    audience: batch.audience,
-    dueDate: batch.dueDate,
-    includeLateJoiners: batch.includeLateJoiners,
-    status: batch.status,
-    createdAt: batch.createdAt,
-    cancelledAt: batch.cancelledAt,
-    challenge: batch.challenge,
-    summary: summarizeAssignmentRecipients(
-      batch.recipients.filter((recipient) => activeStudentIds.has(recipient.studentId)),
-      batch.dueDate,
-    ),
-    recipients: batch.recipients.map((recipient) => ({
-      id: recipient.id,
-      studentId: recipient.studentId,
-      status: recipient.status,
-      assignedAt: recipient.assignedAt,
-      completedAt: recipient.completedAt,
-      revokedAt: recipient.revokedAt,
-      membershipActive: activeStudentIds.has(recipient.studentId),
-      student: recipient.student,
-    })),
-  }));
+      classId: cls.id,
+    }),
+  ]);
 
   const activeChallengeIds = new Set(
     assignments

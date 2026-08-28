@@ -425,6 +425,7 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
               const worksheetLink = withStudentReturnTo(
                 `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`,
                 "/dashboard",
+                assignment.source === "DURABLE" ? assignment.id : undefined,
               );
               const attemptLink = withStudentReturnTo(
                 `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`,

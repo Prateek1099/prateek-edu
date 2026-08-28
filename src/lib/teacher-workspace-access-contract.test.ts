@@ -24,6 +24,7 @@ const classActions = read("src/app/actions/class.ts");
 const joinClassPage = read("src/app/dashboard/join/page.tsx");
 const assignmentActions = read("src/app/actions/workspace-assignments.ts");
 const classDetail = read("src/app/workspace/classes/[id]/page.tsx");
+const assignmentTracking = read("src/lib/workspace-assignment-tracking.ts");
 const studentDirectory = read("src/app/workspace/students/page.tsx");
 const studentProfile = read("src/app/workspace/students/[id]/page.tsx");
 
@@ -79,8 +80,11 @@ test("join class is student-only, securely generated, and transactional", () => 
 
 test("class assignment display is scoped to the teacher workspace", () => {
   assert.match(classDetail, /where: \{ id, workspaceId: user\.workspaceId \}/);
-  assert.match(classDetail, /assignmentBatches:/);
+  assert.match(classDetail, /getWorkspaceClassAssignmentTracking/);
   assert.match(classDetail, /workspaceId: user\.workspaceId/);
+  assert.match(assignmentTracking, /workspaceAssignmentBatch\.findMany/);
+  assert.match(assignmentTracking, /class: \{ workspaceId \}/);
+  assert.match(assignmentTracking, /challenge: \{ workspaceId \}/);
 });
 
 test("assignment cancellation and recipient revocation verify the teacher workspace", () => {

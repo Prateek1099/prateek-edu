@@ -129,12 +129,37 @@ export async function getStudentWorkspaceAssignments(
       : Promise.resolve([]),
   ]);
 
+  const quickPracticeRecipients = recipients.filter(
+    (recipient) => recipient.batch.challenge.type === "QUICK_PRACTICE",
+  );
+  const quickPracticeAttempts = quickPracticeRecipients.length
+    ? await prisma.challengeAttempt.findMany({
+        where: {
+          userId,
+          challengeId: {
+            in: Array.from(new Set(quickPracticeRecipients.map((recipient) => recipient.batch.challenge.id))),
+          },
+        },
+        select: { challengeId: true, completedAt: true },
+      })
+    : [];
+
   const durable: StudentAssignedWork[] = recipients.map((recipient) => {
     const challenge = recipient.batch.challenge;
     return {
       id: recipient.id,
       source: "DURABLE",
-      status: recipient.status,
+      status:
+        challenge.type === "QUICK_PRACTICE"
+        && quickPracticeAttempts.some(
+          (attempt) =>
+            attempt.challengeId === challenge.id
+            && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
+        )
+          ? "COMPLETED"
+          : challenge.type === "QUICK_PRACTICE"
+            ? "NOT_STARTED"
+            : recipient.status,
       assignedAt: recipient.assignedAt,
       dueDate: recipient.batch.dueDate,
       className: recipient.batch.class.name,

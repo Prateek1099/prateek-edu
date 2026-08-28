@@ -41,7 +41,7 @@ test("student pages expose class cards, exact class work, and honest document tr
   assert.match(classesPage, /assignmentCounts\.completed/);
   assert.match(classesPage, /assignmentCounts\.overdue/);
   assert.match(classDetailPage, /Only work assigned to you in this class appears here/);
-  assert.match(classDetailPage, /View-only document · completion is not tracked/);
+  assert.match(classDetailPage, /use Mark as Done when you finish/);
   assert.match(studentDashboard, /href=\{`\/dashboard\/classes\/\$\{studentClass\.id\}`\}/);
 });
 
@@ -49,7 +49,7 @@ test("existing Join Class and consolidated Assigned Work flows remain available"
   assert.match(studentDashboard, /href="\/dashboard\/join"/);
   assert.match(joinAction, /Only student accounts can join a class/);
   assert.match(assignedWorkPage, /getStudentWorkspaceAssignments/);
-  assert.match(assignedWorkPage, /Completion is not tracked for document worksheets/);
+  assert.match(assignedWorkPage, /use Mark as Done when you finish/);
 });
 
 test("teacher dashboard contains no named demo students or fabricated AI insight", () => {

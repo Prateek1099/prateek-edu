@@ -61,15 +61,29 @@ export async function getStudentWorkspaceClasses(userId: string, now = new Date(
         },
         select: {
           status: true,
+          assignedAt: true,
           batch: {
             select: {
               classId: true,
               workspaceId: true,
               dueDate: true,
-              challenge: { select: { workspaceId: true } },
+              challenge: { select: { id: true, workspaceId: true, type: true } },
             },
           },
         },
+      })
+    : [];
+  const quickAttempts = recipients.some(
+    (recipient) => recipient.batch.challenge.type === "QUICK_PRACTICE",
+  )
+    ? await prisma.challengeAttempt.findMany({
+        where: {
+          userId,
+          challengeId: {
+            in: Array.from(new Set(recipients.map((recipient) => recipient.batch.challenge.id))),
+          },
+        },
+        select: { challengeId: true, completedAt: true },
       })
     : [];
 
@@ -87,7 +101,18 @@ export async function getStudentWorkspaceClasses(userId: string, now = new Date(
       continue;
     }
     const assignments = recipientsByClass.get(recipient.batch.classId) ?? [];
-    assignments.push({ status: recipient.status, dueDate: recipient.batch.dueDate });
+    const hasCompletedAttempt = recipient.batch.challenge.type === "QUICK_PRACTICE"
+      && quickAttempts.some(
+        (attempt) =>
+          attempt.challengeId === recipient.batch.challenge.id
+          && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
+      );
+    assignments.push({
+      status: recipient.batch.challenge.type === "QUICK_PRACTICE"
+        ? hasCompletedAttempt ? "COMPLETED" : "NOT_STARTED"
+        : recipient.status,
+      dueDate: recipient.batch.dueDate,
+    });
     recipientsByClass.set(recipient.batch.classId, assignments);
   }
 
@@ -150,14 +175,35 @@ export async function getStudentWorkspaceClass(
     orderBy: { assignedAt: "desc" },
   });
 
+  const quickPracticeChallengeIds = Array.from(new Set(
+    recipients
+      .filter((recipient) => recipient.batch.challenge.type === "QUICK_PRACTICE")
+      .map((recipient) => recipient.batch.challenge.id),
+  ));
+  const quickAttempts = quickPracticeChallengeIds.length
+    ? await prisma.challengeAttempt.findMany({
+        where: { userId, challengeId: { in: quickPracticeChallengeIds } },
+        select: { challengeId: true, completedAt: true },
+      })
+    : [];
+
   const assignments = recipients.map((recipient) => {
     const challenge = recipient.batch.challenge;
+    const trackedStatus = challenge.type === "QUICK_PRACTICE"
+      ? quickAttempts.some(
+          (attempt) =>
+            attempt.challengeId === challenge.id
+            && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
+        )
+        ? "COMPLETED"
+        : "NOT_STARTED"
+      : recipient.status;
     return {
       id: recipient.id,
       assignedAt: recipient.assignedAt,
       dueDate: recipient.batch.dueDate,
       status: getStudentClassAssignmentState(
-        { status: recipient.status, dueDate: recipient.batch.dueDate },
+        { status: trackedStatus, dueDate: recipient.batch.dueDate },
         now,
       ),
       challenge: {
@@ -180,9 +226,9 @@ export async function getStudentWorkspaceClass(
     ...membership.class,
     enrolledAt: membership.enrolledAt,
     assignments,
-    assignmentCounts: summarizeStudentClassAssignments(recipients.map((recipient) => ({
-      status: recipient.status,
-      dueDate: recipient.batch.dueDate,
+    assignmentCounts: summarizeStudentClassAssignments(assignments.map((assignment) => ({
+      status: assignment.status,
+      dueDate: assignment.dueDate,
     })), now),
   };
 }

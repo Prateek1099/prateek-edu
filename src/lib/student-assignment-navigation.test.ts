@@ -12,8 +12,8 @@ test("class assignment navigation preserves the exact student class page", () =>
   assert.equal(getSafeStudentReturnPath(classPath, "/resources/cbse/class-12/ip"), classPath);
   assert.equal(getStudentReturnLabel(classPath, "Back to Practice"), "Back to Class");
   assert.equal(
-    withStudentReturnTo("/resources/cbse/class-12/ip/worksheet/worksheet-1", classPath),
-    "/resources/cbse/class-12/ip/worksheet/worksheet-1?returnTo=%2Fdashboard%2Fclasses%2Fclass_123-safe",
+    withStudentReturnTo("/resources/cbse/class-12/ip/worksheet/worksheet-1", classPath, "recipient-1"),
+    "/resources/cbse/class-12/ip/worksheet/worksheet-1?assignmentId=recipient-1&returnTo=%2Fdashboard%2Fclasses%2Fclass_123-safe",
   );
 });
 

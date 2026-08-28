@@ -27,7 +27,10 @@ export default async function StudentWorksheetPage({
   searchParams,
 }: {
   params: Promise<{ board: string; qualification: string; subject: string; id: string }>;
-  searchParams: Promise<{ returnTo?: string | string[] }>;
+  searchParams: Promise<{
+    returnTo?: string | string[];
+    assignmentId?: string | string[];
+  }>;
 }) {
   const { board, qualification, subject, id } = await params;
   const query = await searchParams;
@@ -49,6 +52,7 @@ export default async function StudentWorksheetPage({
 
   const isPublicGlobalPdf =
     worksheet.type === "PDF_WORKSHEET" && !worksheet.workspaceId && worksheet.isPublished;
+  let assignmentTracking: { recipientId: string; completed: boolean } | null = null;
 
   if (!isPublicGlobalPdf) {
     const session = await getServerSession(authOptions);
@@ -63,6 +67,43 @@ export default async function StudentWorksheetPage({
       action: "view",
     });
     if (!access.allowed) notFound();
+
+    const assignmentId = Array.isArray(query.assignmentId)
+      ? query.assignmentId[0]
+      : query.assignmentId;
+    if (sessionUser.role === "STUDENT" && assignmentId && worksheet.workspaceId) {
+      const recipient = await prisma.workspaceAssignmentRecipient.findFirst({
+        where: {
+          id: assignmentId,
+          studentId: sessionUser.id,
+          revokedAt: null,
+          batch: {
+            challengeId: worksheet.id,
+            workspaceId: worksheet.workspaceId,
+            status: "ACTIVE",
+            workspace: { status: "ACTIVE" },
+            class: {
+              workspaceId: worksheet.workspaceId,
+              status: "ACTIVE",
+              students: { some: { studentId: sessionUser.id, status: "ACTIVE" } },
+            },
+            challenge: {
+              id: worksheet.id,
+              workspaceId: worksheet.workspaceId,
+              isPublished: true,
+              type: { in: ["WORKSHEET", "PDF_WORKSHEET"] },
+            },
+          },
+        },
+        select: { id: true, status: true },
+      });
+      if (recipient) {
+        assignmentTracking = {
+          recipientId: recipient.id,
+          completed: recipient.status === "COMPLETED",
+        };
+      }
+    }
   }
 
   return (
@@ -91,6 +132,7 @@ export default async function StudentWorksheetPage({
       }}
       backUrl={backUrl}
       backLabel={getStudentReturnLabel(backUrl, "Back to Practice")}
+      assignmentTracking={assignmentTracking}
     />
   );
 }

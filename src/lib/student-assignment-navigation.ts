@@ -17,9 +17,16 @@ export function getSafeStudentReturnPath(
   return fallback;
 }
 
-export function withStudentReturnTo(href: string, returnTo: string) {
+export function withStudentReturnTo(
+  href: string,
+  returnTo: string,
+  assignmentId?: string,
+) {
   const separator = href.includes("?") ? "&" : "?";
-  return `${href}${separator}returnTo=${encodeURIComponent(returnTo)}`;
+  const context = assignmentId
+    ? `assignmentId=${encodeURIComponent(assignmentId)}&`
+    : "";
+  return `${href}${separator}${context}returnTo=${encodeURIComponent(returnTo)}`;
 }
 
 export function getStudentReturnLabel(returnTo: string, fallback: string) {

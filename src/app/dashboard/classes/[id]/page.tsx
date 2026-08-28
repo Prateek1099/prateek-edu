@@ -93,6 +93,7 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
               const worksheetLink = withStudentReturnTo(
                 `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/worksheet/${challenge.id}`,
                 returnTo,
+                assignment.id,
               );
               const practiceLink = withStudentReturnTo(
                 `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`,
@@ -119,7 +120,7 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
                         {assignment.dueDate ? <span className="flex items-center gap-1.5"><Clock className="size-3.5" /> Due {formatAssignmentDueDate(assignment.dueDate)}</span> : null}
                         {!isDocument ? <span>{challenge.questionCount} questions · {challenge.difficulty}</span> : null}
                       </div>
-                      {isDocument ? <p className="text-xs text-muted-foreground">View-only document · completion is not tracked.</p> : null}
+                      {isDocument ? <p className="text-xs text-muted-foreground">Open the document and use Mark as Done when you finish.</p> : null}
                     </div>
                     <Link href={isDocument ? worksheetLink : practiceLink} className={cn(buttonVariants({ variant: assignment.status === "COMPLETED" ? "outline" : "default" }), "w-full shrink-0 rounded-xl sm:w-auto")}>
                       {isDocument ? <FileText className="size-4" /> : assignment.status === "COMPLETED" ? <CheckCircle2 className="size-4" /> : <Clock className="size-4" />}

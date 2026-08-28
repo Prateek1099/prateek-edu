@@ -14,6 +14,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { WorksheetDocumentData, WorksheetPaper, WorksheetSolutions } from "./WorksheetDocument";
+import { WorksheetCompletionControl } from "./WorksheetCompletionControl";
 
 type StudentWorksheetViewerProps = {
   worksheet: WorksheetDocumentData & {
@@ -24,9 +25,13 @@ type StudentWorksheetViewerProps = {
   };
   backUrl: string;
   backLabel?: string;
+  assignmentTracking?: {
+    recipientId: string;
+    completed: boolean;
+  } | null;
 };
 
-export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel = "Back to Practice" }: StudentWorksheetViewerProps) {
+export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel = "Back to Practice", assignmentTracking = null }: StudentWorksheetViewerProps) {
   const isPdf = worksheet.type === "PDF_WORKSHEET";
   const hasSolutions = isPdf ? Boolean(worksheet.pdfAnswerUrl) : worksheet.questions.length > 0;
 
@@ -79,6 +84,12 @@ export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel =
           </div>
 
           <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row">
+            {assignmentTracking ? (
+              <WorksheetCompletionControl
+                recipientId={assignmentTracking.recipientId}
+                initialCompleted={assignmentTracking.completed}
+              />
+            ) : null}
             {isPdf ? (
               worksheet.pdfUrl && (
                 <a href={worksheet.pdfUrl} target="_blank" rel="noopener noreferrer" className="w-full sm:w-auto">

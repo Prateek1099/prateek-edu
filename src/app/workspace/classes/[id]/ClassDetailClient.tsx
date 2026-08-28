@@ -70,15 +70,23 @@ type Assignment = {
     difficulty: string;
     estimatedTime: number;
   };
-  summary: { assigned: number; completed: number; pending: number; overdue: number };
+  summary: {
+    assigned: number;
+    completed: number;
+    pending: number;
+    overdue: number;
+    averageScore: number | null;
+  };
   recipients: Array<{
     id: string;
     studentId: string;
-    status: "NOT_STARTED" | "COMPLETED";
+    status: "PENDING" | "COMPLETED" | "MARKED_DONE" | "OVERDUE";
     assignedAt: Date | string;
     completedAt: Date | string | null;
-    revokedAt: Date | string | null;
-    membershipActive: boolean;
+    attemptCount: number;
+    bestPercentage: number | null;
+    latestPercentage: number | null;
+    mistakesCount: number;
     student: { id: string; name: string | null; email: string | null };
   }>;
 };
@@ -236,7 +244,7 @@ export default function ClassDetailClient({
       <Tabs defaultValue="students" className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="students" className="gap-2"><Users className="size-4" /> Students</TabsTrigger>
-          <TabsTrigger value="assignments" className="gap-2"><BookOpen className="size-4" /> Assignments</TabsTrigger>
+          <TabsTrigger value="assignments" className="gap-2"><BookOpen className="size-4" /> Assigned Work</TabsTrigger>
         </TabsList>
 
         <TabsContent value="students">
@@ -275,8 +283,8 @@ export default function ClassDetailClient({
             <CardHeader className="pb-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2 text-lg"><BookOpen className="size-5" /> Assignments ({assignments.length})</CardTitle>
-                  <CardDescription>Durable class and selected-student assignment history.</CardDescription>
+                  <CardTitle className="flex items-center gap-2 text-lg"><BookOpen className="size-5" /> Assigned Work ({assignments.length})</CardTitle>
+                  <CardDescription>Track completion, deadlines, and Quick Practice performance.</CardDescription>
                 </div>
                 <Button size="sm" onClick={() => setIsAssignOpen(true)} disabled={classData.status !== "ACTIVE"}>
                   <Plus className="mr-2 size-4" /> Create Assignment
@@ -306,11 +314,17 @@ export default function ClassDetailClient({
                           <Badge variant="outline" className="text-emerald-600"><CheckCircle2 className="size-3" /> {assignment.summary.completed}</Badge>
                           <Badge variant="outline"><Clock className="size-3" /> {assignment.summary.pending}</Badge>
                           {assignment.summary.overdue > 0 ? <Badge variant="destructive">{assignment.summary.overdue} overdue</Badge> : null}
+                          {assignment.challenge.type === "QUICK_PRACTICE" && assignment.summary.averageScore !== null ? (
+                            <Badge variant="outline">Avg {assignment.summary.averageScore}%</Badge>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setRecipientAssignment(assignment)}>View recipients</Button>
+                          <Link href={`/workspace/classes/${classData.id}/assignments/${assignment.id}`}>
+                            <Button variant="ghost" size="sm">View Details</Button>
+                          </Link>
+                          <Button variant="ghost" size="sm" onClick={() => setRecipientAssignment(assignment)}>Recipients</Button>
                           {assignment.status === "ACTIVE" ? <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleCancelAssignment(assignment)}><XCircle className="mr-1 size-4" /> Cancel</Button> : null}
                         </div>
                       </TableCell>
@@ -377,7 +391,7 @@ export default function ClassDetailClient({
       <Dialog open={Boolean(recipientAssignment)} onOpenChange={(open) => { if (!open) setRecipientAssignment(null); }}>
         <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader><DialogTitle>Assignment recipients</DialogTitle></DialogHeader>
-          {recipientAssignment ? <div className="space-y-3">{recipientAssignment.recipients.length === 0 ? <p className="text-sm text-muted-foreground">No recipients.</p> : recipientAssignment.recipients.map((recipient) => <div key={recipient.id} className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{recipient.student.name || "Unnamed student"}</p><p className="text-xs text-muted-foreground">{recipient.student.email}</p></div><div className="flex items-center gap-2"><Badge variant={recipient.revokedAt || !recipient.membershipActive ? "secondary" : recipient.status === "COMPLETED" ? "default" : "outline"}>{recipient.revokedAt ? "REVOKED" : !recipient.membershipActive ? "REMOVED FROM CLASS" : recipient.status.replace("_", " ")}</Badge>{recipientAssignment.status === "ACTIVE" && !recipient.revokedAt && recipient.membershipActive ? <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleRevokeRecipient(recipientAssignment, recipient.studentId)}>Remove</Button> : null}</div></div>)}</div> : null}
+          {recipientAssignment ? <div className="space-y-3">{recipientAssignment.recipients.length === 0 ? <p className="text-sm text-muted-foreground">No active recipients.</p> : recipientAssignment.recipients.map((recipient) => <div key={recipient.id} className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium">{recipient.student.name || "Unnamed student"}</p><p className="text-xs text-muted-foreground">{recipient.student.email}</p></div><div className="flex items-center gap-2"><Badge variant={recipient.status === "COMPLETED" || recipient.status === "MARKED_DONE" ? "default" : recipient.status === "OVERDUE" ? "destructive" : "outline"}>{recipient.status.replace("_", " ")}</Badge>{recipientAssignment.status === "ACTIVE" ? <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleRevokeRecipient(recipientAssignment, recipient.studentId)}>Remove</Button> : null}</div></div>)}</div> : null}
         </DialogContent>
       </Dialog>
     </div>

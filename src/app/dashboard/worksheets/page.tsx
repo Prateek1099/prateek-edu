@@ -64,6 +64,7 @@ export default async function StudentWorksheetsPage() {
             const worksheetLink = withStudentReturnTo(
               `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`,
               "/dashboard/worksheets",
+              assignment.source === "DURABLE" ? assignment.id : undefined,
             );
             const attemptLink = withStudentReturnTo(
               `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`,
@@ -111,7 +112,9 @@ export default async function StudentWorksheetsPage() {
                     </p>
                     {isDocumentWorksheet ? (
                       <p className="text-xs text-muted-foreground">
-                        Completion is not tracked for document worksheets.
+                        {assignment.source === "DURABLE"
+                          ? "Open the worksheet and use Mark as Done when you finish."
+                          : "Completion is not tracked for this legacy assignment."}
                       </p>
                     ) : null}
                     <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-muted-foreground">
