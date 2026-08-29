@@ -4,6 +4,10 @@ import { validatePaperBuilderSelectionForAccess } from "@/lib/paper-builder/vali
 import type { PaperValidationInput } from "@/lib/paper-builder/types";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import {
+  TEACHER_GLOBAL_PAPER_QUESTION_TYPES,
+  TEACHER_WORKSPACE_PAPER_QUESTION_TYPES,
+} from "@/lib/teacher-paper-builder-policy";
+import {
   requireWorkspaceSubjectScope,
   requireWorkspaceTopicScope,
 } from "@/lib/workspace-academic-scope";
@@ -23,8 +27,12 @@ export async function validateTeacherPaperBuilderSelection(input: PaperValidatio
     }
 
     return validatePaperBuilderSelectionForAccess(input, {
-      allowedQuestionTypes: ["MCQ"],
-      questionScope: { kind: "workspace", workspaceId: user.workspaceId },
+      allowedQuestionTypes: TEACHER_GLOBAL_PAPER_QUESTION_TYPES,
+      questionScope: {
+        kind: "workspace",
+        workspaceId: user.workspaceId,
+        workspaceOwnedQuestionTypes: TEACHER_WORKSPACE_PAPER_QUESTION_TYPES,
+      },
     });
   } catch (error: unknown) {
     return {

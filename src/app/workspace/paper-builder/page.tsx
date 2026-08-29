@@ -1,6 +1,10 @@
 import SimplePaperBuilderClient from "@/components/paper-builder/SimplePaperBuilderClient";
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import {
+  TEACHER_GLOBAL_PAPER_QUESTION_TYPES,
+  TEACHER_WORKSPACE_PAPER_QUESTION_TYPES,
+} from "@/lib/teacher-paper-builder-policy";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 import { validateTeacherPaperBuilderSelection } from "./actions";
@@ -21,9 +25,9 @@ export default async function TeacherPaperBuilderPage() {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">Paper Builder Lite</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Paper Builder Standard</h1>
           <p className="mt-2 text-muted-foreground">
-            Build printable MCQ papers from the Question Bank available to your workspace.
+            Build printable mixed-format papers from the Question Bank available to your workspace.
           </p>
         </header>
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
@@ -41,9 +45,17 @@ export default async function TeacherPaperBuilderPage() {
     }),
     prisma.bankQuestion.findMany({
       where: {
-        questionType: "MCQ",
         subjectId: { in: subjectIds },
-        OR: [{ workspaceId: null }, { workspaceId: user.workspaceId }],
+        OR: [
+          {
+            workspaceId: null,
+            questionType: { in: [...TEACHER_GLOBAL_PAPER_QUESTION_TYPES] },
+          },
+          {
+            workspaceId: user.workspaceId,
+            questionType: { in: [...TEACHER_WORKSPACE_PAPER_QUESTION_TYPES] },
+          },
+        ],
       },
       select: {
         id: true,
@@ -76,15 +88,15 @@ export default async function TeacherPaperBuilderPage() {
   return (
     <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Paper Builder Lite</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Paper Builder Standard</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Assemble an MCQ question paper from Vexa questions and your workspace Question Bank.
+          Assemble a mixed-format question paper from Vexa questions and MCQs in your workspace Question Bank.
           Preview, print, or download the paper and answer key without saving any paper records.
         </p>
       </header>
 
       <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        Paper Builder Lite is temporary. It does not save papers, create assignments, or publish student work.
+        Paper Builder Standard is session-only. It does not save papers, create assignments, or publish student work.
       </div>
 
       <SimplePaperBuilderClient
@@ -128,10 +140,10 @@ export default async function TeacherPaperBuilderPage() {
           topicName: question.topic?.topicName ?? null,
         }))}
         validateSelection={validateTeacherPaperBuilderSelection}
-        allowedQuestionTypes={["MCQ"]}
+        allowedQuestionTypes={TEACHER_GLOBAL_PAPER_QUESTION_TYPES}
         initialSubjectId={subjects.length === 1 ? subjects[0].id : ""}
         defaultInstitutionName={workspace?.name || "VEXA"}
-        academicScopeDescription="Choose an assigned subject and one or more topics. Only eligible Vexa MCQs and MCQs owned by this workspace are available."
+        academicScopeDescription="Choose an assigned subject and one or more topics. Global Vexa questions can use all supported types; workspace-owned questions remain MCQ-only."
         previewDescription="Validated against your active academic scope and current workspace Question Bank. Nothing has been saved."
       />
     </div>

@@ -21,7 +21,11 @@ export type PaperBuilderValidationAccess = {
   allowedQuestionTypes: readonly PaperBuilderQuestion["questionType"][];
   questionScope:
     | { kind: "global-only" }
-    | { kind: "workspace"; workspaceId: string };
+    | {
+        kind: "workspace";
+        workspaceId: string;
+        workspaceOwnedQuestionTypes: readonly PaperBuilderQuestion["questionType"][];
+      };
 };
 
 function cleanText(value: unknown, maxLength: number) {
@@ -37,6 +41,17 @@ export async function validatePaperBuilderSelectionForAccess(
     const allowedQuestionTypes = new Set<string>(access.allowedQuestionTypes);
     if (allowedQuestionTypes.size === 0) {
       return { success: false, error: "No question types are available for this builder." };
+    }
+    if (
+      access.questionScope.kind === "workspace" &&
+      access.questionScope.workspaceOwnedQuestionTypes.some(
+        (questionType) => !allowedQuestionTypes.has(questionType),
+      )
+    ) {
+      return {
+        success: false,
+        error: "Workspace-owned question types must also be allowed by this builder.",
+      };
     }
 
     const institutionName = cleanText(input?.details?.institutionName, 200);
@@ -175,7 +190,12 @@ export async function validatePaperBuilderSelectionForAccess(
         : {
             OR: [
               { workspaceId: null },
-              { workspaceId: access.questionScope.workspaceId },
+              {
+                workspaceId: access.questionScope.workspaceId,
+                questionType: {
+                  in: [...access.questionScope.workspaceOwnedQuestionTypes],
+                },
+              },
             ],
           };
     const records = await prisma.bankQuestion.findMany({
