@@ -140,6 +140,7 @@ test("non-contiguous numbering, incomplete sections, and invalid stored totals a
 });
 
 const actions = readFileSync(new URL("../../app/admin/paper-builder/archive/actions.ts", import.meta.url), "utf8");
+const service = readFileSync(new URL("./saved-paper-service.ts", import.meta.url), "utf8");
 const schema = readFileSync(new URL("../../../prisma/schema.prisma", import.meta.url), "utf8");
 
 test("every archive action independently enforces SUPER_ADMIN", () => {
@@ -150,10 +151,11 @@ test("every archive action independently enforces SUPER_ADMIN", () => {
 });
 
 test("save mutates only archive aggregates and never attempts, progress, BankQuestion, or templates", () => {
-  assert.match(actions, /savedGeneratedPaper\.create/);
+  assert.match(actions, /persistSavedGeneratedPaper/);
+  assert.match(service, /savedGeneratedPaper\.create/);
   assert.match(actions, /validateBlueprintSelection\(input\.draft, input\.selections\)/);
-  assert.doesNotMatch(actions, /bankQuestion\.(create|update|delete)/);
-  assert.doesNotMatch(actions, /(?:challengeAttempt|userProgress|mistakeEntry|paperBlueprintTemplate)\.(create|update|delete)/);
+  assert.doesNotMatch(service, /bankQuestion\.(create|update|delete)/);
+  assert.doesNotMatch(service, /(?:challengeAttempt|userProgress|mistakeEntry|paperBlueprintTemplate)\.(create|update|delete)/);
 });
 
 test("schema uses SetNull traceability and archive-first deletion", () => {
@@ -163,8 +165,8 @@ test("schema uses SetNull traceability and archive-first deletion", () => {
 });
 
 test("image-copy failure cleans uploads and prevents silent source URL fallback", () => {
-  assert.match(actions, /copyPaperQuestionImages\(ordered\.paper, savedPaperId\)/);
-  assert.match(actions, /deleteArchivedQuestionImages\(copiedImages\.uploadedUrls\)/);
-  assert.match(actions, /archivedImageUrl\(question\.imageUrl, copiedImages!\.bySourceUrl\)/);
-  assert.match(actions, /A question image was not copied into Paper Archive/);
+  assert.match(service, /copyPaperQuestionImages\(input\.paper, savedPaperId\)/);
+  assert.match(service, /deleteArchivedQuestionImages\(copiedImages\.uploadedUrls\)/);
+  assert.match(service, /archivedImageUrl\(question\.imageUrl, copiedImages!\.bySourceUrl\)/);
+  assert.match(service, /A question image was not copied into Paper Archive/);
 });

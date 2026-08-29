@@ -1,7 +1,5 @@
 "use server";
 
-import crypto from "node:crypto";
-
 import { SavedGeneratedPaperOrderMode } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
@@ -10,9 +8,9 @@ import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/require-role";
 import {
   deleteArchivedQuestionImages,
-  copyPaperQuestionImages,
   isArchiveOwnedQuestionImageUrl,
 } from "@/lib/paper-builder/saved-paper-images";
+import { persistSavedGeneratedPaper } from "@/lib/paper-builder/saved-paper-service";
 import {
   SAVED_PAPER_SNAPSHOT_VERSION,
   savedPaperSnapshotToValidatedPaper,
@@ -56,13 +54,6 @@ function validId(value: unknown) {
   return value;
 }
 
-function archivedImageUrl(sourceUrl: string | null | undefined, copies: Map<string, string>) {
-  if (!sourceUrl) return null;
-  const archived = copies.get(sourceUrl);
-  if (!archived) throw new Error("A question image was not copied into Paper Archive.");
-  return archived;
-}
-
 function toSummary(paper: {
   id: string;
   name: string;
@@ -78,6 +69,7 @@ function toSummary(paper: {
   finalOrderMode: SavedGeneratedPaperOrderMode;
   sourceBlueprintTemplateNameSnapshot: string | null;
   createdBy: { name: string | null; email: string | null };
+  _count: { questions: number };
   createdAt: Date;
   archivedAt: Date | null;
 }): SavedGeneratedPaperSummary {
@@ -92,6 +84,7 @@ function toSummary(paper: {
     subjectId: paper.subjectId,
     subjectName: paper.subjectNameSnapshot,
     totalMarks: paper.totalMarks,
+    questionCount: paper._count.questions,
     durationMinutes: paper.durationMinutes,
     finalOrderMode: orderFromDatabase[paper.finalOrderMode],
     sourceBlueprintTemplateName: paper.sourceBlueprintTemplateNameSnapshot,
@@ -136,85 +129,21 @@ export async function saveGeneratedPaper(input: SaveGeneratedPaperInput) {
     }
   }
 
-  const savedPaperId = crypto.randomUUID();
-  let copiedImages: Awaited<ReturnType<typeof copyPaperQuestionImages>> | null = null;
-  try {
-    copiedImages = await copyPaperQuestionImages(ordered.paper, savedPaperId);
-    let finalQuestionNumber = 0;
-    await prisma.$transaction((tx) => tx.savedGeneratedPaper.create({
-      data: {
-        id: savedPaperId,
-        name: metadata.name,
-        description: metadata.description,
-        boardId: input.draft.boardId,
-        boardTitleSnapshot: ordered.paper.boardTitle,
-        qualificationId: input.draft.qualificationId,
-        qualificationTitleSnapshot: ordered.paper.qualificationTitle,
-        subjectId: input.draft.subjectId,
-        subjectNameSnapshot: ordered.paper.subjectName,
-        totalMarks: ordered.paper.totalMarks,
-        durationMinutes: ordered.paper.details.durationMinutes,
-        finalOrderMode: orderToDatabase[input.finalOrderMode],
-        snapshotVersion: SAVED_PAPER_SNAPSHOT_VERSION,
-        sourceBlueprintTemplateId: sourceTemplate?.id ?? null,
-        sourceBlueprintTemplateNameSnapshot: sourceTemplate?.name ?? null,
-        institutionName: ordered.paper.details.institutionName,
-        examLabel: ordered.paper.details.examLabel,
-        courseLine: ordered.paper.details.courseLine,
-        paperTitle: ordered.paper.details.title,
-        topicLine: ordered.paper.details.topicLine,
-        dateText: ordered.paper.details.dateText,
-        classText: ordered.paper.details.classText,
-        showStudentName: ordered.paper.details.showStudentName,
-        showRollNumber: ordered.paper.details.showRollNumber,
-        instructions: ordered.paper.details.instructions,
-        createdById: admin.id,
-        sections: {
-          create: ordered.paper.sections.map((section, sectionIndex) => ({
-            label: section.label,
-            questionType: section.isMixedOutput ? null : section.questionType,
-            questionCount: section.questions.length,
-            marksPerQuestion: section.isMixedOutput ? null : section.marksPerQuestion,
-            isMixedOutput: Boolean(section.isMixedOutput),
-            sortOrder: sectionIndex,
-            questions: {
-              create: section.questions.map((question, questionIndex) => {
-                finalQuestionNumber += 1;
-                return {
-                  savedPaperId,
-                  originalBankQuestionId: question.id,
-                  topicId: question.topicId,
-                  topicNameSnapshot: question.topicName,
-                  questionType: question.questionType,
-                  marks: question.marks,
-                  difficulty: question.difficulty,
-                  source: question.source ?? null,
-                  sortOrder: questionIndex,
-                  finalQuestionNumber,
-                  questionText: question.questionText,
-                  optionA: question.optionA,
-                  optionB: question.optionB,
-                  optionC: question.optionC,
-                  optionD: question.optionD,
-                  correctAnswer: question.correctAnswer,
-                  modelAnswer: question.modelAnswer,
-                  explanation: question.explanation,
-                  imageUrl: archivedImageUrl(question.imageUrl, copiedImages!.bySourceUrl),
-                  imageAlt: question.imageAlt ?? null,
-                  imageCaption: question.imageCaption ?? null,
-                };
-              }),
-            },
-          })),
-        },
-      },
-    }));
-    revalidateArchivePaths(savedPaperId);
-    return { success: true as const, id: savedPaperId };
-  } catch (error) {
-    if (copiedImages) await deleteArchivedQuestionImages(copiedImages.uploadedUrls);
-    return { success: false as const, error: error instanceof Error ? error.message : "Could not save the generated paper." };
-  }
+  const result = await persistSavedGeneratedPaper({
+    name: metadata.name,
+    description: metadata.description,
+    paper: ordered.paper,
+    boardId: input.draft.boardId,
+    qualificationId: input.draft.qualificationId,
+    subjectId: input.draft.subjectId,
+    createdById: admin.id,
+    workspaceId: null,
+    finalOrderMode: orderToDatabase[input.finalOrderMode],
+    sourceBlueprintTemplateId: sourceTemplate?.id ?? null,
+    sourceBlueprintTemplateName: sourceTemplate?.name ?? null,
+  });
+  if (result.success) revalidateArchivePaths(result.id);
+  return result;
 }
 
 export async function listSavedGeneratedPapers(filters: SavedGeneratedPaperFilters = {}) {
@@ -224,6 +153,7 @@ export async function listSavedGeneratedPapers(filters: SavedGeneratedPaperFilte
   const through = filterDate(filters.dateTo, true);
   const papers = await prisma.savedGeneratedPaper.findMany({
     where: {
+      workspaceId: null,
       archivedAt: filters.status === "archived" ? { not: null } : null,
       boardId: cleanFilter(filters.boardId),
       qualificationId: cleanFilter(filters.qualificationId),
@@ -235,7 +165,10 @@ export async function listSavedGeneratedPapers(filters: SavedGeneratedPaperFilte
         { subjectNameSnapshot: { contains: search, mode: "insensitive" } },
       ] : undefined,
     },
-    include: { createdBy: { select: { name: true, email: true } } },
+    include: {
+      createdBy: { select: { name: true, email: true } },
+      _count: { select: { questions: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
   return papers.map(toSummary);
@@ -243,10 +176,11 @@ export async function listSavedGeneratedPapers(filters: SavedGeneratedPaperFilte
 
 export async function getSavedGeneratedPaper(id: string): Promise<SavedGeneratedPaperDetail | null> {
   await requireSuperAdmin();
-  const paper = await prisma.savedGeneratedPaper.findUnique({
-    where: { id: validId(id) },
+  const paper = await prisma.savedGeneratedPaper.findFirst({
+    where: { id: validId(id), workspaceId: null },
     include: {
       createdBy: { select: { name: true, email: true } },
+      _count: { select: { questions: true } },
       sections: {
         orderBy: { sortOrder: "asc" },
         include: { questions: { orderBy: { sortOrder: "asc" } } },
@@ -263,7 +197,7 @@ export async function archiveSavedGeneratedPaper(id: string) {
   await requireSuperAdmin();
   const paperId = validId(id);
   const result = await prisma.savedGeneratedPaper.updateMany({
-    where: { id: paperId, archivedAt: null },
+    where: { id: paperId, workspaceId: null, archivedAt: null },
     data: { archivedAt: new Date() },
   });
   if (result.count !== 1) return { success: false as const, error: "This saved paper is missing or already archived." };
@@ -275,7 +209,7 @@ export async function restoreSavedGeneratedPaper(id: string) {
   await requireSuperAdmin();
   const paperId = validId(id);
   const result = await prisma.savedGeneratedPaper.updateMany({
-    where: { id: paperId, archivedAt: { not: null } },
+    where: { id: paperId, workspaceId: null, archivedAt: { not: null } },
     data: { archivedAt: null },
   });
   if (result.count !== 1) return { success: false as const, error: "This saved paper is missing or already active." };
@@ -286,8 +220,8 @@ export async function restoreSavedGeneratedPaper(id: string) {
 export async function deleteArchivedGeneratedPaper(id: string, confirmationName: string) {
   await requireSuperAdmin();
   const paperId = validId(id);
-  const paper = await prisma.savedGeneratedPaper.findUnique({
-    where: { id: paperId },
+  const paper = await prisma.savedGeneratedPaper.findFirst({
+    where: { id: paperId, workspaceId: null },
     select: {
       name: true,
       archivedAt: true,
@@ -301,7 +235,12 @@ export async function deleteArchivedGeneratedPaper(id: string, confirmationName:
     .map((question) => question.imageUrl)
     .filter((value): value is string => typeof value === "string")
     .filter(isArchiveOwnedQuestionImageUrl))];
-  await prisma.savedGeneratedPaper.delete({ where: { id: paperId } });
+  const deleted = await prisma.savedGeneratedPaper.deleteMany({
+    where: { id: paperId, workspaceId: null, archivedAt: { not: null } },
+  });
+  if (deleted.count !== 1) {
+    return { success: false as const, error: "This admin saved paper changed before deletion." };
+  }
   const unreferenced: string[] = [];
   for (const imageUrl of imageUrls) {
     const remaining = await prisma.savedGeneratedPaperQuestion.count({ where: { imageUrl } });

@@ -15,6 +15,7 @@ import {
   Plus,
   Printer,
   RefreshCw,
+  Save,
   Search,
   Shuffle,
   Trash2,
@@ -43,6 +44,7 @@ import {
   shuffled,
   uniqueEligibleQuestions,
 } from "@/lib/paper-builder/rules";
+import type { TeacherSaveGeneratedPaperInput } from "@/lib/paper-builder/saved-paper-types";
 import {
   PAPER_DIFFICULTIES,
   PAPER_QUESTION_TYPES,
@@ -62,6 +64,7 @@ type ValidationResult =
   | { success: false; error: string };
 
 type TemplateActionResult = { success: boolean; error?: string };
+type SavePaperActionResult = { success: boolean; id?: string; error?: string };
 
 export type SimplePaperBuilderProps = {
   subjects: PaperBuilderSubject[];
@@ -79,6 +82,10 @@ export type SimplePaperBuilderProps = {
   defaultInstitutionName?: string;
   academicScopeDescription?: string;
   previewDescription?: string;
+  savePaper?: {
+    action: (input: TeacherSaveGeneratedPaperInput) => Promise<SavePaperActionResult>;
+    archiveHref: string;
+  };
 };
 
 type PreviewTab = "questions" | "answers";
@@ -128,6 +135,7 @@ export default function SimplePaperBuilderClient({
   defaultInstitutionName = initialDetails.institutionName,
   academicScopeDescription = "Choose one subject and one or more syllabus topics. Only global Vexa questions are available.",
   previewDescription = "Validated from current global Question Bank records. Nothing has been saved.",
+  savePaper,
 }: SimplePaperBuilderProps) {
   const router = useRouter();
   const initialSubject = subjects.find((subject) => subject.id === initialSubjectId);
@@ -155,6 +163,9 @@ export default function SimplePaperBuilderClient({
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [templateName, setTemplateName] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [savePaperName, setSavePaperName] = useState("");
+  const [savingPaper, setSavingPaper] = useState(false);
+  const [savedPaperId, setSavedPaperId] = useState<string | null>(null);
 
   const boards = useMemo(() => {
     const values = new Map<string, { id: string; title: string }>();
@@ -242,6 +253,7 @@ export default function SimplePaperBuilderClient({
   const invalidatePreview = () => {
     setValidatedPaper(null);
     setValidatedSignature("");
+    setSavedPaperId(null);
   };
 
   const resetSelections = () => {
@@ -520,12 +532,44 @@ export default function SimplePaperBuilderClient({
       setValidatedPaper(result.paper);
       setValidatedSignature(currentSignature);
       setPreviewTab("questions");
+      setSavePaperName((current) =>
+        current.trim()
+          ? current
+          : `Paper Builder Standard - ${result.paper.subjectName} - ${new Date()
+              .toISOString()
+              .slice(0, 10)}`,
+      );
       toast.success("Server validation passed. Paper is ready to preview and print.");
       requestAnimationFrame(() => document.getElementById("paper-preview")?.scrollIntoView({ behavior: "smooth" }));
     } catch {
       toast.error("Could not validate the paper. Please try again.");
     } finally {
       setValidating(false);
+    }
+  };
+
+  const saveValidatedPaper = async () => {
+    if (!savePaper || !previewIsCurrent) {
+      toast.error("Validate the current paper before saving.");
+      return;
+    }
+    setSavingPaper(true);
+    try {
+      const result = await savePaper.action({
+        name: savePaperName,
+        description: "",
+        validationInput,
+      });
+      if (!result.success || !result.id) {
+        toast.error(result.error ?? "Could not save the generated paper.");
+        return;
+      }
+      setSavedPaperId(result.id);
+      toast.success("Paper saved to your workspace archive.");
+    } catch {
+      toast.error("Could not save the generated paper. Please try again.");
+    } finally {
+      setSavingPaper(false);
     }
   };
 
@@ -812,6 +856,41 @@ export default function SimplePaperBuilderClient({
             <Button type="button" variant="outline" onClick={() => downloadDocx("answers")} disabled={!previewIsCurrent || downloadingDocx !== null}><FileDown className="size-4" /> {downloadingDocx === "answers" ? "Generating…" : "Download Answer Key DOCX"}</Button>
             <Button type="button" variant="outline" onClick={() => downloadDocx("both")} disabled={!previewIsCurrent || downloadingDocx !== null}><FileDown className="size-4" /> {downloadingDocx === "both" ? "Generating…" : "Download Both DOCX"}</Button>
           </div>
+          {savePaper && (
+            <div className="paper-builder-screen-only rounded-2xl border bg-card p-4">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                <Field label="Saved paper title" className="min-w-0 flex-1">
+                  <Input
+                    value={savePaperName}
+                    maxLength={200}
+                    onChange={(event) => setSavePaperName(event.target.value)}
+                    placeholder={`Paper Builder Standard - ${validatedPaper.subjectName} - YYYY-MM-DD`}
+                  />
+                </Field>
+                <Button
+                  type="button"
+                  disabled={!previewIsCurrent || savingPaper}
+                  onClick={saveValidatedPaper}
+                >
+                  <Save className="size-4" />
+                  {savingPaper ? "Saving…" : "Save Paper"}
+                </Button>
+                <a
+                  href={
+                    savedPaperId
+                      ? `${savePaper.archiveHref}/${savedPaperId}`
+                      : savePaper.archiveHref
+                  }
+                  className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium hover:bg-muted"
+                >
+                  Open Paper Archive
+                </a>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                Saving creates an immutable workspace-owned snapshot. It does not assign or publish the paper.
+              </p>
+            </div>
+          )}
           <div className={cn(previewTab !== "questions" && "paper-builder-preview-hidden")}><PaperQuestionDocument paper={validatedPaper} /></div>
           <div className={cn(previewTab !== "answers" && "paper-builder-preview-hidden")}><PaperAnswerKeyDocument paper={validatedPaper} /></div>
         </section>

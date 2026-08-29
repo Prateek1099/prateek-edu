@@ -1,6 +1,6 @@
 import type { BlueprintPaperDraft, BlueprintSelection } from "./blueprint-types";
 import type { FinalPaperOrderMode } from "./final-paper-order";
-import type { ValidatedPaper } from "./types";
+import type { PaperValidationInput, ValidatedPaper } from "./types";
 
 export type SaveGeneratedPaperInput = {
   name: string;
@@ -11,6 +11,12 @@ export type SaveGeneratedPaperInput = {
   orderedQuestionIds: string[];
   questionVersions: Array<{ id: string; updatedAt: string }>;
   sourceBlueprintTemplateId: string | null;
+};
+
+export type TeacherSaveGeneratedPaperInput = {
+  name: string;
+  description: string;
+  validationInput: PaperValidationInput;
 };
 
 export type SavedGeneratedPaperFilters = {
@@ -34,6 +40,7 @@ export type SavedGeneratedPaperSummary = {
   subjectId: string | null;
   subjectName: string;
   totalMarks: number;
+  questionCount: number;
   durationMinutes: number;
   finalOrderMode: FinalPaperOrderMode;
   sourceBlueprintTemplateName: string | null;

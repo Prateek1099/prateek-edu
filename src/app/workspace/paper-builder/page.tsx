@@ -8,6 +8,7 @@ import {
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 import { validateTeacherPaperBuilderSelection } from "./actions";
+import { saveTeacherGeneratedPaper } from "./archive/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -91,12 +92,12 @@ export default async function TeacherPaperBuilderPage() {
         <h1 className="text-3xl font-bold tracking-tight">Paper Builder Standard</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
           Assemble a mixed-format question paper from Vexa questions and MCQs in your workspace Question Bank.
-          Preview, print, or download the paper and answer key without saving any paper records.
+          Preview, print, download, or preserve an immutable copy in your workspace archive.
         </p>
       </header>
 
       <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        Paper Builder Standard is session-only. It does not save papers, create assignments, or publish student work.
+        Saving is optional. A saved paper stays private to this workspace and does not create an assignment or publish student work.
       </div>
 
       <SimplePaperBuilderClient
@@ -144,7 +145,11 @@ export default async function TeacherPaperBuilderPage() {
         initialSubjectId={subjects.length === 1 ? subjects[0].id : ""}
         defaultInstitutionName={workspace?.name || "VEXA"}
         academicScopeDescription="Choose an assigned subject and one or more topics. Global Vexa questions can use all supported types; workspace-owned questions remain MCQ-only."
-        previewDescription="Validated against your active academic scope and current workspace Question Bank. Nothing has been saved."
+        previewDescription="Validated against your active academic scope and current workspace Question Bank. Save an immutable copy only when the paper is final."
+        savePaper={{
+          action: saveTeacherGeneratedPaper,
+          archiveHref: "/workspace/paper-builder/archive",
+        }}
       />
     </div>
   );

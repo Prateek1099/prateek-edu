@@ -13,6 +13,8 @@ const read = (file: string) => readFileSync(path.join(root, file), "utf8");
 
 const page = read("src/app/workspace/paper-builder/page.tsx");
 const actions = read("src/app/workspace/paper-builder/actions.ts");
+const teacherService = read("src/lib/teacher-paper-builder-service.ts");
+const archiveActions = read("src/app/workspace/paper-builder/archive/actions.ts");
 const sharedClient = read("src/components/paper-builder/SimplePaperBuilderClient.tsx");
 const sharedValidation = read("src/lib/paper-builder/validate-selection.ts");
 const adminActions = read("src/app/admin/paper-builder/actions.ts");
@@ -29,21 +31,23 @@ test("teacher Paper Builder route is active-workspace and academic-scope restric
   assert.match(page, /questionType: \{ in: \[\.\.\.TEACHER_WORKSPACE_PAPER_QUESTION_TYPES\] \}/);
   assert.match(page, /subjects\.length === 1 \? subjects\[0\]\.id/);
   assert.match(sidebar, /href: "\/workspace\/paper-builder"/);
+  assert.match(sidebar, /href: "\/workspace\/paper-builder\/archive"/);
 });
 
 test("teacher validation independently enforces subject, topic, type, and ownership", () => {
   assert.match(actions, /requireActiveWorkspace\(\)/);
-  assert.match(actions, /requireWorkspaceSubjectScope\(user\.workspaceId, input\?\.subjectId\)/);
+  assert.match(actions, /validateTeacherPaperSelectionForWorkspace\(user\.workspaceId, input\)/);
+  assert.match(teacherService, /requireWorkspaceSubjectScope\(workspaceId, input\?\.subjectId\)/);
   assert.match(
-    actions,
-    /requireWorkspaceTopicScope\(user\.workspaceId, input\.subjectId, topicId\)/,
+    teacherService,
+    /requireWorkspaceTopicScope\(workspaceId, input\.subjectId, topicId\)/,
   );
-  assert.match(actions, /allowedQuestionTypes: TEACHER_GLOBAL_PAPER_QUESTION_TYPES/);
+  assert.match(teacherService, /allowedQuestionTypes: TEACHER_GLOBAL_PAPER_QUESTION_TYPES/);
   assert.match(
-    actions,
+    teacherService,
     /workspaceOwnedQuestionTypes: TEACHER_WORKSPACE_PAPER_QUESTION_TYPES/,
   );
-  assert.doesNotMatch(actions, /requireSuperAdmin|@\/app\/admin/);
+  assert.doesNotMatch(`${actions}\n${teacherService}`, /requireSuperAdmin|@\/app\/admin/);
 });
 
 test("shared validation requeries selections and preserves marks and duplicate checks", () => {
@@ -62,14 +66,15 @@ test("shared validation requeries selections and preserves marks and duplicate c
   );
 });
 
-test("teacher client reuses preview, print, DOCX, and image-capable shared UI without save/archive", () => {
+test("teacher client reuses preview, print, DOCX, images, and workspace archive save", () => {
   assert.match(sharedClient, /PaperQuestionDocument/);
   assert.match(sharedClient, /PaperAnswerKeyDocument/);
   assert.match(sharedClient, /window\.print\(\)/);
   assert.match(sharedClient, /downloadPaperDocx/);
   assert.match(sharedClient, /question\.imageUrl/);
   assert.match(page, /allowedQuestionTypes=\{TEACHER_GLOBAL_PAPER_QUESTION_TYPES\}/);
-  assert.doesNotMatch(page, /saveGeneratedPaper|Paper Archive|PaperBuilderModeNav/);
+  assert.match(page, /saveTeacherGeneratedPaper/);
+  assert.match(page, /archiveHref: "\/workspace\/paper-builder\/archive"/);
   assert.doesNotMatch(actions, /savedGeneratedPaper|challenge|assignment|attempt|mistake/);
 });
 
@@ -86,13 +91,17 @@ test("teacher policy allows every supported global type but only workspace MCQs"
   assert.deepEqual(TEACHER_WORKSPACE_PAPER_QUESTION_TYPES, ["MCQ"]);
 });
 
-test("teacher Paper Builder remains session-only without save, archive, or writes", () => {
-  assert.match(page, /session-only/);
-  assert.doesNotMatch(page, /saveGeneratedPaper|Paper Archive|PaperBuilderModeNav/);
+test("teacher save creates only an immutable workspace-owned paper snapshot", () => {
+  assert.match(page, /private to this workspace/);
+  assert.match(archiveActions, /requireActiveWorkspace\(\)/);
+  assert.match(archiveActions, /validateTeacherPaperSelectionForWorkspace/);
+  assert.match(archiveActions, /workspaceId: teacher\.workspaceId/);
+  assert.match(archiveActions, /createdById: teacher\.id/);
+  assert.match(archiveActions, /persistSavedGeneratedPaper/);
   assert.doesNotMatch(actions, /savedGeneratedPaper|challenge|assignment|attempt|mistake/);
   assert.doesNotMatch(
-    `${page}\n${actions}\n${sharedValidation}`,
-    /\.(create|createMany|update|updateMany|delete|deleteMany|upsert)\(/,
+    archiveActions,
+    /(?:challenge|worksheet|assignment|attempt|mistake)\.(create|createMany|update|upsert)\(/,
   );
 });
 

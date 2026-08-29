@@ -455,6 +455,7 @@ model PaperBlueprintTemplateRow {
 
 model SavedGeneratedPaper {
   id                                  String                       @id @default(cuid())
+  workspaceId                         String?                      @map("workspace_id")
   name                                String
   description                         String?                      @db.Text
   boardId                             String?                      @map("board_id")
@@ -489,10 +490,13 @@ model SavedGeneratedPaper {
   subject                 Subject?                      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   sourceBlueprintTemplate PaperBlueprintTemplate?       @relation(fields: [sourceBlueprintTemplateId], references: [id], onDelete: SetNull)
   createdBy               User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  workspace               Workspace?                    @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
   sections                SavedGeneratedPaperSection[]
   questions               SavedGeneratedPaperQuestion[]
 
   @@index([archivedAt, createdAt])
+  @@index([workspaceId])
+  @@index([workspaceId, archivedAt, createdAt])
   @@index([boardId, qualificationId, subjectId])
   @@index([createdById])
   @@index([sourceBlueprintTemplateId])
@@ -915,14 +919,15 @@ model Workspace {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  owner             User                       @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members           User[]                     @relation("WorkspaceMembers")
-  classes           Class[]
-  content           WorkspaceContent[]
-  bankQuestions     BankQuestion[]
-  challenges        Challenge[]
-  assignmentBatches WorkspaceAssignmentBatch[]
-  academicScopes    WorkspaceAcademicScope[]
+  owner                User                       @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members              User[]                     @relation("WorkspaceMembers")
+  classes              Class[]
+  content              WorkspaceContent[]
+  bankQuestions        BankQuestion[]
+  challenges           Challenge[]
+  assignmentBatches    WorkspaceAssignmentBatch[]
+  academicScopes       WorkspaceAcademicScope[]
+  savedGeneratedPapers SavedGeneratedPaper[]
 
   @@map("workspaces")
 }
