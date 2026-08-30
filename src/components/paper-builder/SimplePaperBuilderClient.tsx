@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -17,6 +18,7 @@ import {
   RefreshCw,
   Save,
   Search,
+  Settings2,
   Shuffle,
   Trash2,
   X,
@@ -74,8 +76,10 @@ export type SimplePaperBuilderProps = {
   headerTemplateActions?: {
     create: (input: PaperHeaderTemplateInput) => Promise<TemplateActionResult>;
     update: (id: string, input: PaperHeaderTemplateInput) => Promise<TemplateActionResult>;
-    delete: (id: string) => Promise<TemplateActionResult>;
+    delete?: (id: string) => Promise<TemplateActionResult>;
+    archive?: (id: string) => Promise<TemplateActionResult>;
   };
+  headerTemplateManageHref?: string;
   validateSelection: (input: PaperValidationInput) => Promise<ValidationResult>;
   allowedQuestionTypes?: readonly BankQuestionTypeValue[];
   initialSubjectId?: string;
@@ -129,6 +133,7 @@ export default function SimplePaperBuilderClient({
   questions,
   headerTemplates = [],
   headerTemplateActions,
+  headerTemplateManageHref,
   validateSelection,
   allowedQuestionTypes = PAPER_QUESTION_TYPES,
   initialSubjectId = "",
@@ -327,18 +332,20 @@ export default function SimplePaperBuilderClient({
     }
   };
 
-  const deleteTemplate = async () => {
+  const removeTemplate = async () => {
     if (!headerTemplateActions) return;
     const template = headerTemplates.find((item) => item.id === selectedTemplateId);
-    if (!template) return toast.error("Choose a template to delete.");
-    if (!window.confirm(`Delete header template “${template.name}”?`)) return;
+    const action = headerTemplateActions.archive ?? headerTemplateActions.delete;
+    const verb = headerTemplateActions.archive ? "archive" : "delete";
+    if (!template || !action) return toast.error(`Choose a template to ${verb}.`);
+    if (!window.confirm(`${verb === "archive" ? "Archive" : "Delete"} header template “${template.name}”?`)) return;
     setSavingTemplate(true);
     try {
-      const result = await headerTemplateActions.delete(template.id);
+      const result = await action(template.id);
       if (!result.success) return toast.error(result.error);
       setSelectedTemplateId("");
       setTemplateName("");
-      toast.success("Header template deleted.");
+      toast.success(`Header template ${verb === "archive" ? "archived" : "deleted"}.`);
       router.refresh();
     } finally {
       setSavingTemplate(false);
@@ -638,7 +645,16 @@ export default function SimplePaperBuilderClient({
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" size="sm" onClick={saveTemplate} disabled={savingTemplate || !templateName.trim()}>Save current header as template</Button>
               <Button type="button" size="sm" variant="outline" onClick={updateTemplate} disabled={savingTemplate || !selectedTemplateId || !templateName.trim()}>Update selected</Button>
-              <Button type="button" size="sm" variant="destructive" onClick={deleteTemplate} disabled={savingTemplate || !selectedTemplateId}>Delete selected</Button>
+              {(headerTemplateActions.archive || headerTemplateActions.delete) && (
+                <Button type="button" size="sm" variant={headerTemplateActions.archive ? "outline" : "destructive"} onClick={removeTemplate} disabled={savingTemplate || !selectedTemplateId}>
+                  {headerTemplateActions.archive ? "Archive selected" : "Delete selected"}
+                </Button>
+              )}
+              {headerTemplateManageHref && (
+                <Link href={headerTemplateManageHref} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-muted">
+                  <Settings2 className="size-4" /> Manage templates
+                </Link>
+              )}
             </div>
             <p className="mt-2 text-xs text-muted-foreground">Templates save reusable header defaults only. The generated paper is still temporary and is never saved.</p>
           </div>

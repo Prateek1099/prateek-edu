@@ -90,6 +90,12 @@ export type PaperHeaderTemplate = {
 
 export type PaperHeaderTemplateInput = Omit<PaperHeaderTemplate, "id">;
 
+export type WorkspacePaperHeaderTemplate = PaperHeaderTemplate & {
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type PaperSectionSelection = {
   patternId: string;
   questionIds: string[];

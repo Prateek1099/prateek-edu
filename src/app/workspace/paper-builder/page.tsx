@@ -9,17 +9,26 @@ import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 import { validateTeacherPaperBuilderSelection } from "./actions";
 import { saveTeacherGeneratedPaper } from "./archive/actions";
+import {
+  archiveWorkspacePaperHeaderTemplate,
+  createWorkspacePaperHeaderTemplate,
+  updateWorkspacePaperHeaderTemplate,
+} from "./header-templates/actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeacherPaperBuilderPage() {
   const user = await requireActiveWorkspace();
-  const [workspace, scopes] = await Promise.all([
+  const [workspace, scopes, headerTemplates] = await Promise.all([
     prisma.workspace.findUnique({
       where: { id: user.workspaceId },
       select: { name: true },
     }),
     listActiveWorkspaceScopes(user.workspaceId),
+    prisma.workspacePaperHeaderTemplate.findMany({
+      where: { workspaceId: user.workspaceId, archivedAt: null },
+      orderBy: [{ name: "asc" }],
+    }),
   ]);
 
   if (scopes.length === 0) {
@@ -101,6 +110,25 @@ export default async function TeacherPaperBuilderPage() {
       </div>
 
       <SimplePaperBuilderClient
+        headerTemplates={headerTemplates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          institutionName: template.institutionName,
+          examLabel: template.examLabel,
+          courseLine: template.courseLine,
+          defaultDuration: template.defaultDuration,
+          defaultInstructions: template.defaultInstructions,
+          showStudentName: template.showStudentName,
+          showRollNumber: template.showRollNumber,
+          defaultClassLine: template.defaultClassLine,
+          defaultTopicLine: template.defaultTopicLine,
+        }))}
+        headerTemplateActions={{
+          create: createWorkspacePaperHeaderTemplate,
+          update: updateWorkspacePaperHeaderTemplate,
+          archive: archiveWorkspacePaperHeaderTemplate,
+        }}
+        headerTemplateManageHref="/workspace/paper-builder/header-templates"
         subjects={subjects.map((subject) => ({
           id: subject.id,
           name: subject.name,

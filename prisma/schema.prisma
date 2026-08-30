@@ -134,6 +134,7 @@ model User {
   revisionPlan                  RevisionPlan?
   worksheetAssignments          WorksheetAssignment[]
   paperHeaderTemplates          PaperHeaderTemplate[]
+  workspacePaperHeaderTemplates WorkspacePaperHeaderTemplate[]
   paperBlueprintTemplates       PaperBlueprintTemplate[]
   savedGeneratedPapers          SavedGeneratedPaper[]
   assignedWorkspaceBatches      WorkspaceAssignmentBatch[]     @relation("WorkspaceAssignmentAssignedBy")
@@ -382,6 +383,34 @@ model PaperHeaderTemplate {
 
   @@index([createdById])
   @@map("paper_header_templates")
+}
+
+model WorkspacePaperHeaderTemplate {
+  id                  String    @id @default(cuid())
+  workspaceId         String    @map("workspace_id")
+  name                String
+  nameKey             String    @map("name_key")
+  institutionName     String    @map("institution_name")
+  examLabel           String    @map("exam_label")
+  courseLine          String    @map("course_line")
+  defaultClassLine    String?   @map("default_class_line")
+  defaultTopicLine    String?   @map("default_topic_line")
+  defaultDuration     Int       @default(30) @map("default_duration")
+  defaultInstructions String    @default("Attempt all questions.") @map("default_instructions") @db.Text
+  showStudentName     Boolean   @default(true) @map("show_student_name")
+  showRollNumber      Boolean   @default(true) @map("show_roll_number")
+  createdById         String    @map("created_by_id")
+  archivedAt          DateTime? @map("archived_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@unique([workspaceId, nameKey])
+  @@index([workspaceId, archivedAt, updatedAt])
+  @@index([createdById])
+  @@map("workspace_paper_header_templates")
 }
 
 model PaperBlueprintTemplate {
@@ -919,8 +948,8 @@ model Workspace {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  owner                User                       @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members              User[]                     @relation("WorkspaceMembers")
+  owner                User                           @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members              User[]                         @relation("WorkspaceMembers")
   classes              Class[]
   content              WorkspaceContent[]
   bankQuestions        BankQuestion[]
@@ -928,6 +957,7 @@ model Workspace {
   assignmentBatches    WorkspaceAssignmentBatch[]
   academicScopes       WorkspaceAcademicScope[]
   savedGeneratedPapers SavedGeneratedPaper[]
+  paperHeaderTemplates WorkspacePaperHeaderTemplate[]
 
   @@map("workspaces")
 }
