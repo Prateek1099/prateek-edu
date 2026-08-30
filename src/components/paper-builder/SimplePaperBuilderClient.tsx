@@ -8,6 +8,7 @@ import {
   ArrowUp,
   CheckCircle2,
   CircleAlert,
+  Copy,
   Eye,
   FileDown,
   FileCheck2,
@@ -47,6 +48,14 @@ import {
   uniqueEligibleQuestions,
 } from "@/lib/paper-builder/rules";
 import type { TeacherSaveGeneratedPaperInput } from "@/lib/paper-builder/saved-paper-types";
+import { workspacePaperTemplateRowsToPatterns } from "@/lib/paper-builder/workspace-paper-template-rules";
+import type {
+  WorkspacePaperTemplateApplyResult,
+  WorkspacePaperTemplateInput,
+  WorkspacePaperTemplateMutationResult,
+  WorkspacePaperTemplateSnapshot,
+  WorkspacePaperTemplateSummary,
+} from "@/lib/paper-builder/workspace-paper-template-types";
 import {
   PAPER_DIFFICULTIES,
   PAPER_QUESTION_TYPES,
@@ -80,6 +89,17 @@ export type SimplePaperBuilderProps = {
     archive?: (id: string) => Promise<TemplateActionResult>;
   };
   headerTemplateManageHref?: string;
+  paperTemplates?: WorkspacePaperTemplateSummary[];
+  paperTemplateActions?: {
+    create: (input: WorkspacePaperTemplateInput) => Promise<WorkspacePaperTemplateMutationResult>;
+    update: (id: string, input: WorkspacePaperTemplateInput) => Promise<WorkspacePaperTemplateMutationResult>;
+    apply: (id: string) => Promise<WorkspacePaperTemplateApplyResult>;
+    duplicate: (id: string) => Promise<WorkspacePaperTemplateMutationResult>;
+    archive: (id: string) => Promise<WorkspacePaperTemplateMutationResult>;
+  };
+  paperTemplateManageHref?: string;
+  initialPaperTemplate?: WorkspacePaperTemplateSnapshot | null;
+  initialPaperTemplateError?: string | null;
   validateSelection: (input: PaperValidationInput) => Promise<ValidationResult>;
   allowedQuestionTypes?: readonly BankQuestionTypeValue[];
   initialSubjectId?: string;
@@ -134,6 +154,11 @@ export default function SimplePaperBuilderClient({
   headerTemplates = [],
   headerTemplateActions,
   headerTemplateManageHref,
+  paperTemplates = [],
+  paperTemplateActions,
+  paperTemplateManageHref,
+  initialPaperTemplate = null,
+  initialPaperTemplateError = null,
   validateSelection,
   allowedQuestionTypes = PAPER_QUESTION_TYPES,
   initialSubjectId = "",
@@ -143,20 +168,36 @@ export default function SimplePaperBuilderClient({
   savePaper,
 }: SimplePaperBuilderProps) {
   const router = useRouter();
-  const initialSubject = subjects.find((subject) => subject.id === initialSubjectId);
+  const initialSubject = subjects.find(
+    (subject) => subject.id === (initialPaperTemplate?.subjectId ?? initialSubjectId),
+  );
   const defaultQuestionType = allowedQuestionTypes[0] ?? "MCQ";
+  const initialHeaderTemplate = initialPaperTemplate?.preferredHeaderTemplate ?? null;
+  const initialTopicIds = initialPaperTemplate?.topics.map((topic) => topic.id) ?? [];
+  const initialTopicLine = initialPaperTemplate?.topics.map((topic) => topic.name).join(" · ") ?? "";
+  const initialPatterns = initialPaperTemplate
+    ? workspacePaperTemplateRowsToPatterns(
+        initialPaperTemplate.rows,
+        (sortOrder) => `paper-template-${initialPaperTemplate.id}-row-${sortOrder}`,
+      )
+    : [createPattern(1, defaultQuestionType)];
   const [details, setDetails] = useState<PaperDetails>(() => ({
     ...initialDetails,
-    institutionName: defaultInstitutionName,
-    courseLine: courseLineFor(initialSubject),
+    institutionName: initialHeaderTemplate?.institutionName ?? defaultInstitutionName,
+    examLabel: initialHeaderTemplate?.examLabel ?? initialDetails.examLabel,
+    courseLine: initialHeaderTemplate?.courseLine ?? courseLineFor(initialSubject),
+    topicLine: initialHeaderTemplate?.defaultTopicLine ?? initialTopicLine,
+    durationMinutes: initialHeaderTemplate?.defaultDuration ?? initialDetails.durationMinutes,
+    classText: initialHeaderTemplate?.defaultClassLine ?? "",
+    showStudentName: initialHeaderTemplate?.showStudentName ?? initialDetails.showStudentName,
+    showRollNumber: initialHeaderTemplate?.showRollNumber ?? initialDetails.showRollNumber,
+    instructions: initialHeaderTemplate?.defaultInstructions ?? initialDetails.instructions,
   }));
   const [boardId, setBoardId] = useState(initialSubject?.boardId ?? "");
   const [qualificationId, setQualificationId] = useState(initialSubject?.qualificationId ?? "");
   const [subjectId, setSubjectId] = useState(initialSubject?.id ?? "");
-  const [topicIds, setTopicIds] = useState<string[]>([]);
-  const [patterns, setPatterns] = useState<PaperPatternRow[]>([
-    createPattern(1, defaultQuestionType),
-  ]);
+  const [topicIds, setTopicIds] = useState<string[]>(initialTopicIds);
+  const [patterns, setPatterns] = useState<PaperPatternRow[]>(initialPatterns);
   const [sections, setSections] = useState<Record<string, string[]>>({});
   const [manualPatternId, setManualPatternId] = useState<string | null>(null);
   const [manualSearch, setManualSearch] = useState("");
@@ -165,9 +206,17 @@ export default function SimplePaperBuilderClient({
   const [previewTab, setPreviewTab] = useState<PreviewTab>("questions");
   const [validating, setValidating] = useState(false);
   const [downloadingDocx, setDownloadingDocx] = useState<DocxMode | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [templateName, setTemplateName] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(initialHeaderTemplate?.id ?? "");
+  const [templateName, setTemplateName] = useState(initialHeaderTemplate?.name ?? "");
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [selectedPaperTemplateId, setSelectedPaperTemplateId] = useState(
+    initialPaperTemplate?.id ?? "",
+  );
+  const [paperTemplateName, setPaperTemplateName] = useState(initialPaperTemplate?.name ?? "");
+  const [paperTemplateDescription, setPaperTemplateDescription] = useState(
+    initialPaperTemplate?.description ?? "",
+  );
+  const [savingPaperTemplate, setSavingPaperTemplate] = useState(false);
   const [savePaperName, setSavePaperName] = useState("");
   const [savingPaper, setSavingPaper] = useState(false);
   const [savedPaperId, setSavedPaperId] = useState<string | null>(null);
@@ -349,6 +398,178 @@ export default function SimplePaperBuilderClient({
       router.refresh();
     } finally {
       setSavingTemplate(false);
+    }
+  };
+
+  const currentPaperTemplateInput = (): WorkspacePaperTemplateInput => ({
+    name: paperTemplateName,
+    description: paperTemplateDescription,
+    subjectId,
+    topicIds,
+    rows: patterns.map((pattern) => ({
+      sectionLabel: pattern.label,
+      questionType: pattern.questionType,
+      questionCount: pattern.questionCount,
+      marksPerQuestion: pattern.marksPerQuestion,
+      difficulty: pattern.difficulty,
+    })),
+    targetMarks: patternMarks,
+    preferredHeaderTemplateId: selectedTemplateId || null,
+  });
+
+  const clearGeneratedPaperState = () => {
+    setSections({});
+    setManualPatternId(null);
+    setManualSearch("");
+    setValidatedPaper(null);
+    setValidatedSignature("");
+    setPreviewTab("questions");
+    setSavePaperName("");
+    setSavedPaperId(null);
+  };
+
+  const applyPaperTemplateSnapshot = (template: WorkspacePaperTemplateSnapshot) => {
+    const subject = subjects.find((item) => item.id === template.subjectId);
+    if (!subject) {
+      toast.error("This template subject is no longer available in your workspace.");
+      return;
+    }
+    const nextTopicIds = template.topics.map((topic) => topic.id);
+    const nextTopicLine = template.topics.map((topic) => topic.name).join(" · ");
+    const nextPatterns = workspacePaperTemplateRowsToPatterns(
+      template.rows,
+      (sortOrder) => `paper-template-${template.id}-${Date.now()}-${sortOrder}`,
+    );
+
+    setSelectedPaperTemplateId(template.id);
+    setPaperTemplateName(template.name);
+    setPaperTemplateDescription(template.description ?? "");
+    setBoardId(subject.boardId);
+    setQualificationId(subject.qualificationId);
+    setSubjectId(subject.id);
+    setTopicIds(nextTopicIds);
+    setPatterns(nextPatterns);
+
+    const header = template.preferredHeaderTemplate;
+    if (header) {
+      setSelectedTemplateId(header.id);
+      setTemplateName(header.name);
+      setDetails((current) => ({
+        ...current,
+        institutionName: header.institutionName,
+        examLabel: header.examLabel,
+        courseLine: header.courseLine,
+        topicLine: header.defaultTopicLine ?? nextTopicLine,
+        durationMinutes: header.defaultDuration,
+        classText: header.defaultClassLine ?? "",
+        showStudentName: header.showStudentName,
+        showRollNumber: header.showRollNumber,
+        instructions: header.defaultInstructions,
+      }));
+    } else {
+      setSelectedTemplateId("");
+      setTemplateName("");
+      setDetails((current) => ({
+        ...current,
+        courseLine: courseLineFor(subject),
+        topicLine: nextTopicLine,
+      }));
+    }
+    clearGeneratedPaperState();
+    toast.success(`Applied “${template.name}” as a fresh paper draft.`);
+  };
+
+  const applyPaperTemplate = async () => {
+    if (!paperTemplateActions || !selectedPaperTemplateId) {
+      toast.error("Choose a saved paper template first.");
+      return;
+    }
+    setSavingPaperTemplate(true);
+    try {
+      const result = await paperTemplateActions.apply(selectedPaperTemplateId);
+      if (!result.success) return toast.error(result.error);
+      applyPaperTemplateSnapshot(result.template);
+    } catch {
+      toast.error("Could not apply the paper template.");
+    } finally {
+      setSavingPaperTemplate(false);
+    }
+  };
+
+  const saveCurrentPaperTemplate = async () => {
+    if (!paperTemplateActions) return;
+    setSavingPaperTemplate(true);
+    try {
+      const result = await paperTemplateActions.create(currentPaperTemplateInput());
+      if (!result.success) return toast.error(result.error);
+      toast.success(result.message);
+      router.refresh();
+    } catch {
+      toast.error("Could not save the paper template.");
+    } finally {
+      setSavingPaperTemplate(false);
+    }
+  };
+
+  const updateCurrentPaperTemplate = async () => {
+    if (!paperTemplateActions || !selectedPaperTemplateId) {
+      toast.error("Choose a saved paper template to update.");
+      return;
+    }
+    setSavingPaperTemplate(true);
+    try {
+      const result = await paperTemplateActions.update(
+        selectedPaperTemplateId,
+        currentPaperTemplateInput(),
+      );
+      if (!result.success) return toast.error(result.error);
+      toast.success(result.message);
+      router.refresh();
+    } catch {
+      toast.error("Could not update the paper template.");
+    } finally {
+      setSavingPaperTemplate(false);
+    }
+  };
+
+  const duplicatePaperTemplate = async () => {
+    if (!paperTemplateActions || !selectedPaperTemplateId) {
+      toast.error("Choose a saved paper template to duplicate.");
+      return;
+    }
+    setSavingPaperTemplate(true);
+    try {
+      const result = await paperTemplateActions.duplicate(selectedPaperTemplateId);
+      if (!result.success) return toast.error(result.error);
+      toast.success(result.message);
+      router.refresh();
+    } catch {
+      toast.error("Could not duplicate the paper template.");
+    } finally {
+      setSavingPaperTemplate(false);
+    }
+  };
+
+  const archivePaperTemplate = async () => {
+    if (!paperTemplateActions || !selectedPaperTemplateId) {
+      toast.error("Choose a saved paper template to archive.");
+      return;
+    }
+    const selected = paperTemplates.find((template) => template.id === selectedPaperTemplateId);
+    if (!selected || !window.confirm(`Archive paper template “${selected.name}”?`)) return;
+    setSavingPaperTemplate(true);
+    try {
+      const result = await paperTemplateActions.archive(selectedPaperTemplateId);
+      if (!result.success) return toast.error(result.error);
+      setSelectedPaperTemplateId("");
+      setPaperTemplateName("");
+      setPaperTemplateDescription("");
+      toast.success(result.message);
+      router.refresh();
+    } catch {
+      toast.error("Could not archive the paper template.");
+    } finally {
+      setSavingPaperTemplate(false);
     }
   };
 
@@ -623,6 +844,127 @@ export default function SimplePaperBuilderClient({
   return (
     <div className="space-y-6">
       <div className="paper-builder-screen-only space-y-6">
+      {paperTemplateActions && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Saved paper templates</CardTitle>
+            <CardDescription>
+              Reuse academic scope and section rules. Templates never save selected or generated questions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {initialPaperTemplateError && <Warning message={initialPaperTemplateError} />}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-end">
+              <Field label="Saved template">
+                <Select
+                  value={selectedPaperTemplateId}
+                  onValueChange={(value) => {
+                    const next = value || "";
+                    const template = paperTemplates.find((item) => item.id === next);
+                    setSelectedPaperTemplateId(next);
+                    if (template) {
+                      setPaperTemplateName(template.name);
+                      setPaperTemplateDescription(template.description ?? "");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Choose a paper template">
+                      {paperTemplates.find((template) => template.id === selectedPaperTemplateId)?.name}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paperTemplates.map((template) => (
+                      <SelectItem
+                        key={template.id}
+                        value={template.id}
+                        disabled={Boolean(template.staleReason)}
+                      >
+                        {template.name} · {template.subjectName} · {template.targetMarks} marks
+                        {template.staleReason ? " · unavailable" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Template name">
+                <Input
+                  value={paperTemplateName}
+                  onChange={(event) => setPaperTemplateName(event.target.value)}
+                  maxLength={200}
+                  placeholder="e.g. Class 12 SQL unit test"
+                />
+              </Field>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={applyPaperTemplate}
+                disabled={!selectedPaperTemplateId || savingPaperTemplate}
+              >
+                Apply
+              </Button>
+            </div>
+            <Field label="Description (optional)">
+              <Textarea
+                value={paperTemplateDescription}
+                onChange={(event) => setPaperTemplateDescription(event.target.value)}
+                maxLength={1000}
+                rows={2}
+                placeholder="What this reusable paper pattern is for"
+              />
+            </Field>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveCurrentPaperTemplate}
+                disabled={savingPaperTemplate || !paperTemplateName.trim()}
+              >
+                <Save className="size-4" /> Save current setup
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={updateCurrentPaperTemplate}
+                disabled={savingPaperTemplate || !selectedPaperTemplateId || !paperTemplateName.trim()}
+              >
+                Update selected
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={duplicatePaperTemplate}
+                disabled={savingPaperTemplate || !selectedPaperTemplateId}
+              >
+                <Copy className="size-4" /> Duplicate
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={archivePaperTemplate}
+                disabled={savingPaperTemplate || !selectedPaperTemplateId}
+              >
+                Archive
+              </Button>
+              {paperTemplateManageHref && (
+                <Link
+                  href={paperTemplateManageHref}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-muted"
+                >
+                  <Settings2 className="size-4" /> Manage paper templates
+                </Link>
+              )}
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Applying a template starts a fresh browser-session draft and clears selected questions,
+              availability results, validation, preview, and unsaved paper state.
+            </p>
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader>
           <StepHeader step="1" title="Paper header" description="Customize the printed identity, student fields, timing, and instructions." />

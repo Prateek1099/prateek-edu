@@ -135,6 +135,7 @@ model User {
   worksheetAssignments          WorksheetAssignment[]
   paperHeaderTemplates          PaperHeaderTemplate[]
   workspacePaperHeaderTemplates WorkspacePaperHeaderTemplate[]
+  workspacePaperTemplates       WorkspacePaperTemplate[]
   paperBlueprintTemplates       PaperBlueprintTemplate[]
   savedGeneratedPapers          SavedGeneratedPaper[]
   assignedWorkspaceBatches      WorkspaceAssignmentBatch[]     @relation("WorkspaceAssignmentAssignedBy")
@@ -241,6 +242,7 @@ model Subject {
   paperBlueprintTemplates PaperBlueprintTemplate[]
   savedGeneratedPapers    SavedGeneratedPaper[]
   workspaceAcademicScopes WorkspaceAcademicScope[]
+  workspacePaperTemplates WorkspacePaperTemplate[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -357,6 +359,7 @@ model Topic {
   workspaceContent               WorkspaceContent[]
   paperBlueprintTemplateChapters PaperBlueprintTemplateChapter[]
   savedGeneratedPaperQuestions   SavedGeneratedPaperQuestion[]
+  workspacePaperTemplateTopics   WorkspacePaperTemplateTopic[]
 
   @@unique([subjectId, importCode])
   @@index([subjectId])
@@ -404,13 +407,78 @@ model WorkspacePaperHeaderTemplate {
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
-  createdBy User      @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  workspace      Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy      User                     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  paperTemplates WorkspacePaperTemplate[]
 
   @@unique([workspaceId, nameKey])
   @@index([workspaceId, archivedAt, updatedAt])
   @@index([createdById])
   @@map("workspace_paper_header_templates")
+}
+
+model WorkspacePaperTemplate {
+  id                        String    @id @default(cuid())
+  workspaceId               String    @map("workspace_id")
+  name                      String
+  nameKey                   String    @map("name_key")
+  description               String?   @db.Text
+  version                   Int       @default(1)
+  subjectId                 String    @map("subject_id")
+  targetMarks               Int       @map("target_marks")
+  preferredHeaderTemplateId String?   @map("preferred_header_template_id")
+  createdById               String    @map("created_by_id")
+  archivedAt                DateTime? @map("archived_at")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  workspace               Workspace                     @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  subject                 Subject                       @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  preferredHeaderTemplate WorkspacePaperHeaderTemplate? @relation(fields: [preferredHeaderTemplateId], references: [id], onDelete: SetNull)
+  createdBy               User                          @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  topics                  WorkspacePaperTemplateTopic[]
+  rows                    WorkspacePaperTemplateRow[]
+
+  @@unique([workspaceId, subjectId, nameKey])
+  @@index([workspaceId, archivedAt, updatedAt])
+  @@index([workspaceId, subjectId, archivedAt])
+  @@index([subjectId])
+  @@index([preferredHeaderTemplateId])
+  @@index([createdById])
+  @@map("workspace_paper_templates")
+}
+
+model WorkspacePaperTemplateTopic {
+  id         String   @id @default(cuid())
+  templateId String   @map("template_id")
+  topicId    String   @map("topic_id")
+  sortOrder  Int      @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  template WorkspacePaperTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  topic    Topic                  @relation(fields: [topicId], references: [id], onDelete: Restrict)
+
+  @@unique([templateId, topicId])
+  @@unique([templateId, sortOrder])
+  @@index([topicId])
+  @@map("workspace_paper_template_topics")
+}
+
+model WorkspacePaperTemplateRow {
+  id               String                      @id @default(cuid())
+  templateId       String                      @map("template_id")
+  sectionLabel     String                      @map("section_label")
+  questionType     BankQuestionType            @map("question_type")
+  questionCount    Int                         @map("question_count")
+  marksPerQuestion Int                         @map("marks_per_question")
+  difficulty       BlueprintTemplateDifficulty
+  sortOrder        Int                         @map("sort_order")
+  createdAt        DateTime                    @default(now()) @map("created_at")
+
+  template WorkspacePaperTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, sortOrder])
+  @@map("workspace_paper_template_rows")
 }
 
 model PaperBlueprintTemplate {
@@ -958,6 +1026,7 @@ model Workspace {
   academicScopes       WorkspaceAcademicScope[]
   savedGeneratedPapers SavedGeneratedPaper[]
   paperHeaderTemplates WorkspacePaperHeaderTemplate[]
+  paperTemplates       WorkspacePaperTemplate[]
 
   @@map("workspaces")
 }

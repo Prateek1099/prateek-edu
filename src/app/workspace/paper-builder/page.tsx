@@ -5,6 +5,11 @@ import {
   TEACHER_GLOBAL_PAPER_QUESTION_TYPES,
   TEACHER_WORKSPACE_PAPER_QUESTION_TYPES,
 } from "@/lib/teacher-paper-builder-policy";
+import {
+  getWorkspacePaperTemplateSnapshot,
+  listWorkspacePaperTemplateSummaries,
+} from "@/lib/paper-builder/workspace-paper-template-data";
+import type { WorkspacePaperTemplateSnapshot } from "@/lib/paper-builder/workspace-paper-template-types";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 
 import { validateTeacherPaperBuilderSelection } from "./actions";
@@ -14,12 +19,26 @@ import {
   createWorkspacePaperHeaderTemplate,
   updateWorkspacePaperHeaderTemplate,
 } from "./header-templates/actions";
+import {
+  applyWorkspacePaperTemplate,
+  archiveWorkspacePaperTemplate,
+  createWorkspacePaperTemplate,
+  duplicateWorkspacePaperTemplate,
+  updateWorkspacePaperTemplate,
+} from "./templates/actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeacherPaperBuilderPage() {
+export default async function TeacherPaperBuilderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ template?: string | string[] }>;
+}) {
   const user = await requireActiveWorkspace();
-  const [workspace, scopes, headerTemplates] = await Promise.all([
+  const query = await searchParams;
+  const requestedTemplateId =
+    typeof query.template === "string" ? query.template : null;
+  const [workspace, scopes, headerTemplates, paperTemplates] = await Promise.all([
     prisma.workspace.findUnique({
       where: { id: user.workspaceId },
       select: { name: true },
@@ -29,7 +48,22 @@ export default async function TeacherPaperBuilderPage() {
       where: { workspaceId: user.workspaceId, archivedAt: null },
       orderBy: [{ name: "asc" }],
     }),
+    listWorkspacePaperTemplateSummaries(user.workspaceId),
   ]);
+
+  let initialPaperTemplate: WorkspacePaperTemplateSnapshot | null = null;
+  let initialPaperTemplateError: string | null = null;
+  if (requestedTemplateId) {
+    try {
+      initialPaperTemplate = await getWorkspacePaperTemplateSnapshot(
+        user.workspaceId,
+        requestedTemplateId,
+      );
+    } catch (error) {
+      initialPaperTemplateError =
+        error instanceof Error ? error.message : "Could not apply the requested paper template.";
+    }
+  }
 
   if (scopes.length === 0) {
     return (
@@ -129,6 +163,17 @@ export default async function TeacherPaperBuilderPage() {
           archive: archiveWorkspacePaperHeaderTemplate,
         }}
         headerTemplateManageHref="/workspace/paper-builder/header-templates"
+        paperTemplates={paperTemplates}
+        paperTemplateActions={{
+          create: createWorkspacePaperTemplate,
+          update: updateWorkspacePaperTemplate,
+          apply: applyWorkspacePaperTemplate,
+          duplicate: duplicateWorkspacePaperTemplate,
+          archive: archiveWorkspacePaperTemplate,
+        }}
+        paperTemplateManageHref="/workspace/paper-builder/templates"
+        initialPaperTemplate={initialPaperTemplate}
+        initialPaperTemplateError={initialPaperTemplateError}
         subjects={subjects.map((subject) => ({
           id: subject.id,
           name: subject.name,

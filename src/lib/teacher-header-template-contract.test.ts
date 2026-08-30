@@ -26,8 +26,8 @@ test("workspace header model and migration are additive and workspace-owned", ()
   assert.match(schema, /model WorkspacePaperHeaderTemplate \{/);
   assert.match(schema, /@@unique\(\[workspaceId, nameKey\]\)/);
   assert.match(schema, /@@index\(\[workspaceId, archivedAt, updatedAt\]\)/);
-  assert.match(schema, /workspace Workspace[^\n]+onDelete: Restrict/);
-  assert.match(schema, /createdBy User[^\n]+onDelete: Restrict/);
+  assert.match(schema, /workspace\s+Workspace[^\n]+onDelete: Restrict/);
+  assert.match(schema, /createdBy\s+User[^\n]+onDelete: Restrict/);
   assert.match(migration, /CREATE TABLE "workspace_paper_header_templates"/);
   assert.match(migration, /ON DELETE RESTRICT ON UPDATE CASCADE/g);
   assert.doesNotMatch(migration, /ALTER TABLE "paper_header_templates"/);
