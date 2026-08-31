@@ -163,13 +163,13 @@ test("row regeneration preserves unaffected IDs and appends new valid IDs", () =
 });
 
 test("DOCX receives the same ordered paper used by preview and print", () => {
-  const client = readFileSync(new URL("../../app/admin/paper-builder/blueprint/BlueprintBuilderClient.tsx", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../../components/paper-builder/BlueprintBuilderClient.tsx", import.meta.url), "utf8");
   assert.match(client, /<PreviewStep[\s\S]*?paper=\{orderedPaper\}/);
   assert.match(client, /downloadPaperDocx\(orderedPaper, mode\)/);
 });
 
 test("print actions are gated by the same ordered paper", () => {
-  const client = readFileSync(new URL("../../app/admin/paper-builder/blueprint/BlueprintBuilderClient.tsx", import.meta.url), "utf8");
+  const client = readFileSync(new URL("../../components/paper-builder/BlueprintBuilderClient.tsx", import.meta.url), "utf8");
   assert.match(client, /if \(!orderedPaper\) return toast\.error\("Validate the current blueprint before printing\."\)/);
   assert.match(client, /paperPrintMode = mode/);
 });
