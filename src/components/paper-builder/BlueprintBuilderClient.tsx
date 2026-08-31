@@ -900,6 +900,7 @@ export default function BlueprintBuilderClient({
               regeneratingRowId={regeneratingRowId}
               regeneratingChapterId={regeneratingChapterId}
               replacementEnabled={capabilities.replacement}
+              questionRemovalEnabled={capabilities.replacement || capabilities.rowRegeneration}
               rowRegenerationEnabled={capabilities.rowRegeneration}
               chapterRegenerationEnabled={capabilities.chapterRegeneration}
             />
@@ -1446,7 +1447,7 @@ function FinalPaperOrderControls({ mode, complete, onModeChange, onReshuffle }: 
   );
 }
 
-function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, rowRegenerationEnabled, chapterRegenerationEnabled }: {
+function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, questionRemovalEnabled, rowRegenerationEnabled, chapterRegenerationEnabled }: {
   chapters: BlueprintChapterDraft[];
   rows: BlueprintGeneratedRow[];
   requestedCount: number;
@@ -1462,6 +1463,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
   regeneratingRowId: string | null;
   regeneratingChapterId: string | null;
   replacementEnabled: boolean;
+  questionRemovalEnabled: boolean;
   rowRegenerationEnabled: boolean;
   chapterRegenerationEnabled: boolean;
 }) {
@@ -1522,7 +1524,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                           {replacementEnabled && <Button type="button" variant="outline" size="sm" onClick={() => onSelectQuestion(row, question.id)}>Replace</Button>}
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question up" disabled={index === 0} onClick={() => onMove(row.id, index, -1)}><ArrowUp className="size-4" /></Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question down" disabled={index === row.questions.length - 1} onClick={() => onMove(row.id, index, 1)}><ArrowDown className="size-4" /></Button>
-                          <Button type="button" variant="ghost" size="sm" aria-label="Remove question" onClick={() => onRemove(row.id, question.id)}><X className="size-4" /> Remove</Button>
+                          {questionRemovalEnabled && <Button type="button" variant="ghost" size="sm" aria-label="Remove question" onClick={() => onRemove(row.id, question.id)}><X className="size-4" /> Remove</Button>}
                         </div>
                       </div>
                     ))}

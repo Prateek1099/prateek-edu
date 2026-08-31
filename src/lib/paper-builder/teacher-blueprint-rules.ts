@@ -222,7 +222,7 @@ export function reviewTeacherBlueprintQuestionAvailability(
     if (uniqueTextCount < row.questionCount) {
       errors.push(teacherBlueprintShortageMessage(row, "Selected chapter", uniqueTextCount));
     } else if (reserve < Math.max(2, Math.ceil(row.questionCount * 0.25))) {
-      warnings.push("Low replacement reserve after generation.");
+      warnings.push("Few alternative questions are available for this row.");
     }
     return {
       rowId: row.id,

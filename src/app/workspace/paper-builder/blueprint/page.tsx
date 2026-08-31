@@ -113,7 +113,7 @@ export default async function TeacherBlueprintBuilderPage() {
       />
 
       <p className="paper-builder-screen-only text-xs leading-5 text-muted-foreground">
-        Blueprint patterns are not saved in this phase. Saving a generated paper creates only a private immutable snapshot in this workspace&apos;s Paper Archive; it does not assign work to students.
+        Blueprint patterns are not saved in this phase. Saving a generated paper creates only a private immutable snapshot in your Teacher Paper Archive; it does not assign work to students.
       </p>
     </div>
   );

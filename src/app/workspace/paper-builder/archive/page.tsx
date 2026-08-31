@@ -25,7 +25,7 @@ export default async function TeacherPaperArchivePage({
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <header className="max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Workspace Paper Archive</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Teacher Paper Archive</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
           Reopen immutable papers saved by this workspace and reproduce their previews,
           answer keys, print output, and editable DOCX files.

@@ -13,6 +13,9 @@ const modeNav = read("src/components/paper-builder/PaperBuilderModeNav.tsx");
 const requireRole = read("src/lib/require-role.ts");
 const workspaceScope = read("src/lib/workspace-academic-scope.ts");
 const adminAdapter = read("src/app/admin/paper-builder/blueprint/BlueprintBuilderClient.tsx");
+const teacherRules = read("src/lib/paper-builder/teacher-blueprint-rules.ts");
+const teacherArchivePage = read("src/app/workspace/paper-builder/archive/page.tsx");
+const teacherArchiveDetail = read("src/app/workspace/paper-builder/archive/[id]/page.tsx");
 const schema = read("prisma/schema.prisma");
 
 test("teacher Blueprint route requires an active TEACHER workspace", () => {
@@ -71,10 +74,33 @@ test("teacher capability config hides templates, replacement, and regeneration",
   assert.doesNotMatch(page, /template-actions|BlueprintTemplate/);
 });
 
+test("teacher availability copy does not promise disabled replacement tools", () => {
+  assert.doesNotMatch(teacherRules, /replacement reserve/i);
+  assert.match(teacherRules, /Few alternative questions are available for this row\./);
+});
+
+test("teacher mode hides question removal when safe refill tools are disabled", () => {
+  assert.match(
+    sharedClient,
+    /questionRemovalEnabled=\{capabilities\.replacement \|\| capabilities\.rowRegeneration\}/,
+  );
+  assert.match(
+    sharedClient,
+    /\{questionRemovalEnabled && <Button[^>]+aria-label="Remove question"/,
+  );
+  assert.match(client, /replacement: false/);
+  assert.match(client, /rowRegeneration: false/);
+  assert.match(adminAdapter, /replacement: true/);
+});
+
 test("teacher adapter contains only workspace routes and Teacher Paper Archive copy", () => {
   assert.match(client, /`\/workspace\/paper-builder\/archive\/\$\{paperId\}`/);
   assert.match(client, /Teacher Paper Archive/);
   assert.doesNotMatch(`${page}\n${client}`, /@\/app\/admin|\/admin\/paper-builder|SUPER_ADMIN/);
+  assert.match(modeNav, /href: "\/workspace\/paper-builder\/archive", label: "Teacher Paper Archive"/);
+  assert.match(teacherArchivePage, />Teacher Paper Archive<\/h1>/);
+  assert.match(teacherArchiveDetail, /archiveLabel="Teacher Paper Archive"/);
+  assert.doesNotMatch(`${page}\n${client}\n${teacherArchivePage}\n${teacherArchiveDetail}`, /Workspace Paper Archive/);
 });
 
 test("shared client keeps safe review, output, remove, reorder, print, and DOCX controls", () => {
