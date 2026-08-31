@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import {
+  PaperBuilderModeNav,
+  WORKSPACE_PAPER_BUILDER_NAV_ITEMS,
+} from "@/components/paper-builder/PaperBuilderModeNav";
 
 import HeaderTemplatesManagerClient from "./HeaderTemplatesManagerClient";
 
@@ -29,6 +33,12 @@ export default async function WorkspacePaperHeaderTemplatesPage({
           Reuse school, exam, class, timing, and instruction defaults in Teacher Paper Builder. Templates never contain questions or marks.
         </p>
       </header>
+
+      <PaperBuilderModeNav
+        mode="header-templates"
+        items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
+        ariaLabel="Teacher Paper Builder navigation"
+      />
 
       <HeaderTemplatesManagerClient
         status={status}

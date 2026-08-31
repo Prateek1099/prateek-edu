@@ -1,5 +1,9 @@
 import Link from "next/link";
 
+import {
+  PaperBuilderModeNav,
+  WORKSPACE_PAPER_BUILDER_NAV_ITEMS,
+} from "@/components/paper-builder/PaperBuilderModeNav";
 import { buttonVariants } from "@/components/ui/button";
 import { requireActiveWorkspace } from "@/lib/require-role";
 
@@ -27,6 +31,11 @@ export default async function TeacherPaperArchivePage({
           answer keys, print output, and editable DOCX files.
         </p>
       </header>
+      <PaperBuilderModeNav
+        mode="archive"
+        items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
+        ariaLabel="Teacher Paper Builder navigation"
+      />
       <div className="flex flex-wrap gap-2">
         <Link
           href="/workspace/paper-builder"

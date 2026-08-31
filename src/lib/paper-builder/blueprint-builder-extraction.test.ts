@@ -100,8 +100,8 @@ test("configurable mode navigation keeps the exact four admin destinations by de
   assert.match(modeNav, /items\.map/);
 });
 
-test("extraction adds no teacher Blueprint route, actions, or schema model", () => {
-  assert.equal(existsSync(path.join(root, "src/app/workspace/paper-builder/blueprint")), false);
+test("teacher Blueprint route remains a separate adapter without adding a schema model", () => {
+  assert.equal(existsSync(path.join(root, "src/app/workspace/paper-builder/blueprint")), true);
   assert.doesNotMatch(schema, /model WorkspacePaperBlueprint/);
   assert.doesNotMatch(`${sharedClient}\n${adminAdapter}`, /requireActiveWorkspace|WorkspacePaperBlueprint/);
 });

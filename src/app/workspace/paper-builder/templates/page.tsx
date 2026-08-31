@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import {
+  PaperBuilderModeNav,
+  WORKSPACE_PAPER_BUILDER_NAV_ITEMS,
+} from "@/components/paper-builder/PaperBuilderModeNav";
 import { listManagedWorkspacePaperTemplates } from "@/lib/paper-builder/workspace-paper-template-data";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
@@ -40,6 +44,12 @@ export default async function WorkspacePaperTemplatesPage({
           Templates never contain selected or generated questions.
         </p>
       </header>
+
+      <PaperBuilderModeNav
+        mode="templates"
+        items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
+        ariaLabel="Teacher Paper Builder navigation"
+      />
 
       <TemplatesManagerClient
         status={status}

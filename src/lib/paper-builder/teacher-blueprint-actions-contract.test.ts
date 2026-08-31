@@ -18,6 +18,7 @@ const rules = read("src/lib/paper-builder/teacher-blueprint-rules.ts");
 const requireRole = read("src/lib/require-role.ts");
 const workspaceScope = read("src/lib/workspace-academic-scope.ts");
 const adminActions = read("src/app/admin/paper-builder/blueprint/actions.ts");
+const teacherClient = read("src/app/workspace/paper-builder/blueprint/BlueprintBuilderClient.tsx");
 const workspaceSidebar = read("src/components/WorkspaceSidebar.tsx");
 const schema = read("prisma/schema.prisma");
 
@@ -146,12 +147,17 @@ test("teacher save revalidates and writes only a workspace-owned immutable paper
   );
 });
 
-test("admin Blueprint remains SUPER_ADMIN-only and no teacher Blueprint UI exists", () => {
+test("admin Blueprint remains SUPER_ADMIN-only and the teacher UI uses only the teacher adapter", () => {
   assert.match(adminActions, /requireSuperAdmin\(\)/);
   assert.equal(
     existsSync(path.join(root, "src/app/workspace/paper-builder/blueprint")),
-    false,
+    true,
   );
+  assert.match(teacherClient, /reviewTeacherBlueprintAvailability/);
+  assert.match(teacherClient, /generateTeacherBlueprintPaper/);
+  assert.match(teacherClient, /validateTeacherBlueprintSelection/);
+  assert.match(teacherClient, /saveTeacherBlueprintGeneratedPaper/);
+  assert.doesNotMatch(teacherClient, /@\/app\/admin|\/admin\/paper-builder/);
   assert.doesNotMatch(workspaceSidebar, /\/workspace\/paper-builder\/blueprint/);
   assert.doesNotMatch(schema, /model WorkspacePaperBlueprint|model TeacherPaperBlueprint/);
 });

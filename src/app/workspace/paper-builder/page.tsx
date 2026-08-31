@@ -1,4 +1,8 @@
 import SimplePaperBuilderClient from "@/components/paper-builder/SimplePaperBuilderClient";
+import {
+  PaperBuilderModeNav,
+  WORKSPACE_PAPER_BUILDER_NAV_ITEMS,
+} from "@/components/paper-builder/PaperBuilderModeNav";
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import {
@@ -77,6 +81,11 @@ export default async function TeacherPaperBuilderPage({
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
           Your academic access has not been configured yet. Please contact the administrator.
         </div>
+        <PaperBuilderModeNav
+          mode="simple"
+          items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
+          ariaLabel="Teacher Paper Builder navigation"
+        />
       </div>
     );
   }
@@ -142,6 +151,12 @@ export default async function TeacherPaperBuilderPage({
       <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
         Saving is optional. A saved paper stays private to this workspace and does not create an assignment or publish student work.
       </div>
+
+      <PaperBuilderModeNav
+        mode="simple"
+        items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
+        ariaLabel="Teacher Paper Builder navigation"
+      />
 
       <SimplePaperBuilderClient
         headerTemplates={headerTemplates.map((template) => ({
