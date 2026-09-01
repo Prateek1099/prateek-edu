@@ -49,8 +49,8 @@ export function getAssignmentTrackingStatus({
   return "PENDING";
 }
 
-export function getAttemptTracking(
-  attempts: TrackingAttempt[],
+export function getAttemptTracking<TAttempt extends TrackingAttempt>(
+  attempts: TAttempt[],
   assignedAt: Date | string,
   correctAnswers: Record<string, string> = {},
 ) {

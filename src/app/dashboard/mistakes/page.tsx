@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, BookOpen, AlertTriangle, CheckCircle2 } from "lucide-react";
 import MistakeBookClient from "./MistakeBookClient";
+import { readOptionSnapshot } from "@/lib/assignment-attempt-answer-snapshot-rules";
 
 export default async function MistakeBookPage() {
   const session = await getServerSession(authOptions);
@@ -18,10 +19,7 @@ export default async function MistakeBookPage() {
   }
 
 
-  const [total, needsRevision, revised, topMistakes, mistakes] = await Promise.all([
-    prisma.mistakeEntry.count({ where: { userId } }),
-    prisma.mistakeEntry.count({ where: { userId, status: "needs_revision" } }),
-    prisma.mistakeEntry.count({ where: { userId, status: "revised" } }),
+  const [topMistakes, mistakes, wrongSnapshots] = await Promise.all([
     prisma.mistakeEntry.groupBy({
       by: ["topicTag"],
       where: { userId, topicTag: { not: null } },
@@ -63,16 +61,126 @@ export default async function MistakeBookPage() {
       },
       orderBy: [{ mistakeCount: "desc" }, { updatedAt: "desc" }],
     }),
+    prisma.assignmentAttemptAnswerSnapshot.findMany({
+      where: { studentId: userId, isCorrect: false },
+      select: {
+        id: true,
+        questionId: true,
+        questionText: true,
+        options: true,
+        selectedOptionKey: true,
+        selectedOptionText: true,
+        correctOptionKey: true,
+        correctOptionText: true,
+        explanation: true,
+        topicLabel: true,
+        difficulty: true,
+        createdAt: true,
+        attempt: {
+          select: {
+            challenge: {
+              select: {
+                id: true,
+                title: true,
+                subject: {
+                  select: {
+                    slug: true,
+                    qualification: {
+                      select: {
+                        name: true,
+                        board: { select: { name: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
-  // Build challenge retry links
-  const challengeLinks: Record<string, string> = {};
-  mistakes.forEach((m) => {
-    if (!challengeLinks[m.challengeId]) {
-      const s = m.challenge.subject;
-      challengeLinks[m.challengeId] = `/resources/${s.qualification.board.name}/${s.qualification.name}/${s.slug}/challenge/${m.challengeId}/attempt`;
+  const latestSnapshotByQuestion = new Map<string, (typeof wrongSnapshots)[number]>();
+  const snapshotCountByQuestion = new Map<string, number>();
+  for (const snapshot of wrongSnapshots) {
+    snapshotCountByQuestion.set(
+      snapshot.questionId,
+      (snapshotCountByQuestion.get(snapshot.questionId) ?? 0) + 1,
+    );
+    if (!latestSnapshotByQuestion.has(snapshot.questionId)) {
+      latestSnapshotByQuestion.set(snapshot.questionId, snapshot);
     }
+  }
+
+  const seenQuestionIds = new Set<string>();
+  const mistakeItems = mistakes.map((mistake) => {
+    seenQuestionIds.add(mistake.questionId);
+    const snapshot = latestSnapshotByQuestion.get(mistake.questionId);
+    const snapshotOptions = snapshot ? readOptionSnapshot(snapshot.options) : null;
+    const subject = mistake.challenge.subject;
+    const retryUrl = `/resources/${subject.qualification.board.name}/${subject.qualification.name}/${subject.slug}/challenge/${mistake.challengeId}/attempt`;
+
+    return {
+      id: mistake.id,
+      canToggleStatus: true,
+      snapshotCaptured: Boolean(snapshot && snapshotOptions),
+      topicTag: snapshot?.topicLabel ?? mistake.topicTag,
+      difficulty: snapshot?.difficulty ?? null,
+      studentAnswer: snapshot?.selectedOptionKey ?? mistake.studentAnswer,
+      studentAnswerText: snapshot?.selectedOptionText ?? null,
+      correctAnswer: snapshot?.correctOptionKey ?? mistake.correctAnswer,
+      correctAnswerText: snapshot?.correctOptionText ?? null,
+      mistakeCount: mistake.mistakeCount,
+      status: mistake.status,
+      updatedAt: (snapshot?.createdAt ?? mistake.updatedAt).toISOString(),
+      questionText: snapshot?.questionText ?? mistake.question.questionText,
+      optionA: snapshotOptions?.A ?? mistake.question.optionA,
+      optionB: snapshotOptions?.B ?? mistake.question.optionB,
+      optionC: snapshotOptions?.C ?? mistake.question.optionC,
+      optionD: snapshotOptions?.D ?? mistake.question.optionD,
+      explanation: snapshot?.explanation ?? mistake.question.explanation,
+      challengeTitle: mistake.challenge.title,
+      challengeId: mistake.challengeId,
+      retryUrl,
+    };
   });
+
+  for (const [questionId, snapshot] of latestSnapshotByQuestion) {
+    if (seenQuestionIds.has(questionId)) continue;
+    const options = readOptionSnapshot(snapshot.options);
+    if (!options) continue;
+    const challenge = snapshot.attempt.challenge;
+    const subject = challenge.subject;
+    mistakeItems.push({
+      id: `snapshot-${snapshot.id}`,
+      canToggleStatus: false,
+      snapshotCaptured: true,
+      topicTag: snapshot.topicLabel,
+      difficulty: snapshot.difficulty,
+      studentAnswer: snapshot.selectedOptionKey,
+      studentAnswerText: snapshot.selectedOptionText,
+      correctAnswer: snapshot.correctOptionKey,
+      correctAnswerText: snapshot.correctOptionText,
+      mistakeCount: snapshotCountByQuestion.get(questionId) ?? 1,
+      status: "needs_revision",
+      updatedAt: snapshot.createdAt.toISOString(),
+      questionText: snapshot.questionText,
+      optionA: options.A,
+      optionB: options.B,
+      optionC: options.C,
+      optionD: options.D,
+      explanation: snapshot.explanation,
+      challengeTitle: challenge.title,
+      challengeId: challenge.id,
+      retryUrl: `/resources/${subject.qualification.board.name}/${subject.qualification.name}/${subject.slug}/challenge/${challenge.id}/attempt`,
+    });
+  }
+
+  const total = mistakeItems.length;
+  const needsRevision = mistakeItems.filter((mistake) => mistake.status === "needs_revision").length;
+  const revised = mistakeItems.filter((mistake) => mistake.status === "revised").length;
 
   return (
     <div className="relative container px-4 md:px-8 py-8 max-w-5xl mx-auto space-y-8 min-h-[calc(100vh-140px)]">
@@ -155,24 +263,7 @@ export default async function MistakeBookPage() {
 
       {/* Mistake List */}
       <MistakeBookClient
-        mistakes={mistakes.map((m) => ({
-          id: m.id,
-          topicTag: m.topicTag,
-          studentAnswer: m.studentAnswer,
-          correctAnswer: m.correctAnswer,
-          mistakeCount: m.mistakeCount,
-          status: m.status,
-          updatedAt: m.updatedAt.toISOString(),
-          questionText: m.question.questionText,
-          optionA: m.question.optionA,
-          optionB: m.question.optionB,
-          optionC: m.question.optionC,
-          optionD: m.question.optionD,
-          explanation: m.question.explanation,
-          challengeTitle: m.challenge.title,
-          challengeId: m.challengeId,
-          retryUrl: challengeLinks[m.challengeId] || "#",
-        }))}
+        mistakes={mistakeItems}
       />
     </div>
   );

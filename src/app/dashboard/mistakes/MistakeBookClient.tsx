@@ -21,9 +21,14 @@ import { AskTeacherDialog } from "@/components/AskTeacherDialog";
 
 type MistakeItem = {
   id: string;
+  canToggleStatus: boolean;
+  snapshotCaptured: boolean;
   topicTag: string | null;
+  difficulty: string | null;
   studentAnswer: string;
+  studentAnswerText: string | null;
   correctAnswer: string;
+  correctAnswerText: string | null;
   mistakeCount: number;
   status: string;
   updatedAt: string;
@@ -198,6 +203,11 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
                         {m.topicTag}
                       </Badge>
                     )}
+                    {m.difficulty ? (
+                      <Badge variant="outline" className="text-[11px] capitalize">
+                        {m.difficulty}
+                      </Badge>
+                    ) : null}
                     <span className="text-[11px] sm:text-xs text-muted-foreground font-medium">
                       {m.challengeTitle} · {m.mistakeCount}× wrong
                     </span>
@@ -225,6 +235,25 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
               {isExpanded && (
                 <CardContent className="px-4 sm:px-6 pb-5 pt-0 border-t border-border/60">
                   <p className="text-sm font-bold mt-4 mb-4 text-foreground leading-relaxed">{m.questionText}</p>
+                  {!m.snapshotCaptured ? (
+                    <div className="mb-4 rounded-xl border border-dashed border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-800 dark:text-amber-200">
+                      Detailed answer review was not captured for this older attempt. The available live question details are shown below.
+                    </div>
+                  ) : null}
+                  <div className="mb-4 grid gap-2 sm:grid-cols-2">
+                    <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs sm:text-sm">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-destructive">Your answer</p>
+                      <p className="mt-1 break-words font-medium">
+                        {m.studentAnswer}. {m.studentAnswerText || getOptionText(m, m.studentAnswer)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-xs sm:text-sm">
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">Correct answer</p>
+                      <p className="mt-1 break-words font-medium">
+                        {m.correctAnswer}. {m.correctAnswerText || getOptionText(m, m.correctAnswer)}
+                      </p>
+                    </div>
+                  </div>
                   <div className="space-y-2">
                     {OPTIONS.map((opt) => {
                       const isStudent = m.studentAnswer.toUpperCase() === opt;
@@ -282,22 +311,28 @@ export default function MistakeBookClient({ mistakes }: { mistakes: MistakeItem[
                           challengeName: m.challengeTitle
                         }}
                       />
-                      <Button
-                        variant={isRevised ? "outline" : "default"}
-                        size="sm"
-                        disabled={toggling === m.id}
-                        onClick={() => toggleStatus(m.id, m.status)}
-                        className={cn(
-                          "rounded-xl h-9 text-xs font-semibold",
-                          !isRevised ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : ""
-                        )}
-                      >
-                        {toggling === m.id
-                          ? "Updating..."
-                          : isRevised
-                          ? "Mark Needs Revision"
-                          : "✓ Mark as Revised"}
-                      </Button>
+                      {m.canToggleStatus ? (
+                        <Button
+                          variant={isRevised ? "outline" : "default"}
+                          size="sm"
+                          disabled={toggling === m.id}
+                          onClick={() => toggleStatus(m.id, m.status)}
+                          className={cn(
+                            "rounded-xl h-9 text-xs font-semibold",
+                            !isRevised ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" : ""
+                          )}
+                        >
+                          {toggling === m.id
+                            ? "Updating..."
+                            : isRevised
+                            ? "Mark Needs Revision"
+                            : "✓ Mark as Revised"}
+                        </Button>
+                      ) : (
+                        <span className="self-center text-[11px] text-muted-foreground">
+                          Preserved attempt snapshot
+                        </span>
+                      )}
                     </div>
                   </div>
                 </CardContent>

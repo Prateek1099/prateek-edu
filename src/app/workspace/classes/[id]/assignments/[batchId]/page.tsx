@@ -9,6 +9,7 @@ import {
   Sparkles,
   Target,
   Users,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -22,6 +23,7 @@ import { requireActiveWorkspace } from "@/lib/require-role";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 import { getWorkspaceClassAssignmentTracking } from "@/lib/workspace-assignment-tracking";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
+import { readOptionSnapshot } from "@/lib/assignment-attempt-answer-snapshot-rules";
 
 function formatDate(value: Date | string | null) {
   if (!value) return "—";
@@ -36,6 +38,19 @@ function formatDate(value: Date | string | null) {
 function statusLabel(status: string) {
   if (status === "MARKED_DONE") return "Marked Done";
   return status.charAt(0) + status.slice(1).toLowerCase();
+}
+
+function formatDateTime(value: Date | string | null) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }).format(new Date(value));
 }
 
 export default async function WorkspaceAssignmentDetailPage({
@@ -199,6 +214,89 @@ export default async function WorkspaceAssignmentDetailPage({
                     </Button>
                   </Link>
                 </CardContent>
+                {isPractice && recipient.attemptCount > 0 ? (
+                  <details className="border-t border-border/70">
+                    <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/30">
+                      Answer Review
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        Latest attempt · {formatDateTime(recipient.latestAttemptAt)}
+                      </span>
+                    </summary>
+                    <div className="space-y-3 px-4 pb-4">
+                      {!recipient.answerReviewCaptured ? (
+                        <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                          Detailed answer review was not captured for this attempt.
+                        </div>
+                      ) : recipient.answerReview.length === 0 ? (
+                        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">
+                          <CheckCircle2 className="size-4" /> No incorrect answers in this attempt.
+                        </div>
+                      ) : (
+                        recipient.answerReview.map((answer, index) => {
+                          const options = readOptionSnapshot(answer.options);
+                          return (
+                          <div key={answer.id} className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="destructive" className="gap-1">
+                                <XCircle className="size-3" /> Wrong
+                              </Badge>
+                              {answer.topicLabel ? <Badge variant="outline">{answer.topicLabel}</Badge> : null}
+                              {answer.difficulty ? <Badge variant="secondary">{answer.difficulty}</Badge> : null}
+                              <span className="text-xs text-muted-foreground">
+                                {answer.marksAwarded}/{answer.maxMarks} marks
+                              </span>
+                            </div>
+                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                              Question {index + 1}
+                            </p>
+                            <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed">
+                              {answer.questionText}
+                            </p>
+                            {options ? (
+                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                {(["A", "B", "C", "D"] as const).map((key) => (
+                                  <div
+                                    key={key}
+                                    className={`rounded-lg border p-2.5 text-sm ${
+                                      key === answer.correctOptionKey
+                                        ? "border-emerald-500/40 bg-emerald-500/10"
+                                        : key === answer.selectedOptionKey
+                                          ? "border-destructive/40 bg-destructive/10"
+                                          : "border-border/70 bg-background"
+                                    }`}
+                                  >
+                                    <strong>{key}.</strong> {options[key]}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                                <p className="text-xs font-semibold text-destructive">Student selected</p>
+                                <p className="mt-1 break-words">
+                                  <strong>{answer.selectedOptionKey}.</strong> {answer.selectedOptionText}
+                                </p>
+                              </div>
+                              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Correct answer</p>
+                                <p className="mt-1 break-words">
+                                  <strong>{answer.correctOptionKey}.</strong> {answer.correctOptionText}
+                                </p>
+                              </div>
+                            </div>
+                            {answer.explanation ? (
+                              <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm">
+                                <p className="text-xs font-semibold text-muted-foreground">Explanation</p>
+                                <p className="mt-1 whitespace-pre-wrap leading-relaxed">{answer.explanation}</p>
+                              </div>
+                            ) : null}
+                          </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </details>
+                ) : null}
               </Card>
             ))}
           </div>

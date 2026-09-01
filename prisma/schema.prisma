@@ -130,6 +130,7 @@ model User {
   savedPapers                   SavedPaper[]
   reflections                   StudentReflection[]
   challengeAttempts             ChallengeAttempt[]
+  assignmentAttemptAnswerSnapshots AssignmentAttemptAnswerSnapshot[]
   mistakeEntries                MistakeEntry[]
   revisionPlan                  RevisionPlan?
   worksheetAssignments          WorksheetAssignment[]
@@ -900,10 +901,43 @@ model ChallengeAttempt {
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  answerSnapshots AssignmentAttemptAnswerSnapshot[]
 
   @@index([userId])
   @@index([challengeId])
   @@map("challenge_attempts")
+}
+
+model AssignmentAttemptAnswerSnapshot {
+  id                 String   @id @default(cuid())
+  attemptId          String   @map("attempt_id")
+  studentId          String   @map("student_id")
+  questionId         String   @map("question_id")
+  questionType       String   @default("MCQ") @map("question_type")
+  questionText       String   @map("question_text") @db.Text
+  options            Json
+  selectedOptionKey  String   @map("selected_option_key")
+  selectedOptionText String   @map("selected_option_text") @db.Text
+  correctOptionKey   String   @map("correct_option_key")
+  correctOptionText  String   @map("correct_option_text") @db.Text
+  explanation        String?  @db.Text
+  topicId            String?  @map("topic_id")
+  subjectId          String?  @map("subject_id")
+  topicLabel         String?  @map("topic_label")
+  difficulty         String?
+  isCorrect          Boolean  @map("is_correct")
+  marksAwarded       Int      @default(0) @map("marks_awarded")
+  maxMarks           Int      @default(1) @map("max_marks")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  attempt ChallengeAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  student User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([studentId, createdAt])
+  @@index([studentId, questionId, isCorrect])
+  @@map("assignment_attempt_answer_snapshots")
 }
 
 model MistakeEntry {

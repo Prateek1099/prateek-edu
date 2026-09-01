@@ -70,6 +70,26 @@ export async function getWorkspaceClassAssignmentTracking({
           percentage: true,
           answers: true,
           completedAt: true,
+          answerSnapshots: {
+            select: {
+              id: true,
+              questionId: true,
+              questionText: true,
+              options: true,
+              selectedOptionKey: true,
+              selectedOptionText: true,
+              correctOptionKey: true,
+              correctOptionText: true,
+              explanation: true,
+              topicLabel: true,
+              difficulty: true,
+              isCorrect: true,
+              marksAwarded: true,
+              maxMarks: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "asc" },
+          },
         },
         orderBy: { completedAt: "desc" },
       })
@@ -100,6 +120,8 @@ export async function getWorkspaceClassAssignmentTracking({
         assignedAt: recipient.assignedAt,
         now,
       });
+      const latestAttempt = attemptTracking.latestAttempt;
+      const answerReview = latestAttempt?.answerSnapshots ?? [];
 
       return {
         id: recipient.id,
@@ -115,6 +137,9 @@ export async function getWorkspaceClassAssignmentTracking({
         bestPercentage: attemptTracking.bestPercentage,
         latestPercentage: attemptTracking.latestAttempt?.percentage ?? null,
         mistakesCount: attemptTracking.mistakesCount,
+        latestAttemptAt: latestAttempt?.completedAt ?? null,
+        answerReviewCaptured: Boolean(latestAttempt && answerReview.length > 0),
+        answerReview: answerReview.filter((answer) => !answer.isCorrect),
       };
     });
 

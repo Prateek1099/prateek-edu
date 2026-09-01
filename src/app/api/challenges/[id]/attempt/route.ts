@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { generateRevisionTasks } from "@/lib/plan-engine";
 import { canAccessChallengeOrWorksheet } from "@/lib/challenge-access";
 import { isInteractiveChallengeType } from "@/lib/challenge-access-rules";
+import { validateAnswersAndBuildSnapshots } from "@/lib/assignment-attempt-answer-snapshot-rules";
 
 export async function POST(
   request: NextRequest,
@@ -42,8 +43,8 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { answers, timeTaken } = body as {
-      answers: Record<string, string>;
+    const { answers: submittedAnswers, timeTaken } = body as {
+      answers: unknown;
       timeTaken: number;
     };
 
@@ -52,8 +53,21 @@ export async function POST(
       where: { id: challengeId },
       include: {
         questions: {
-          select: { id: true, correctAnswer: true, topicTag: true },
+          select: {
+            id: true,
+            questionText: true,
+            optionA: true,
+            optionB: true,
+            optionC: true,
+            optionD: true,
+            correctAnswer: true,
+            explanation: true,
+            topicTag: true,
+            difficulty: true,
+            marks: true,
+          },
         },
+        topic: { select: { topicName: true } },
       },
     });
 
@@ -71,6 +85,18 @@ export async function POST(
         { status: 403 },
       );
     }
+
+    const validated = validateAnswersAndBuildSnapshots({
+      submittedAnswers,
+      questions: challenge.questions,
+      subjectId: challenge.subjectId,
+      topicId: challenge.topicId,
+      topicName: challenge.topic?.topicName ?? null,
+    });
+    if (!validated.success) {
+      return Response.json({ error: validated.error }, { status: 400 });
+    }
+    const answers = validated.answers;
 
     // Score calculation
     let score = 0;
@@ -98,6 +124,36 @@ export async function POST(
           timeTaken: timeTaken || null,
         },
       });
+
+      if (
+        sessionUser.role === "STUDENT" &&
+        challenge.workspaceId &&
+        challenge.type === "QUICK_PRACTICE" &&
+        validated.snapshots.length > 0
+      ) {
+        await tx.assignmentAttemptAnswerSnapshot.createMany({
+          data: validated.snapshots.map((snapshot) => ({
+            attemptId: savedAttempt.id,
+            studentId: userId,
+            questionId: snapshot.questionId,
+            questionType: snapshot.questionType,
+            questionText: snapshot.questionText,
+            options: snapshot.options,
+            selectedOptionKey: snapshot.selectedOptionKey,
+            selectedOptionText: snapshot.selectedOptionText,
+            correctOptionKey: snapshot.correctOptionKey,
+            correctOptionText: snapshot.correctOptionText,
+            explanation: snapshot.explanation,
+            topicId: snapshot.topicId,
+            subjectId: snapshot.subjectId,
+            topicLabel: snapshot.topicLabel,
+            difficulty: snapshot.difficulty,
+            isCorrect: snapshot.isCorrect,
+            marksAwarded: snapshot.marksAwarded,
+            maxMarks: snapshot.maxMarks,
+          })),
+        });
+      }
 
       if (challenge.workspaceId) {
         await tx.workspaceAssignmentRecipient.updateMany({
