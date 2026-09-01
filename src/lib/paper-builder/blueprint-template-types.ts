@@ -12,6 +12,8 @@ export type BlueprintTemplateSummary = {
   subjectId: string;
   totalMarks: number;
   includeHeaderDefaults: boolean;
+  preferredHeaderTemplateId?: string | null;
+  preferredHeaderTemplateName?: string | null;
 };
 
 export type BlueprintTemplateRowSnapshot = {
@@ -33,6 +35,7 @@ export type BlueprintTemplateChapterSnapshot = {
 export type BlueprintTemplateSnapshot = BlueprintTemplateSummary & {
   headerDefaults: PaperDetails | null;
   chapters: BlueprintTemplateChapterSnapshot[];
+  applyWarnings?: string[];
 };
 
 export type BlueprintTemplateFilters = {
@@ -45,6 +48,7 @@ export type CreateBlueprintTemplateInput = {
   name: string;
   description: string;
   includeHeaderDefaults: boolean;
+  preferredHeaderTemplateId?: string | null;
   draft: BlueprintPaperDraft;
 };
 

@@ -43,7 +43,7 @@ test("teacher page exposes only active header templates from the current session
   assert.doesNotMatch(page, /paperHeaderTemplate\.findMany/);
 });
 
-test("teacher adapter injects exactly the four approved A1 actions", () => {
+test("teacher adapter keeps the four A1 actions and adds only Blueprint template actions", () => {
   for (const action of [
     "reviewTeacherBlueprintAvailability",
     "generateTeacherBlueprintPaper",
@@ -57,21 +57,23 @@ test("teacher adapter injects exactly the four approved A1 actions", () => {
     "selectCandidate",
     "regenerateRow",
     "regenerateChapter",
-    "createTemplate",
-    "applyTemplate",
   ]) {
     assert.doesNotMatch(client, new RegExp(`${blocked}:`));
   }
+  assert.match(client, /createTemplate: createTeacherBlueprintTemplate/);
+  assert.match(client, /applyTemplate: applyTeacherBlueprintTemplate/);
+  assert.match(client, /updateTemplate: updateTeacherBlueprintTemplate/);
 });
 
-test("teacher capability config hides templates, replacement, and regeneration", () => {
-  assert.match(client, /templates: false/);
+test("teacher capability config enables templates while hiding replacement and regeneration", () => {
+  assert.match(client, /templates: true/);
   assert.match(client, /archive: true/);
   assert.match(client, /replacement: false/);
   assert.match(client, /rowRegeneration: false/);
   assert.match(client, /chapterRegeneration: false/);
-  assert.match(page, /blueprintTemplates=\{\[\]\}/);
-  assert.doesNotMatch(page, /template-actions|BlueprintTemplate/);
+  assert.match(page, /listWorkspaceBlueprintTemplateSummaries/);
+  assert.match(page, /blueprintTemplates=\{blueprintTemplates\}/);
+  assert.match(client, /templateManagementHref: "\/workspace\/paper-builder\/blueprint\/templates"/);
 });
 
 test("teacher availability copy does not promise disabled replacement tools", () => {
@@ -116,11 +118,12 @@ test("shared client keeps safe review, output, remove, reorder, print, and DOCX 
   assert.match(sharedClient, /Answer key/);
 });
 
-test("workspace Paper Builder navigation contains only the five teacher destinations", () => {
+test("workspace Paper Builder navigation contains only the six teacher destinations", () => {
   for (const href of [
     "/workspace/paper-builder",
     "/workspace/paper-builder/blueprint",
     "/workspace/paper-builder/templates",
+    "/workspace/paper-builder/blueprint/templates",
     "/workspace/paper-builder/header-templates",
     "/workspace/paper-builder/archive",
   ]) {
@@ -147,7 +150,10 @@ test("admin Blueprint adapter and default navigation remain unchanged", () => {
   }
 });
 
-test("A2 adds no teacher Blueprint schema or persistence model", () => {
+test("teacher Blueprint templates remain separate from generated papers and learning records", () => {
+  assert.match(schema, /model WorkspaceBlueprintTemplate \{/);
+  assert.match(schema, /model WorkspaceBlueprintTemplateTopic \{/);
+  assert.match(schema, /model WorkspaceBlueprintTemplateRow \{/);
   assert.doesNotMatch(schema, /model WorkspacePaperBlueprint|model TeacherPaperBlueprint/);
   assert.doesNotMatch(`${page}\n${client}`, /prisma\..*\.(?:create|update|delete)|Assignment|Attempt|Mistake/);
 });

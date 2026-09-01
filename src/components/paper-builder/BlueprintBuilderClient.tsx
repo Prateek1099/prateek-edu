@@ -64,6 +64,7 @@ import type {
   BlueprintTemplateSnapshot,
   BlueprintTemplateSummary,
   CreateBlueprintTemplateInput,
+  UpdateBlueprintTemplateInput,
 } from "@/lib/paper-builder/blueprint-template-types";
 import type {
   BlueprintAvailability,
@@ -93,6 +94,7 @@ export type BlueprintBuilderDataProps = {
   headerTemplates: PaperHeaderTemplate[];
   blueprintTemplates: BlueprintTemplateSummary[];
   initialBlueprintTemplateId?: string;
+  initialBlueprintTemplate?: BlueprintTemplateSnapshot | null;
 };
 
 type ActionFailure = { success: false; error: string };
@@ -140,6 +142,9 @@ export type BlueprintBuilderActions = {
   createTemplate?: (
     input: CreateBlueprintTemplateInput,
   ) => Promise<ActionFailure | { success: true; template: BlueprintTemplateSummary }>;
+  updateTemplate?: (
+    input: UpdateBlueprintTemplateInput,
+  ) => Promise<ActionFailure | { success: true; template?: BlueprintTemplateSummary; message: string }>;
   applyTemplate?: (
     id: string,
   ) => Promise<ActionFailure | { success: true; template: BlueprintTemplateSnapshot }>;
@@ -171,6 +176,7 @@ export type BlueprintBuilderConfig = {
     savedPaperSuccess: string;
     summaryDescription: string;
   };
+  templateHeaderBehavior?: "snapshot" | "workspace_preference";
 };
 
 type Props = BlueprintBuilderDataProps & {
@@ -218,12 +224,22 @@ function createRow(topicId: string, index = 1): BlueprintRowDraft {
   };
 }
 
+function initialChaptersFromTemplate(template: BlueprintTemplateSnapshot | null | undefined) {
+  if (!template) return [];
+  let sequence = 0;
+  return applyBlueprintTemplateSnapshot(
+    template,
+    (prefix) => `${prefix}-initial-${sequence++}`,
+  );
+}
+
 export default function BlueprintBuilderClient({
   subjects,
   topics,
   headerTemplates,
   blueprintTemplates,
   initialBlueprintTemplateId = "",
+  initialBlueprintTemplate = null,
   actions,
   config,
 }: Props) {
@@ -237,26 +253,51 @@ export default function BlueprintBuilderClient({
     reviewAvailability: reviewAvailabilityAction,
     saveGeneratedPaper: saveGeneratedPaperAction,
     selectCandidate: selectCandidateAction,
+    updateTemplate: updateTemplateAction,
     validateSelection: validateSelectionAction,
   } = actions;
   const { capabilities, copy, routes } = config;
-  const [step, setStep] = useState(1);
-  const [details, setDetails] = useState<PaperDetails>(initialDetails);
-  const [targetMarksText, setTargetMarksText] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const templateHeaderBehavior = config.templateHeaderBehavior ?? "snapshot";
+  const initialTemplateSubject = initialBlueprintTemplate
+    ? subjects.find((subject) => subject.id === initialBlueprintTemplate.subjectId)
+    : null;
+  const initialTemplateChapters = initialChaptersFromTemplate(initialBlueprintTemplate);
+  const initialTemplateDetails = initialBlueprintTemplate?.headerDefaults ?? {
+    ...initialDetails,
+    courseLine: initialTemplateSubject
+      ? `${initialTemplateSubject.name} · ${initialTemplateSubject.qualificationTitle} · ${initialTemplateSubject.boardTitle}`
+      : "",
+    topicLine: initialTemplateChapters.map((chapter) => chapter.topicName).join(" · "),
+  };
+  const initialTemplateSelection = initialBlueprintTemplate?.id ?? initialBlueprintTemplateId;
+  const [step, setStep] = useState(initialBlueprintTemplate ? 3 : 1);
+  const [details, setDetails] = useState<PaperDetails>(initialTemplateDetails);
+  const [targetMarksText, setTargetMarksText] = useState(
+    initialBlueprintTemplate ? String(initialBlueprintTemplate.totalMarks) : "",
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    initialBlueprintTemplate?.preferredHeaderTemplateId ?? "",
+  );
   const [savedBlueprintTemplates, setSavedBlueprintTemplates] = useState(blueprintTemplates);
-  const [selectedBlueprintTemplateId, setSelectedBlueprintTemplateId] = useState(initialBlueprintTemplateId);
-  const [appliedBlueprintTemplateId, setAppliedBlueprintTemplateId] = useState<string | null>(null);
+  const [selectedBlueprintTemplateId, setSelectedBlueprintTemplateId] = useState(initialTemplateSelection);
+  const [appliedBlueprintTemplateId, setAppliedBlueprintTemplateId] = useState<string | null>(
+    initialBlueprintTemplate?.id ?? null,
+  );
+  const [loadedBlueprintTemplateId, setLoadedBlueprintTemplateId] = useState<string | null>(
+    initialBlueprintTemplate?.id ?? null,
+  );
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [includeHeaderDefaults, setIncludeHeaderDefaults] = useState(true);
   const [savingBlueprintTemplate, setSavingBlueprintTemplate] = useState(false);
   const [applyingBlueprintTemplate, setApplyingBlueprintTemplate] = useState(false);
-  const [boardId, setBoardId] = useState("");
-  const [qualificationId, setQualificationId] = useState("");
-  const [subjectId, setSubjectId] = useState("");
-  const [chapters, setChapters] = useState<BlueprintChapterDraft[]>([]);
+  const [boardId, setBoardId] = useState(initialBlueprintTemplate?.boardId ?? "");
+  const [qualificationId, setQualificationId] = useState(
+    initialBlueprintTemplate?.qualificationId ?? "",
+  );
+  const [subjectId, setSubjectId] = useState(initialBlueprintTemplate?.subjectId ?? "");
+  const [chapters, setChapters] = useState<BlueprintChapterDraft[]>(initialTemplateChapters);
   const [availability, setAvailability] = useState<BlueprintAvailability[]>([]);
   const [rowErrors, setRowErrors] = useState<Array<{ rowId: string; message: string }>>([]);
   const [generatedRows, setGeneratedRows] = useState<BlueprintGeneratedRow[]>([]);
@@ -386,19 +427,69 @@ export default function BlueprintBuilderClient({
       const result = await createTemplateAction({
         name: templateName,
         description: templateDescription,
-        includeHeaderDefaults,
+        includeHeaderDefaults:
+          templateHeaderBehavior === "workspace_preference"
+            ? Boolean(selectedTemplateId)
+            : includeHeaderDefaults,
+        preferredHeaderTemplateId:
+          templateHeaderBehavior === "workspace_preference"
+            ? selectedTemplateId || null
+            : undefined,
         draft,
       });
       if (!result.success) return toast.error(result.error);
       setSavedBlueprintTemplates((current) => [...current, result.template]
         .sort((left, right) => left.name.localeCompare(right.name)));
       setSelectedBlueprintTemplateId(result.template.id);
+      setLoadedBlueprintTemplateId(result.template.id);
       setSaveTemplateOpen(false);
       setTemplateName("");
       setTemplateDescription("");
       toast.success("Blueprint template saved. Generated questions were not stored.");
     } catch {
       toast.error("Could not save the blueprint template. Please try again.");
+    } finally {
+      setSavingBlueprintTemplate(false);
+    }
+  };
+
+  const updateLoadedBlueprintTemplate = async () => {
+    if (!updateTemplateAction || !loadedBlueprintTemplateId) {
+      return toast.error("Apply a blueprint template before updating it.");
+    }
+    const loaded = savedBlueprintTemplates.find(
+      (template) => template.id === loadedBlueprintTemplateId,
+    );
+    if (!loaded) return toast.error("The loaded blueprint template is no longer available.");
+
+    setSavingBlueprintTemplate(true);
+    try {
+      const result = await updateTemplateAction({
+        id: loaded.id,
+        name: loaded.name,
+        description: loaded.description ?? "",
+        includeHeaderDefaults:
+          templateHeaderBehavior === "workspace_preference"
+            ? Boolean(selectedTemplateId)
+            : loaded.includeHeaderDefaults,
+        preferredHeaderTemplateId:
+          templateHeaderBehavior === "workspace_preference"
+            ? selectedTemplateId || null
+            : undefined,
+        draft,
+      });
+      if (!result.success) return toast.error(result.error);
+      if (result.template) {
+        setSavedBlueprintTemplates((current) => current
+          .map((template) => template.id === loaded.id ? result.template! : template)
+          .sort((left, right) => left.name.localeCompare(right.name)));
+      }
+      clearGenerated();
+      setAppliedBlueprintTemplateId(null);
+      setLastSavedPaperId(null);
+      toast.success(result.message);
+    } catch {
+      toast.error("Could not update the blueprint template. Please try again.");
     } finally {
       setSavingBlueprintTemplate(false);
     }
@@ -421,6 +512,9 @@ export default function BlueprintBuilderClient({
       setSubjectId(template.subjectId);
       setChapters(nextChapters);
       setTargetMarksText(String(template.totalMarks));
+      if (templateHeaderBehavior === "workspace_preference") {
+        setSelectedTemplateId(template.preferredHeaderTemplateId ?? "");
+      }
       setDetails((current) => template.headerDefaults ?? {
         ...current,
         courseLine: `${subject.name} · ${subject.qualificationTitle} · ${subject.boardTitle}`,
@@ -429,9 +523,11 @@ export default function BlueprintBuilderClient({
       closeCandidatePicker();
       clearGenerated();
       setAppliedBlueprintTemplateId(template.id);
+      setLoadedBlueprintTemplateId(template.id);
       setLastSavedPaperId(null);
       setStep(3);
       toast.success(`Applied “${template.name}”. Check availability before generating.`);
+      template.applyWarnings?.forEach((warning) => toast.warning(warning));
     } catch {
       toast.error("Could not apply the blueprint template. Please try again.");
     } finally {
@@ -819,17 +915,27 @@ export default function BlueprintBuilderClient({
   return (
     <div className="space-y-6">
       {capabilities.templates && (
-        <SavedBlueprintTemplateControls
-          templates={visibleBlueprintTemplates}
-          selectedTemplateId={selectedBlueprintTemplateId}
-          canSave={Boolean(boardId && qualificationId && subjectId && chapters.length > 0 && totalMarks > 0)}
-          applying={applyingBlueprintTemplate}
-          templateManagementHref={routes.templateManagementHref}
-          templateManagementLabel={copy.templateManagementLabel}
-          onTemplateChange={setSelectedBlueprintTemplateId}
-          onApply={applySavedBlueprintTemplate}
-          onSave={() => setSaveTemplateOpen(true)}
-        />
+        <>
+          {initialBlueprintTemplate?.applyWarnings?.map((warning) => (
+            <div key={warning} className="paper-builder-screen-only rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+              {warning}
+            </div>
+          ))}
+          <SavedBlueprintTemplateControls
+            templates={visibleBlueprintTemplates}
+            selectedTemplateId={selectedBlueprintTemplateId}
+            canSave={Boolean(boardId && qualificationId && subjectId && chapters.length > 0 && totalMarks > 0)}
+            applying={applyingBlueprintTemplate}
+            updating={savingBlueprintTemplate}
+            loadedTemplateId={loadedBlueprintTemplateId}
+            templateManagementHref={routes.templateManagementHref}
+            templateManagementLabel={copy.templateManagementLabel}
+            onTemplateChange={setSelectedBlueprintTemplateId}
+            onApply={applySavedBlueprintTemplate}
+            onSave={() => setSaveTemplateOpen(true)}
+            onUpdate={updateLoadedBlueprintTemplate}
+          />
+        </>
       )}
 
       <WizardProgress step={step} />
@@ -952,6 +1058,9 @@ export default function BlueprintBuilderClient({
           name={templateName}
           description={templateDescription}
           includeHeaderDefaults={includeHeaderDefaults}
+          headerBehavior={templateHeaderBehavior}
+          headerTemplates={headerTemplates}
+          preferredHeaderTemplateId={selectedTemplateId}
           saving={savingBlueprintTemplate}
           totalMarks={totalMarks}
           chapterCount={chapters.length}
@@ -959,6 +1068,7 @@ export default function BlueprintBuilderClient({
           onNameChange={setTemplateName}
           onDescriptionChange={setTemplateDescription}
           onIncludeHeaderDefaultsChange={setIncludeHeaderDefaults}
+          onPreferredHeaderTemplateChange={setSelectedTemplateId}
           onSave={saveBlueprintTemplate}
         />
       )}
@@ -1014,23 +1124,30 @@ function SavedBlueprintTemplateControls({
   selectedTemplateId,
   canSave,
   applying,
+  updating,
+  loadedTemplateId,
   templateManagementHref,
   templateManagementLabel,
   onTemplateChange,
   onApply,
   onSave,
+  onUpdate,
 }: {
   templates: BlueprintTemplateSummary[];
   selectedTemplateId: string;
   canSave: boolean;
   applying: boolean;
+  updating: boolean;
+  loadedTemplateId: string | null;
   templateManagementHref: string | null;
   templateManagementLabel: string;
   onTemplateChange: (value: string) => void;
   onApply: () => void;
   onSave: () => void;
+  onUpdate: () => void;
 }) {
   const selected = templates.find((template) => template.id === selectedTemplateId);
+  const loaded = templates.find((template) => template.id === loadedTemplateId);
   return (
     <section className="paper-builder-screen-only rounded-2xl border bg-card p-4" aria-labelledby="saved-blueprints-heading">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -1042,6 +1159,9 @@ function SavedBlueprintTemplateControls({
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             Reuse chapter and section patterns. Generated questions are never saved with a template.
           </p>
+          {loaded && (
+            <p className="mt-2 text-xs font-semibold text-primary">Using template: {loaded.name}</p>
+          )}
         </div>
         <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(16rem,1fr)_auto_auto_auto] lg:w-auto">
           <Select value={selectedTemplateId} onValueChange={(value) => onTemplateChange(value || "")}>
@@ -1063,8 +1183,13 @@ function SavedBlueprintTemplateControls({
             {applying ? "Applying…" : "Apply"}
           </Button>
           <Button type="button" disabled={!canSave || applying} onClick={onSave}>
-            <Save className="size-4" /> Save current blueprint
+            <Save className="size-4" /> Save as Blueprint Template
           </Button>
+          {loaded && (
+            <Button type="button" variant="outline" disabled={!canSave || applying || updating} onClick={onUpdate}>
+              <Save className="size-4" /> {updating ? "Updating…" : "Update template"}
+            </Button>
+          )}
           {templateManagementHref && (
             <Link href={templateManagementHref} className={buttonVariants({ variant: "outline" })}>
               <Settings2 className="size-4" /> {templateManagementLabel}
@@ -1081,6 +1206,9 @@ function SaveBlueprintTemplateDialog({
   name,
   description,
   includeHeaderDefaults,
+  headerBehavior,
+  headerTemplates,
+  preferredHeaderTemplateId,
   saving,
   totalMarks,
   chapterCount,
@@ -1088,12 +1216,16 @@ function SaveBlueprintTemplateDialog({
   onNameChange,
   onDescriptionChange,
   onIncludeHeaderDefaultsChange,
+  onPreferredHeaderTemplateChange,
   onSave,
 }: {
   open: boolean;
   name: string;
   description: string;
   includeHeaderDefaults: boolean;
+  headerBehavior: "snapshot" | "workspace_preference";
+  headerTemplates: PaperHeaderTemplate[];
+  preferredHeaderTemplateId: string;
   saving: boolean;
   totalMarks: number;
   chapterCount: number;
@@ -1101,6 +1233,7 @@ function SaveBlueprintTemplateDialog({
   onNameChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onIncludeHeaderDefaultsChange: (checked: boolean) => void;
+  onPreferredHeaderTemplateChange: (value: string) => void;
   onSave: () => void;
 }) {
   return (
@@ -1131,18 +1264,38 @@ function SaveBlueprintTemplateDialog({
               onChange={(event) => onDescriptionChange(event.target.value)}
             />
           </Field>
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3">
-            <Checkbox
-              checked={includeHeaderDefaults}
-              onCheckedChange={(checked) => onIncludeHeaderDefaultsChange(checked === true)}
-            />
-            <span>
-              <span className="block text-sm font-medium">Include current header defaults</span>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                Copies the current institution, exam label, class, duration, instructions, and optional title/topic fields. The reusable Paper Header Template remains separate.
+          {headerBehavior === "workspace_preference" ? (
+            <Field label="Preferred header template (optional)">
+              <Select
+                value={preferredHeaderTemplateId || "none"}
+                onValueChange={(value) => onPreferredHeaderTemplateChange(!value || value === "none" ? "" : value)}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No preferred header</SelectItem>
+                  {headerTemplates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Stores only the active teacher header-template reference. If it later becomes unavailable, the blueprint still applies without it.
+              </p>
+            </Field>
+          ) : (
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3">
+              <Checkbox
+                checked={includeHeaderDefaults}
+                onCheckedChange={(checked) => onIncludeHeaderDefaultsChange(checked === true)}
+              />
+              <span>
+                <span className="block text-sm font-medium">Include current header defaults</span>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                  Copies the current institution, exam label, class, duration, instructions, and optional title/topic fields. The reusable Paper Header Template remains separate.
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="button" disabled={!name.trim() || saving} onClick={onSave}>

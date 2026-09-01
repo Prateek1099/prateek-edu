@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 
-export type PaperBuilderMode = "simple" | "blueprint" | "templates" | "header-templates" | "archive";
+export type PaperBuilderMode = "simple" | "blueprint" | "templates" | "blueprint-templates" | "header-templates" | "archive";
 
 export type PaperBuilderModeNavItem = {
   mode: PaperBuilderMode;
@@ -21,6 +21,7 @@ export const WORKSPACE_PAPER_BUILDER_NAV_ITEMS: PaperBuilderModeNavItem[] = [
   { mode: "simple", href: "/workspace/paper-builder", label: "Simple Builder" },
   { mode: "blueprint", href: "/workspace/paper-builder/blueprint", label: "Blueprint Builder" },
   { mode: "templates", href: "/workspace/paper-builder/templates", label: "Simple Templates" },
+  { mode: "blueprint-templates", href: "/workspace/paper-builder/blueprint/templates", label: "Blueprint Templates" },
   { mode: "header-templates", href: "/workspace/paper-builder/header-templates", label: "Header Templates" },
   { mode: "archive", href: "/workspace/paper-builder/archive", label: "Teacher Paper Archive" },
 ];

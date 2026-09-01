@@ -5,19 +5,37 @@ import {
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
+import {
+  getWorkspaceBlueprintTemplateSnapshot,
+  listWorkspaceBlueprintTemplateSummaries,
+} from "@/lib/paper-builder/workspace-blueprint-template-data";
 
 import TeacherBlueprintBuilderClient from "./BlueprintBuilderClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function TeacherBlueprintBuilderPage() {
+export default async function TeacherBlueprintBuilderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ templateId?: string | string[] }>;
+}) {
   const teacher = await requireActiveWorkspace();
-  const [scopes, headerTemplates] = await Promise.all([
+  const query = await searchParams;
+  const initialBlueprintTemplateId =
+    typeof query.templateId === "string" && query.templateId.length <= 200
+      ? query.templateId
+      : "";
+  const [scopes, headerTemplates, blueprintTemplates, initialBlueprintTemplate] = await Promise.all([
     listActiveWorkspaceScopes(teacher.workspaceId),
     prisma.workspacePaperHeaderTemplate.findMany({
       where: { workspaceId: teacher.workspaceId, archivedAt: null },
       orderBy: [{ name: "asc" }],
     }),
+    listWorkspaceBlueprintTemplateSummaries(teacher.workspaceId, "active"),
+    initialBlueprintTemplateId
+      ? getWorkspaceBlueprintTemplateSnapshot(teacher.workspaceId, initialBlueprintTemplateId)
+          .catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const subjectIds = scopes.map((scope) => scope.subjectId);
@@ -79,7 +97,9 @@ export default async function TeacherBlueprintBuilderPage() {
       {navigation}
 
       <TeacherBlueprintBuilderClient
-        blueprintTemplates={[]}
+        blueprintTemplates={blueprintTemplates}
+        initialBlueprintTemplateId={initialBlueprintTemplateId}
+        initialBlueprintTemplate={initialBlueprintTemplate}
         headerTemplates={headerTemplates.map((template) => ({
           id: template.id,
           name: template.name,
@@ -113,7 +133,7 @@ export default async function TeacherBlueprintBuilderPage() {
       />
 
       <p className="paper-builder-screen-only text-xs leading-5 text-muted-foreground">
-        Blueprint patterns are not saved in this phase. Saving a generated paper creates only a private immutable snapshot in your Teacher Paper Archive; it does not assign work to students.
+        Blueprint templates save only reusable topic and section rules. Saving a generated paper still creates a separate private immutable snapshot in your Teacher Paper Archive; neither action assigns work to students.
       </p>
     </div>
   );
