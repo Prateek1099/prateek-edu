@@ -33,6 +33,10 @@ test("teacher Blueprint actions independently require an active teacher workspac
   const actionNames = [
     "reviewTeacherBlueprintAvailability",
     "generateTeacherBlueprintPaper",
+    "getTeacherBlueprintReplacementCandidates",
+    "replaceTeacherBlueprintQuestion",
+    "regenerateTeacherBlueprintRow",
+    "regenerateTeacherBlueprintTopic",
     "validateTeacherBlueprintSelection",
     "saveTeacherBlueprintGeneratedPaper",
   ];
@@ -129,6 +133,27 @@ test("final validation requeries IDs and checks exact rows and duplicate text", 
   );
 });
 
+test("teacher review actions revalidate context, limit candidates, and never write", () => {
+  const reviewActionNames = [
+    "getTeacherBlueprintReplacementCandidatesForWorkspace",
+    "replaceTeacherBlueprintQuestionForWorkspace",
+    "regenerateTeacherBlueprintRowForWorkspace",
+    "regenerateTeacherBlueprintTopicForWorkspace",
+  ];
+  for (const name of reviewActionNames) {
+    const body = exportedFunctionBody(service, name);
+    assert.match(body, /validateTeacherBlueprintReviewContext/);
+    assert.doesNotMatch(
+      body,
+      /\.(?:create|createMany|update|updateMany|upsert|delete|deleteMany)\(/,
+    );
+  }
+  assert.match(service, /teacherBlueprintReplacementCandidates/);
+  assert.match(service, /teacherBlueprintFreshRegenerationPool/);
+  assert.match(service, /findDuplicateSelection/);
+  assert.match(service, /buildTeacherBlueprintGenerationResult/);
+});
+
 test("teacher save revalidates and writes only a workspace-owned immutable paper", () => {
   const save = exportedFunctionBody(
     service,
@@ -141,6 +166,8 @@ test("teacher save revalidates and writes only a workspace-owned immutable paper
   assert.match(save, /createdById: teacher\.id/);
   assert.match(save, /workspaceId: teacher\.workspaceId/);
   assert.match(save, /sourceBlueprintTemplateId: null/);
+  assert.match(save, /getWorkspaceBlueprintTemplateSnapshot/);
+  assert.match(save, /sourceBlueprintTemplateName: sourceTemplate\?\.name \?\? null/);
   assert.doesNotMatch(
     save,
     /(?:assignment|challenge|worksheet|attempt|mistake|progress)\.(?:create|createMany|update|upsert)\(/,

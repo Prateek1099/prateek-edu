@@ -125,15 +125,15 @@ test("apply returns setup only and blocks stale subject/topic scope", () => {
   assert.doesNotMatch(data, /bankQuestion|questionIds|generatedRows/);
 });
 
-test("Teacher Blueprint page exposes save, update, apply, and management without recovery tools", () => {
+test("Teacher Blueprint page exposes template management alongside scoped review tools", () => {
   assert.match(teacherAdapter, /templates: true/);
   assert.match(teacherAdapter, /createTeacherBlueprintTemplate/);
   assert.match(teacherAdapter, /updateTeacherBlueprintTemplate/);
   assert.match(teacherAdapter, /applyTeacherBlueprintTemplate/);
   assert.match(teacherAdapter, /templateManagementHref: "\/workspace\/paper-builder\/blueprint\/templates"/);
-  assert.match(teacherAdapter, /replacement: false/);
-  assert.match(teacherAdapter, /rowRegeneration: false/);
-  assert.match(teacherAdapter, /chapterRegeneration: false/);
+  assert.match(teacherAdapter, /replacement: true/);
+  assert.match(teacherAdapter, /rowRegeneration: true/);
+  assert.match(teacherAdapter, /chapterRegeneration: true/);
   assert.match(sharedClient, /Using template:/);
   assert.match(sharedClient, /Update template/);
   assert.match(sharedClient, /clearGenerated\(\)/);

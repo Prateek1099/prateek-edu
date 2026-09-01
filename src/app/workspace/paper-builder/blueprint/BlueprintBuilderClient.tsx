@@ -7,6 +7,10 @@ import BlueprintBuilderClient, {
 } from "@/components/paper-builder/BlueprintBuilderClient";
 import {
   generateTeacherBlueprintPaper,
+  getTeacherBlueprintReplacementCandidates,
+  regenerateTeacherBlueprintRow,
+  regenerateTeacherBlueprintTopic,
+  replaceTeacherBlueprintQuestion,
   reviewTeacherBlueprintAvailability,
   saveTeacherBlueprintGeneratedPaper,
   validateTeacherBlueprintSelection,
@@ -20,6 +24,10 @@ import {
 export const teacherBlueprintBuilderActions: BlueprintBuilderActions = {
   reviewAvailability: reviewTeacherBlueprintAvailability,
   generatePaper: generateTeacherBlueprintPaper,
+  getReplacementCandidates: getTeacherBlueprintReplacementCandidates,
+  selectCandidate: replaceTeacherBlueprintQuestion,
+  regenerateRow: regenerateTeacherBlueprintRow,
+  regenerateChapter: regenerateTeacherBlueprintTopic,
   validateSelection: validateTeacherBlueprintSelection,
   saveGeneratedPaper: saveTeacherBlueprintGeneratedPaper,
   createTemplate: createTeacherBlueprintTemplate,
@@ -31,9 +39,9 @@ export const teacherBlueprintBuilderConfig: BlueprintBuilderConfig = {
   capabilities: {
     templates: true,
     archive: true,
-    replacement: false,
-    rowRegeneration: false,
-    chapterRegeneration: false,
+    replacement: true,
+    rowRegeneration: true,
+    chapterRegeneration: true,
   },
   routes: {
     templateManagementHref: "/workspace/paper-builder/blueprint/templates",
@@ -49,6 +57,14 @@ export const teacherBlueprintBuilderConfig: BlueprintBuilderConfig = {
     summaryDescription: "Build from assigned subjects using published global Vexa questions and eligible MCQs owned by this workspace. Saving creates a private immutable paper only.",
   },
   templateHeaderBehavior: "workspace_preference",
+  reviewTools: {
+    confirmRegeneration: true,
+    showAlternativeWarnings: true,
+    showModifiedStatus: true,
+    replacementButtonLabel: "Replace Question",
+    chapterRegenerationLabel: "Regenerate Topic",
+    chapterRegenerationSuccess: "Topic regenerated. Every other topic was preserved.",
+  },
 };
 
 export default function TeacherBlueprintBuilderClient(props: BlueprintBuilderDataProps) {

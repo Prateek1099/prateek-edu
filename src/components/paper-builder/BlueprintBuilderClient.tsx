@@ -177,6 +177,14 @@ export type BlueprintBuilderConfig = {
     summaryDescription: string;
   };
   templateHeaderBehavior?: "snapshot" | "workspace_preference";
+  reviewTools?: {
+    confirmRegeneration?: boolean;
+    showAlternativeWarnings?: boolean;
+    showModifiedStatus?: boolean;
+    replacementButtonLabel?: string;
+    chapterRegenerationLabel?: string;
+    chapterRegenerationSuccess?: string;
+  };
 };
 
 type Props = BlueprintBuilderDataProps & {
@@ -258,6 +266,7 @@ export default function BlueprintBuilderClient({
   } = actions;
   const { capabilities, copy, routes } = config;
   const templateHeaderBehavior = config.templateHeaderBehavior ?? "snapshot";
+  const reviewTools = config.reviewTools ?? {};
   const initialTemplateSubject = initialBlueprintTemplate
     ? subjects.find((subject) => subject.id === initialBlueprintTemplate.subjectId)
     : null;
@@ -322,6 +331,7 @@ export default function BlueprintBuilderClient({
   const [selectingCandidateId, setSelectingCandidateId] = useState<string | null>(null);
   const [regeneratingRowId, setRegeneratingRowId] = useState<string | null>(null);
   const [regeneratingChapterId, setRegeneratingChapterId] = useState<string | null>(null);
+  const [reviewModified, setReviewModified] = useState(false);
 
   const boards = useMemo(() => {
     const values = new Map<string, { id: string; title: string }>();
@@ -358,6 +368,14 @@ export default function BlueprintBuilderClient({
     () => new Map(availability.map((item) => [item.rowId, item])),
     [availability],
   );
+  const reviewWarningsByRow = useMemo(
+    () => new Map(
+      availability
+        .filter((item) => item.warnings.length > 0)
+        .map((item) => [item.rowId, item.warnings]),
+    ),
+    [availability],
+  );
   const errorsByRow = useMemo(() => new Map(rowErrors.map((item) => [item.rowId, item.message])), [rowErrors]);
   const selectedCount = generatedRows.reduce((total, row) => total + row.questions.length, 0);
   const requestedCount = chapters.flatMap((chapter) => chapter.rows).reduce((total, row) => total + row.questionCount, 0);
@@ -390,6 +408,7 @@ export default function BlueprintBuilderClient({
     setGeneratedRows([]);
     setValidatedPaper(null);
     setFinalQuestionOrderIds([]);
+    setReviewModified(false);
   };
 
   const updateDetails = <K extends keyof PaperDetails>(key: K, value: PaperDetails[K]) => {
@@ -645,6 +664,7 @@ export default function BlueprintBuilderClient({
     });
     setRowErrors([]);
     setLastSavedPaperId(null);
+    setReviewModified(false);
   };
 
   const updateGeneratedRow = (rowId: string, updater: (questions: PaperBuilderQuestion[]) => PaperBuilderQuestion[]) => {
@@ -657,6 +677,7 @@ export default function BlueprintBuilderClient({
     ));
     setValidatedPaper(null);
     setLastSavedPaperId(null);
+    setReviewModified(true);
   };
 
   const moveQuestion = (rowId: string, index: number, direction: -1 | 1) => {
@@ -743,6 +764,7 @@ export default function BlueprintBuilderClient({
       });
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => item.rowId !== candidateContext.rowId));
+      setReviewModified(true);
       closeCandidatePicker();
       toast.success(candidateContext.replaceQuestionId ? "Question replaced." : "Missing question added.");
     } finally {
@@ -752,6 +774,10 @@ export default function BlueprintBuilderClient({
 
   const regenerateRow = async (rowId: string) => {
     if (!regenerateRowAction) return toast.error("Row regeneration is not available in this builder.");
+    if (
+      reviewTools.confirmRegeneration &&
+      !window.confirm("Regenerating this row will replace the current questions in this row. Continue?")
+    ) return;
     setRegeneratingRowId(rowId);
     try {
       const result = await regenerateRowAction(draft, currentSelections(), rowId);
@@ -766,6 +792,7 @@ export default function BlueprintBuilderClient({
       ));
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => item.rowId !== rowId));
+      setReviewModified(true);
       toast.success("Blueprint row regenerated. Other rows were preserved.");
     } finally {
       setRegeneratingRowId(null);
@@ -774,6 +801,10 @@ export default function BlueprintBuilderClient({
 
   const regenerateChapter = async (chapterId: string, chapterRowIds: string[]) => {
     if (!regenerateChapterAction) return toast.error("Chapter regeneration is not available in this builder.");
+    if (
+      reviewTools.confirmRegeneration &&
+      !window.confirm("Regenerating this topic will replace every current question in this topic. Continue?")
+    ) return;
     setRegeneratingChapterId(chapterId);
     try {
       const result = await regenerateChapterAction(draft, currentSelections(), chapterId);
@@ -796,7 +827,8 @@ export default function BlueprintBuilderClient({
       ));
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => !chapterRowIds.includes(item.rowId)));
-      toast.success("Chapter regenerated. Every other chapter was preserved.");
+      setReviewModified(true);
+      toast.success(reviewTools.chapterRegenerationSuccess ?? "Chapter regenerated. Every other chapter was preserved.");
     } finally {
       setRegeneratingChapterId(null);
     }
@@ -1009,6 +1041,10 @@ export default function BlueprintBuilderClient({
               questionRemovalEnabled={capabilities.replacement || capabilities.rowRegeneration}
               rowRegenerationEnabled={capabilities.rowRegeneration}
               chapterRegenerationEnabled={capabilities.chapterRegeneration}
+              replacementButtonLabel={reviewTools.replacementButtonLabel ?? "Replace"}
+              chapterRegenerationLabel={reviewTools.chapterRegenerationLabel ?? "Regenerate chapter"}
+              warningsByRow={reviewTools.showAlternativeWarnings ? reviewWarningsByRow : new Map()}
+              modified={Boolean(reviewTools.showModifiedStatus && reviewModified)}
             />
           )}
 
@@ -1600,12 +1636,13 @@ function FinalPaperOrderControls({ mode, complete, onModeChange, onReshuffle }: 
   );
 }
 
-function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, questionRemovalEnabled, rowRegenerationEnabled, chapterRegenerationEnabled }: {
+function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, warningsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, questionRemovalEnabled, rowRegenerationEnabled, chapterRegenerationEnabled, replacementButtonLabel, chapterRegenerationLabel, modified }: {
   chapters: BlueprintChapterDraft[];
   rows: BlueprintGeneratedRow[];
   requestedCount: number;
   selectedCount: number;
   errorsByRow: Map<string, string>;
+  warningsByRow: Map<string, string[]>;
   onMove: (rowId: string, index: number, direction: -1 | 1) => void;
   onRemove: (rowId: string, questionId: string) => void;
   onSelectQuestion: (row: BlueprintGeneratedRow, replaceQuestionId?: string) => void;
@@ -1619,6 +1656,9 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
   questionRemovalEnabled: boolean;
   rowRegenerationEnabled: boolean;
   chapterRegenerationEnabled: boolean;
+  replacementButtonLabel: string;
+  chapterRegenerationLabel: string;
+  modified: boolean;
 }) {
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   return (
@@ -1626,6 +1666,11 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
       <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="5" title="Generated paper review" description="Questions are grouped by their exact blueprint chapter and row. Reordering stays within a row." /><Button type="button" variant="outline" onClick={onRegenerate} disabled={generating}><Shuffle className="size-4" /> {generating ? "Regenerating…" : "Regenerate whole paper"}</Button></div></CardHeader>
       <CardContent className="space-y-5">
         <StatusBanner good={selectedCount === requestedCount} message={`${selectedCount} of ${requestedCount} requested questions selected`} />
+        {modified && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+            Paper modified and not saved. Validate the updated paper before previewing or saving it.
+          </div>
+        )}
         {chapters.map((chapter) => {
           const chapterRows = chapter.rows.map((row) => rowsById.get(row.id)).filter((row): row is BlueprintGeneratedRow => Boolean(row));
           const chapterSelectedMarks = chapterRows.reduce((total, row) => total + row.questions.reduce((sum, question) => sum + question.marks, 0), 0);
@@ -1639,7 +1684,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
               </div>
               {chapterRegenerationEnabled && (
                 <Button type="button" variant="outline" size="sm" disabled={chapterBusy || regeneratingRowId !== null} onClick={() => onRegenerateChapter(chapter.id, chapter.rows.map((row) => row.id))}>
-                  <RefreshCw className={cn("size-4", chapterBusy && "animate-spin")} /> {chapterBusy ? "Regenerating…" : "Regenerate chapter"}
+                  <RefreshCw className={cn("size-4", chapterBusy && "animate-spin")} /> {chapterBusy ? "Regenerating…" : chapterRegenerationLabel}
                 </Button>
               )}
             </div>
@@ -1648,6 +1693,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                 const complete = row.questions.length === row.questionCount;
                 const rowBusy = regeneratingRowId === row.id;
                 const rowError = errorsByRow.get(row.id);
+                const rowWarnings = warningsByRow.get(row.id) ?? [];
                 return (
                 <div key={row.id} className="rounded-xl bg-muted/15 p-3 sm:p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1662,6 +1708,12 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                     )}
                   </div>
                   {rowError && <p className="mt-2 text-xs text-destructive">{rowError}</p>}
+                  {rowWarnings.length > 0 && (
+                    <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
+                      {rowWarnings.map((warning) => <p key={warning}>{warning}</p>)}
+                      <p>Regeneration may fail if enough unique questions are not available.</p>
+                    </div>
+                  )}
                   {!complete && (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
                       <p className="text-sm text-amber-900 dark:text-amber-100">This row needs {row.questionCount - row.questions.length} more question{row.questionCount - row.questions.length === 1 ? "" : "s"}. Preview and export remain blocked.</p>
@@ -1674,7 +1726,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{index + 1}</span>
                         <QuestionSummary question={question} />
                         <div className="flex shrink-0 flex-wrap gap-1 sm:max-w-48 sm:justify-end">
-                          {replacementEnabled && <Button type="button" variant="outline" size="sm" onClick={() => onSelectQuestion(row, question.id)}>Replace</Button>}
+                          {replacementEnabled && <Button type="button" variant="outline" size="sm" onClick={() => onSelectQuestion(row, question.id)}>{replacementButtonLabel}</Button>}
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question up" disabled={index === 0} onClick={() => onMove(row.id, index, -1)}><ArrowUp className="size-4" /></Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question down" disabled={index === row.questions.length - 1} onClick={() => onMove(row.id, index, 1)}><ArrowDown className="size-4" /></Button>
                           {questionRemovalEnabled && <Button type="button" variant="ghost" size="sm" aria-label="Remove question" onClick={() => onRemove(row.id, question.id)}><X className="size-4" /> Remove</Button>}

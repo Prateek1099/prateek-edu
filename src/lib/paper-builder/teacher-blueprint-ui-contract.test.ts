@@ -43,7 +43,7 @@ test("teacher page exposes only active header templates from the current session
   assert.doesNotMatch(page, /paperHeaderTemplate\.findMany/);
 });
 
-test("teacher adapter keeps the four A1 actions and adds only Blueprint template actions", () => {
+test("teacher adapter keeps generation/template actions and adds teacher review actions", () => {
   for (const action of [
     "reviewTeacherBlueprintAvailability",
     "generateTeacherBlueprintPaper",
@@ -52,25 +52,28 @@ test("teacher adapter keeps the four A1 actions and adds only Blueprint template
   ]) {
     assert.match(client, new RegExp(action));
   }
-  for (const blocked of [
-    "getReplacementCandidates",
-    "selectCandidate",
-    "regenerateRow",
-    "regenerateChapter",
+  for (const action of [
+    "getReplacementCandidates: getTeacherBlueprintReplacementCandidates",
+    "selectCandidate: replaceTeacherBlueprintQuestion",
+    "regenerateRow: regenerateTeacherBlueprintRow",
+    "regenerateChapter: regenerateTeacherBlueprintTopic",
   ]) {
-    assert.doesNotMatch(client, new RegExp(`${blocked}:`));
+    assert.match(client, new RegExp(action));
   }
   assert.match(client, /createTemplate: createTeacherBlueprintTemplate/);
   assert.match(client, /applyTemplate: applyTeacherBlueprintTemplate/);
   assert.match(client, /updateTemplate: updateTeacherBlueprintTemplate/);
 });
 
-test("teacher capability config enables templates while hiding replacement and regeneration", () => {
+test("teacher capability config enables templates and teacher review tools", () => {
   assert.match(client, /templates: true/);
   assert.match(client, /archive: true/);
-  assert.match(client, /replacement: false/);
-  assert.match(client, /rowRegeneration: false/);
-  assert.match(client, /chapterRegeneration: false/);
+  assert.match(client, /replacement: true/);
+  assert.match(client, /rowRegeneration: true/);
+  assert.match(client, /chapterRegeneration: true/);
+  assert.match(client, /confirmRegeneration: true/);
+  assert.match(client, /replacementButtonLabel: "Replace Question"/);
+  assert.match(client, /chapterRegenerationLabel: "Regenerate Topic"/);
   assert.match(page, /listWorkspaceBlueprintTemplateSummaries/);
   assert.match(page, /blueprintTemplates=\{blueprintTemplates\}/);
   assert.match(client, /templateManagementHref: "\/workspace\/paper-builder\/blueprint\/templates"/);
@@ -81,7 +84,7 @@ test("teacher availability copy does not promise disabled replacement tools", ()
   assert.match(teacherRules, /Few alternative questions are available for this row\./);
 });
 
-test("teacher mode hides question removal when safe refill tools are disabled", () => {
+test("teacher mode exposes removal only now that safe refill tools are enabled", () => {
   assert.match(
     sharedClient,
     /questionRemovalEnabled=\{capabilities\.replacement \|\| capabilities\.rowRegeneration\}/,
@@ -90,8 +93,8 @@ test("teacher mode hides question removal when safe refill tools are disabled", 
     sharedClient,
     /\{questionRemovalEnabled && <Button[^>]+aria-label="Remove question"/,
   );
-  assert.match(client, /replacement: false/);
-  assert.match(client, /rowRegeneration: false/);
+  assert.match(client, /replacement: true/);
+  assert.match(client, /rowRegeneration: true/);
   assert.match(adminAdapter, /replacement: true/);
 });
 

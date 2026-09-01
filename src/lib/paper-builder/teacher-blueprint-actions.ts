@@ -9,6 +9,10 @@ import type {
 import type { SaveGeneratedPaperInput } from "@/lib/paper-builder/saved-paper-types";
 import {
   generateTeacherBlueprintPaperForWorkspace,
+  getTeacherBlueprintReplacementCandidatesForWorkspace,
+  regenerateTeacherBlueprintRowForWorkspace,
+  regenerateTeacherBlueprintTopicForWorkspace,
+  replaceTeacherBlueprintQuestionForWorkspace,
   reviewTeacherBlueprintAvailabilityForWorkspace,
   saveTeacherBlueprintGeneratedPaperForWorkspace,
   validateTeacherBlueprintSelectionForWorkspace,
@@ -35,6 +39,109 @@ export async function generateTeacherBlueprintPaper(input: BlueprintPaperDraft) 
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Could not generate the teacher blueprint paper.",
+      rowErrors: [] as Array<{ rowId: string; message: string }>,
+    };
+  }
+}
+
+export async function getTeacherBlueprintReplacementCandidates(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+  replaceQuestionId?: string,
+) {
+  try {
+    const teacher = await requireActiveWorkspace();
+    return await getTeacherBlueprintReplacementCandidatesForWorkspace(
+      teacher.workspaceId,
+      input,
+      selections,
+      rowId,
+      replaceQuestionId,
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not load teacher blueprint replacement candidates.",
+    };
+  }
+}
+
+export async function replaceTeacherBlueprintQuestion(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+  candidateId: string,
+  replaceQuestionId?: string,
+) {
+  try {
+    const teacher = await requireActiveWorkspace();
+    return await replaceTeacherBlueprintQuestionForWorkspace(
+      teacher.workspaceId,
+      input,
+      selections,
+      rowId,
+      candidateId,
+      replaceQuestionId,
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not replace this teacher blueprint question.",
+    };
+  }
+}
+
+export async function regenerateTeacherBlueprintRow(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  rowId: string,
+) {
+  try {
+    const teacher = await requireActiveWorkspace();
+    return await regenerateTeacherBlueprintRowForWorkspace(
+      teacher.workspaceId,
+      input,
+      selections,
+      rowId,
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not regenerate this teacher blueprint row.",
+    };
+  }
+}
+
+export async function regenerateTeacherBlueprintTopic(
+  input: BlueprintPaperDraft,
+  selections: BlueprintSelection[],
+  topicOrChapterId: string,
+) {
+  try {
+    const teacher = await requireActiveWorkspace();
+    return await regenerateTeacherBlueprintTopicForWorkspace(
+      teacher.workspaceId,
+      input,
+      selections,
+      topicOrChapterId,
+    );
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not regenerate this teacher blueprint topic.",
       rowErrors: [] as Array<{ rowId: string; message: string }>,
     };
   }
