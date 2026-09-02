@@ -11,10 +11,12 @@ import ClassDetailClient from "./ClassDetailClient";
 
 export default async function ClassDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }) {
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const user = await requireActiveWorkspace();
 
   const cls = await prisma.class.findFirst({
@@ -65,6 +67,7 @@ export default async function ClassDetailPage({
         (challenge) => !activeChallengeIds.has(challenge.id),
       )}
       assignments={assignments}
+      defaultTab={query.tab === "assignments" ? "assignments" : "students"}
     />
   );
 }

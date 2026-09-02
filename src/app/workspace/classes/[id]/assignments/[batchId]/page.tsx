@@ -55,10 +55,12 @@ function formatDateTime(value: Date | string | null) {
 
 export default async function WorkspaceAssignmentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; batchId: string }>;
+  searchParams: Promise<{ studentId?: string | string[] }>;
 }) {
-  const { id: classId, batchId } = await params;
+  const [{ id: classId, batchId }, query] = await Promise.all([params, searchParams]);
   const user = await requireActiveWorkspace();
 
   const classData = await prisma.class.findFirst({
@@ -78,6 +80,11 @@ export default async function WorkspaceAssignmentDetailPage({
     batchId,
   });
   if (!assignment || assignment.challenge.subjectId !== classData.subjectId) notFound();
+  const focusedStudentId =
+    typeof query.studentId === "string" &&
+    assignment.recipients.some((recipient) => recipient.studentId === query.studentId)
+      ? query.studentId
+      : null;
 
   const isPractice = assignment.challenge.type === "QUICK_PRACTICE";
   const remedialResult = isPractice
@@ -197,7 +204,10 @@ export default async function WorkspaceAssignmentDetailPage({
         ) : (
           <div className="space-y-3">
             {assignment.recipients.map((recipient) => (
-              <Card key={recipient.id}>
+              <Card
+                key={recipient.id}
+                className={focusedStudentId === recipient.studentId ? "ring-2 ring-primary/40" : undefined}
+              >
                 <CardContent className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))_auto] md:items-center">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{recipient.student.name || recipient.student.email || "Unnamed student"}</p>
@@ -207,15 +217,27 @@ export default async function WorkspaceAssignmentDetailPage({
                   <div><p className="text-xs text-muted-foreground">Attempts</p><p className="mt-1 font-semibold">{isPractice ? recipient.attemptCount : "—"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Score</p><p className="mt-1 font-semibold">{isPractice && recipient.latestPercentage !== null ? `Latest ${recipient.latestPercentage}% · Best ${recipient.bestPercentage}%` : "—"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Completed</p><p className="mt-1 font-semibold">{formatDate(recipient.completedAt)}</p>{isPractice ? <p className="text-xs text-muted-foreground">{recipient.mistakesCount} wrong answer{recipient.mistakesCount === 1 ? "" : "s"}</p> : null}</div>
-                  <Link href={isPractice ? `/workspace/students/${recipient.studentId}` : `/workspace/print/${assignment.challenge.id}`}>
-                    <Button variant="outline" size="sm" className="w-full md:w-auto">
-                      {isPractice ? <Target className="mr-1 size-4" /> : <FileText className="mr-1 size-4" />}
-                      {isPractice ? "View performance" : "View worksheet"}
-                    </Button>
-                  </Link>
+                  <div className="flex flex-col gap-2">
+                    <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
+                      <Button variant="outline" size="sm" className="w-full md:w-auto">
+                        <Target className="mr-1 size-4" /> Student Profile
+                      </Button>
+                    </Link>
+                    {!isPractice ? (
+                      <Link href={`/workspace/print/${assignment.challenge.id}`}>
+                        <Button variant="ghost" size="sm" className="w-full md:w-auto">
+                          <FileText className="mr-1 size-4" /> View worksheet
+                        </Button>
+                      </Link>
+                    ) : null}
+                  </div>
                 </CardContent>
                 {isPractice && recipient.attemptCount > 0 ? (
-                  <details className="border-t border-border/70">
+                  <details
+                    id={`answer-review-${recipient.studentId}`}
+                    className="scroll-mt-24 border-t border-border/70"
+                    open={focusedStudentId === recipient.studentId}
+                  >
                     <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/30">
                       Answer Review
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
@@ -223,6 +245,11 @@ export default async function WorkspaceAssignmentDetailPage({
                       </span>
                     </summary>
                     <div className="space-y-3 px-4 pb-4">
+                      <div className="flex justify-end">
+                        <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
+                          <Button variant="ghost" size="sm">View full student profile</Button>
+                        </Link>
+                      </div>
                       {!recipient.answerReviewCaptured ? (
                         <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
                           Detailed answer review was not captured for this attempt.

@@ -35,7 +35,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 
 type StudentEnrollment = {
   id: string;
@@ -97,14 +96,24 @@ function contentTypeLabel(type: string) {
   return "Worksheet";
 }
 
+function formatClassDate(value: Date | string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}/${month}/${date.getUTCFullYear()}`;
+}
+
 export default function ClassDetailClient({
   classData,
   availableChallenges,
   assignments,
+  defaultTab,
 }: {
   classData: ClassData;
   availableChallenges: Array<{ id: string; title: string; type: string }>;
   assignments: Assignment[];
+  defaultTab: "students" | "assignments";
 }) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -241,7 +250,7 @@ export default function ClassDetailClient({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="students" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="mb-4">
           <TabsTrigger value="students" className="gap-2"><Users className="size-4" /> Students</TabsTrigger>
           <TabsTrigger value="assignments" className="gap-2"><BookOpen className="size-4" /> Assigned Work</TabsTrigger>
@@ -268,8 +277,15 @@ export default function ClassDetailClient({
                     <TableRow key={enrollment.id}>
                       <TableCell className="font-medium">{enrollment.student.name || "Unnamed student"}</TableCell>
                       <TableCell className="text-muted-foreground">{enrollment.student.email}</TableCell>
-                      <TableCell className="text-muted-foreground">{new Date(enrollment.enrolledAt).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => handleRemoveStudent(enrollment.student.id)} title="Remove student"><UserMinus className="size-4 text-destructive" /></Button></TableCell>
+                      <TableCell className="text-muted-foreground">{formatClassDate(enrollment.enrolledAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Link href={`/workspace/classes/${classData.id}/students/${enrollment.student.id}`}>
+                            <Button variant="ghost" size="sm">View Profile</Button>
+                          </Link>
+                          <Button variant="ghost" size="sm" onClick={() => handleRemoveStudent(enrollment.student.id)} title="Remove student"><UserMinus className="size-4 text-destructive" /></Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -278,7 +294,7 @@ export default function ClassDetailClient({
           </Card>
         </TabsContent>
 
-        <TabsContent value="assignments">
+        <TabsContent value="assignments" id="assigned-work">
           <Card>
             <CardHeader className="pb-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -303,11 +319,11 @@ export default function ClassDetailClient({
                         <p className="font-medium">{assignment.challenge.title}</p>
                         <div className="mt-1 flex flex-wrap gap-1.5"><Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge><Badge variant={assignment.status === "ACTIVE" ? "default" : "secondary"}>{assignment.status}</Badge></div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Assigned {new Date(assignment.createdAt).toLocaleDateString()}
+                          Assigned {formatClassDate(assignment.createdAt)}
                         </p>
                       </TableCell>
                       <TableCell>{assignment.audience === "CLASS" ? "Entire class" : "Selected students"}{assignment.audience === "CLASS" && assignment.includeLateJoiners ? <p className="text-xs text-muted-foreground">Includes eligible late joiners</p> : null}</TableCell>
-                      <TableCell>{assignment.dueDate ? formatAssignmentDueDate(assignment.dueDate) : "No due date"}</TableCell>
+                      <TableCell>{assignment.dueDate ? formatClassDate(assignment.dueDate) : "No due date"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1.5 text-xs">
                           <Badge variant="outline">{assignment.summary.assigned} assigned</Badge>

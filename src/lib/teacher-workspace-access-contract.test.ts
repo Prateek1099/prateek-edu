@@ -27,6 +27,7 @@ const classDetail = read("src/app/workspace/classes/[id]/page.tsx");
 const assignmentTracking = read("src/lib/workspace-assignment-tracking.ts");
 const studentDirectory = read("src/app/workspace/students/page.tsx");
 const studentProfile = read("src/app/workspace/students/[id]/page.tsx");
+const classStudentProfile = read("src/lib/teacher-class-student-profile.ts");
 
 test("workspace resource routes share the centralized access service", () => {
   for (const source of [challengePage, attemptPage, resultsPage, worksheetPage, attemptRoute]) {
@@ -96,9 +97,12 @@ test("assignment cancellation and recipient revocation verify the teacher worksp
 });
 
 test("teacher student performance includes only teacher-owned workspace challenges", () => {
-  for (const source of [studentDirectory, studentProfile]) {
-    assert.match(source, /challenge: \{ workspaceId: user\.workspaceId, subjectId: \{ in: subjectIds \} \}/);
-    assert.match(source, /listActiveWorkspaceSubjectIds/);
-    assert.doesNotMatch(source, /subject: \{ classes:/);
-  }
+  assert.match(studentDirectory, /challenge: \{ workspaceId: user\.workspaceId, subjectId: \{ in: subjectIds \} \}/);
+  assert.match(studentDirectory, /listActiveWorkspaceSubjectIds/);
+  assert.match(studentProfile, /listActiveWorkspaceSubjectIds/);
+  assert.match(studentProfile, /workspaceId: user\.workspaceId/);
+  assert.match(classStudentProfile, /getWorkspaceClassAssignmentTracking/);
+  assert.match(classStudentProfile, /workspaceId,/);
+  assert.match(classStudentProfile, /classId,/);
+  assert.doesNotMatch(classStudentProfile, /subject: \{ classes:/);
 });
