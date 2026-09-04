@@ -182,7 +182,7 @@ export default function WorksheetsClient({
             <div className="mx-auto size-12 bg-muted rounded-full flex items-center justify-center mb-3">
               <FileText className="size-6 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium">No Worksheets Found</h3>
+            <h3 className="text-lg font-medium">No worksheets yet</h3>
             <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
               Create your first worksheet by selecting questions from the Question Bank.
             </p>

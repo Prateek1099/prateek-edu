@@ -98,13 +98,13 @@ test("teacher mode exposes removal only now that safe refill tools are enabled",
   assert.match(adminAdapter, /replacement: true/);
 });
 
-test("teacher adapter contains only workspace routes and Teacher Paper Archive copy", () => {
+test("teacher adapter contains only workspace routes and teacher-friendly Saved papers copy", () => {
   assert.match(client, /`\/workspace\/paper-builder\/archive\/\$\{paperId\}`/);
-  assert.match(client, /Teacher Paper Archive/);
+  assert.match(client, /archiveLabel: "Saved papers"/);
   assert.doesNotMatch(`${page}\n${client}`, /@\/app\/admin|\/admin\/paper-builder|SUPER_ADMIN/);
-  assert.match(modeNav, /href: "\/workspace\/paper-builder\/archive", label: "Teacher Paper Archive"/);
-  assert.match(teacherArchivePage, />Teacher Paper Archive<\/h1>/);
-  assert.match(teacherArchiveDetail, /archiveLabel="Teacher Paper Archive"/);
+  assert.match(modeNav, /href: "\/workspace\/paper-builder\/archive", label: "Saved papers"/);
+  assert.match(teacherArchivePage, />Saved papers<\/h1>/);
+  assert.match(teacherArchiveDetail, /archiveLabel="Saved papers"/);
   assert.doesNotMatch(`${page}\n${client}\n${teacherArchivePage}\n${teacherArchiveDetail}`, /Workspace Paper Archive/);
 });
 

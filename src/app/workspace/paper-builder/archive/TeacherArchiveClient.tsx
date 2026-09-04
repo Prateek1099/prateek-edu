@@ -55,14 +55,14 @@ export default function TeacherArchiveClient({
         <p className="mt-2 text-sm text-muted-foreground">
           {status === "archived"
             ? "Archived workspace papers will appear here."
-            : "Validate a Paper Builder Standard paper, then save its immutable snapshot."}
+            : "Papers you choose to save will appear here."}
         </p>
         {status === "active" && (
           <Link
             href="/workspace/paper-builder"
             className={buttonVariants({ className: "mt-4" })}
           >
-            Open Paper Builder
+            Open Quick Paper
           </Link>
         )}
       </div>

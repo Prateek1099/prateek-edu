@@ -27,7 +27,7 @@ export default async function TeacherRemedialPracticePage({
           </Button>
         </Link>
         <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
-          <h1 className="text-xl font-bold">Remedial practice is unavailable</h1>
+          <h1 className="text-xl font-bold">Follow-up practice is unavailable</h1>
           <p className="mt-2 text-sm text-muted-foreground">{result.error}</p>
         </div>
       </div>

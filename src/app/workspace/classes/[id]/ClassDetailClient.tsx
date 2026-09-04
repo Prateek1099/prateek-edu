@@ -91,7 +91,7 @@ type Assignment = {
 };
 
 function contentTypeLabel(type: string) {
-  if (type === "QUICK_PRACTICE") return "Quick Practice";
+  if (type === "QUICK_PRACTICE") return "Practice set";
   if (type === "PDF_WORKSHEET") return "PDF Worksheet";
   return "Worksheet";
 }
@@ -272,7 +272,7 @@ export default function ClassDetailClient({
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Enrolled</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {classData.students.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-muted-foreground">No students enrolled yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={4} className="py-10 text-center text-muted-foreground">No one has joined yet. Share the class code with students.</TableCell></TableRow>
                   ) : classData.students.map((enrollment) => (
                     <TableRow key={enrollment.id}>
                       <TableCell className="font-medium">{enrollment.student.name || "Unnamed student"}</TableCell>
@@ -300,7 +300,7 @@ export default function ClassDetailClient({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2 text-lg"><BookOpen className="size-5" /> Assigned Work ({assignments.length})</CardTitle>
-                  <CardDescription>Track completion, deadlines, and Quick Practice performance.</CardDescription>
+                  <CardDescription>Track completion, deadlines, and practice set performance.</CardDescription>
                 </div>
                 <Button size="sm" onClick={() => setIsAssignOpen(true)} disabled={classData.status !== "ACTIVE"}>
                   <Plus className="mr-2 size-4" /> Create Assignment
@@ -312,7 +312,7 @@ export default function ClassDetailClient({
                 <TableHeader><TableRow><TableHead>Assignment</TableHead><TableHead>Audience</TableHead><TableHead>Due</TableHead><TableHead>Progress</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {assignments.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No assignments yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Nothing assigned to this class yet. Choose a practice set or worksheet to begin.</TableCell></TableRow>
                   ) : assignments.map((assignment) => (
                     <TableRow key={assignment.id} className={assignment.status === "CANCELLED" ? "opacity-60" : ""}>
                       <TableCell>
@@ -368,7 +368,7 @@ export default function ClassDetailClient({
           <DialogHeader><DialogTitle>Create Assignment</DialogTitle></DialogHeader>
           <div className="space-y-5 pt-2">
             <div className="space-y-2">
-              <Label>Worksheet / Quick Practice</Label>
+              <Label>Worksheet / practice set</Label>
               <Select value={selectedChallenge} onValueChange={(value) => setSelectedChallenge(value || "")}>
                 <SelectTrigger><SelectValue placeholder="Choose published content" /></SelectTrigger>
                 <SelectContent>

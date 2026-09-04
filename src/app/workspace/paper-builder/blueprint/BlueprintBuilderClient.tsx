@@ -48,13 +48,13 @@ export const teacherBlueprintBuilderConfig: BlueprintBuilderConfig = {
     archivePaperHref: (paperId) => `/workspace/paper-builder/archive/${paperId}`,
   },
   copy: {
-    questionBankLabel: "assigned Vexa and workspace Question Banks",
-    archiveLabel: "Teacher Paper Archive",
-    templateManagementLabel: "Manage Blueprint Templates",
+    questionBankLabel: "Vexa library and your questions",
+    archiveLabel: "Saved papers",
+    templateManagementLabel: "Manage saved chapter patterns",
     availabilitySuccess: "Availability checked against your current academic scope and eligible Question Bank records.",
     generationSuccess: "Complete paper generated. Review the topic allocations before previewing.",
-    savedPaperSuccess: "Exact final paper saved to Teacher Paper Archive.",
-    summaryDescription: "Build from assigned subjects using published global Vexa questions and eligible MCQs owned by this workspace. Saving creates a private immutable paper only.",
+    savedPaperSuccess: "Paper saved to Saved papers.",
+    summaryDescription: "Build from your assigned subjects using the Vexa library and eligible MCQs added by your workspace. Saving keeps a private copy for your workspace.",
   },
   templateHeaderBehavior: "workspace_preference",
   reviewTools: {

@@ -65,11 +65,11 @@ test("teacher answer review inherits exact workspace, class, assignment, and aca
 });
 
 test("teacher UI shows immutable answer details and old-attempt fallback", () => {
-  assert.match(teacherPage, /Answer Review/);
+  assert.match(teacherPage, /Review answers/);
   assert.match(teacherPage, /Student selected/);
   assert.match(teacherPage, /Correct answer/);
   assert.match(teacherPage, /Explanation/);
-  assert.match(teacherPage, /Detailed answer review was not captured for this attempt/);
+  assert.match(teacherPage, /This attempt was completed before detailed answer review was available/);
   assert.match(teacherPage, /answer\.topicLabel/);
   assert.match(teacherPage, /answer\.difficulty/);
   assert.match(teacherPage, /formatDateTime\(recipient\.latestAttemptAt\)/);

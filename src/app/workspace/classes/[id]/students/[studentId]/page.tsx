@@ -49,7 +49,7 @@ function statusLabel(status: string) {
 }
 
 function contentTypeLabel(type: string) {
-  if (type === "QUICK_PRACTICE") return "Quick Practice";
+  if (type === "QUICK_PRACTICE") return "Practice set";
   if (type === "PDF_WORKSHEET") return "PDF Worksheet";
   return "Worksheet";
 }
@@ -167,7 +167,7 @@ export default async function TeacherClassStudentProfilePage({
 
                     {assignment.answerReviewState === "OLDER_ATTEMPT" ? (
                       <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        Detailed answer review was not captured for this older attempt.
+                        This attempt was completed before detailed answer review was available.
                       </p>
                     ) : assignment.answerReviewState === "NOT_ATTEMPTED" ? (
                       <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
@@ -209,7 +209,7 @@ export default async function TeacherClassStudentProfilePage({
           <div className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             {profile.mistakes.trackedWrongSelections > 0
               ? "Detailed mistake topics were not captured for this student’s older attempts."
-              : "No mistakes recorded yet."}
+              : "No recorded mistakes yet. They’ll appear after this student completes assigned practice."}
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">

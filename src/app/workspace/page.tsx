@@ -171,7 +171,7 @@ export default async function WorkspaceDashboardPage() {
           </Link>
           <Link href="/workspace/content">
             <Button className="shadow-sm">
-              <PlusCircle className="w-4 h-4 mr-2" /> New Content
+              <PlusCircle className="w-4 h-4 mr-2" /> Add class material
             </Button>
           </Link>
         </div>
@@ -192,7 +192,7 @@ export default async function WorkspaceDashboardPage() {
           {/* Workspace Overview Stats */}
           <section>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" /> Workspace Overview
+              <Briefcase className="w-5 h-5 text-primary" /> At a glance
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card className="shadow-sm hover:border-primary/40 transition-colors">
@@ -225,7 +225,7 @@ export default async function WorkspaceDashboardPage() {
               <Card className="shadow-sm hover:border-primary/40 transition-colors">
                 <CardContent className="p-5 flex flex-col justify-between h-full">
                   <div className="flex justify-between items-start mb-2">
-                    <p className="text-sm font-medium text-muted-foreground">Question Bank</p>
+                    <p className="text-sm font-medium text-muted-foreground">Your questions</p>
                     <Database className="w-4 h-4 text-amber-500" />
                   </div>
                   <p className="text-3xl font-bold">{questionBankSize}</p>
@@ -237,7 +237,7 @@ export default async function WorkspaceDashboardPage() {
           {/* Quick Actions */}
           <section>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-primary" /> Quick Actions
+              <Zap className="w-5 h-5 text-primary" /> Create for your class
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <Link href="/workspace/worksheets">
@@ -256,7 +256,7 @@ export default async function WorkspaceDashboardPage() {
                     <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
                       <Zap className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">Quick Practice</span>
+                    <span className="font-medium text-sm">Practice sets</span>
                   </CardContent>
                 </Card>
               </Link>
@@ -286,7 +286,7 @@ export default async function WorkspaceDashboardPage() {
                     <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600 group-hover:bg-purple-500 group-hover:text-white transition-colors">
                       <ClipboardList className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">Add Notes</span>
+                    <span className="font-medium text-sm">Add class notes</span>
                   </CardContent>
                 </Card>
               </Link>
@@ -296,7 +296,7 @@ export default async function WorkspaceDashboardPage() {
                     <div className="p-2 rounded-lg bg-zinc-500/10 text-zinc-600 group-hover:bg-zinc-500 group-hover:text-white transition-colors">
                       <UploadCloud className="w-5 h-5" />
                     </div>
-                    <span className="font-medium text-sm">Upload Resources</span>
+                    <span className="font-medium text-sm">Upload class material</span>
                   </CardContent>
                 </Card>
               </Link>
@@ -365,8 +365,8 @@ export default async function WorkspaceDashboardPage() {
                   </div>
                 ) : (
                   <div className="p-6 text-center text-muted-foreground text-sm">
-                    <p>No active subjects.</p>
-                    <p className="text-xs mt-1">Create a class to add subjects.</p>
+                    <p>No assigned subjects yet.</p>
+                    <p className="text-xs mt-1">Your assigned subjects will appear here.</p>
                   </div>
                 )}
               </CardContent>
@@ -382,16 +382,16 @@ export default async function WorkspaceDashboardPage() {
               <Card className="shadow-sm border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-primary" /> Quick Practice activity
+                    <Activity className="w-4 h-4 text-primary" /> Practice set activity
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {practiceAttempts._count > 0 ? (
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Students have completed <span className="font-semibold text-foreground">{practiceAttempts._count}</span> workspace Quick Practice attempt{practiceAttempts._count === 1 ? "" : "s"}, with an average score of <span className="font-semibold text-foreground">{Math.round(practiceAttempts._avg.percentage ?? 0)}%</span>.
+                      Students have completed <span className="font-semibold text-foreground">{practiceAttempts._count}</span> practice set attempt{practiceAttempts._count === 1 ? "" : "s"}, with an average score of <span className="font-semibold text-foreground">{Math.round(practiceAttempts._avg.percentage ?? 0)}%</span>.
                     </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No student activity yet. Assigned Quick Practice attempts will appear here after students complete them.</p>
+                    <p className="text-sm text-muted-foreground">No student activity yet. Results will appear after students complete assigned practice sets.</p>
                   )}
                   <Link href="/workspace/students" className="mt-3 inline-flex text-xs font-semibold text-primary hover:underline">Review students →</Link>
                 </CardContent>
@@ -400,7 +400,7 @@ export default async function WorkspaceDashboardPage() {
               <Card className="shadow-sm border-border">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                    <Target className="w-4 h-4 text-primary" /> Needs Intervention
+                    <Target className="w-4 h-4 text-primary" /> Students who may need help
                   </CardTitle>
                 </CardHeader>
                 <CardContent>

@@ -124,7 +124,7 @@ export default function WorkspaceClassesClient({
           <CardContent className="py-16 text-center">
             <BookOpen className="size-12 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="text-xl font-semibold mb-2">No classes yet</h3>
-            <p className="text-muted-foreground mb-6">Create your first class to start managing students.</p>
+            <p className="text-muted-foreground mb-6">Create your first class, then share its code with students.</p>
             <Button onClick={() => setIsOpen(true)} disabled={!hasAcademicScope}>
               <Plus className="size-4 mr-2" /> Create Your First Class
             </Button>
@@ -163,7 +163,7 @@ export default function WorkspaceClassesClient({
                 {cls.status === "ACTIVE" && (
                   <div className="mt-3 flex gap-2">
                     <Link href={`/workspace/classes/${cls.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">Manage</Button>
+                      <Button variant="outline" size="sm" className="w-full">Open class</Button>
                     </Link>
                     <Button variant="ghost" size="sm" onClick={() => handleArchive(cls.id)} title="Archive">
                       <Archive className="size-4 text-muted-foreground" />

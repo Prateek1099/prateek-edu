@@ -13,11 +13,27 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { parseQuestions, type ParseResult } from "@/lib/parseQuestions";
 import { createWorkspaceQuestion, deleteWorkspaceQuestion } from "@/app/actions/workspace-bank";
-import { Database, Plus, Trash2, Upload, AlertCircle, Globe, Lock } from "lucide-react";
+import { Plus, Trash2, AlertCircle, Globe, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
+type BankQuestionRow = {
+  id: string;
+  subjectId: string;
+  topicId: string | null;
+  questionText: string;
+  optionA: string | null;
+  optionB: string | null;
+  optionC: string | null;
+  optionD: string | null;
+  correctAnswer: string | null;
+  topicTag: string | null;
+  difficulty: string;
+  workspaceId: string | null;
+  subject: { name: string } | null;
+  topic: { topicName: string } | null;
+};
 
 const difficultyColor: Record<string, string> = {
   easy: "border-emerald-500/50 text-emerald-600 bg-emerald-500/10",
@@ -31,7 +47,7 @@ export default function BankClient({
   topicOptions,
   workspaceId,
 }: {
-  initialQuestions: any[];
+  initialQuestions: BankQuestionRow[];
   subjectOptions: SubjectOption[];
   topicOptions: TopicOption[];
   workspaceId: string;
@@ -41,7 +57,7 @@ export default function BankClient({
   // Filters
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [topicFilter, setTopicFilter] = useState<string>("all");
-  const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const difficultyFilter = "all";
   const [ownershipFilter, setOwnershipFilter] = useState<string>("all"); // 'all', 'my', 'vexa'
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -110,7 +126,7 @@ export default function BankClient({
       setImportText("");
       setParseResult(null);
       window.location.reload(); // Quick refresh to get new records
-    } catch (e) {
+    } catch {
       toast.error("Failed to import");
     } finally {
       setImporting(false);
@@ -128,8 +144,8 @@ export default function BankClient({
       await deleteWorkspaceQuestion(id);
       toast.success("Question deleted");
       setQuestions(q => q.filter(x => x.id !== id));
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete");
     }
   };
 
@@ -152,7 +168,7 @@ export default function BankClient({
             <SelectContent>
               <SelectItem value="all">All Questions</SelectItem>
               <SelectItem value="my">My Questions</SelectItem>
-              <SelectItem value="vexa">Vexa Global</SelectItem>
+              <SelectItem value="vexa">Vexa library</SelectItem>
             </SelectContent>
           </Select>
           <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v || "all"); setTopicFilter("all"); }}>
@@ -200,7 +216,9 @@ export default function BankClient({
               {filteredQuestions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                    No questions found matching criteria.
+                    {ownershipFilter === "my" && questions.every((question) => question.workspaceId !== workspaceId)
+                      ? "You haven’t added your own questions yet. You can still use the Vexa library."
+                      : "No questions match your filters."}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -218,7 +236,7 @@ export default function BankClient({
                     <TableCell>
                       {q.workspaceId === null ? (
                         <div className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 w-fit px-2 py-1 rounded-md border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400">
-                          <Globe className="size-3" /> Vexa Official
+                          <Globe className="size-3" /> Vexa library
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5 text-xs text-violet-600 bg-violet-50 w-fit px-2 py-1 rounded-md border border-violet-200 dark:bg-violet-900/20 dark:border-violet-800 dark:text-violet-400">

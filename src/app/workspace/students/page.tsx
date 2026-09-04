@@ -98,10 +98,10 @@ export default async function WorkspaceStudentsPage() {
       <div className="flex flex-col justify-between items-start border-b border-border pb-6">
         <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
           <UserCircle className="size-8 text-primary" />
-          Students Directory
+          All students
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          Manage and monitor all students across your active classes.
+          See students across all of your active classes.
         </p>
       </div>
       

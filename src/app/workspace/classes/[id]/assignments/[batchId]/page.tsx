@@ -91,7 +91,7 @@ export default async function WorkspaceAssignmentDetailPage({
     ? await getTeacherRemedialPracticeContext({ classId, batchId })
     : null;
   const contentLabel = isPractice
-    ? "Quick Practice"
+    ? "Practice set"
     : assignment.challenge.type === "PDF_WORKSHEET"
       ? "PDF Worksheet"
       : "Worksheet";
@@ -143,10 +143,10 @@ export default async function WorkspaceAssignmentDetailPage({
           <CardHeader className="gap-3 border-b sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="size-4 text-violet-500" /> Remedial practice
+                <Sparkles className="size-4 text-violet-500" /> Follow-up practice
               </CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                Create focused repractice from wrong answers made after this assignment was issued.
+                Create focused practice from wrong answers made after this assignment was issued.
               </p>
             </div>
             {remedialResult.data.weakTopics.length > 0 &&
@@ -154,7 +154,7 @@ export default async function WorkspaceAssignmentDetailPage({
             remedialResult.data.suggestedStudentIds.length > 0 ? (
               <Link href={`/workspace/classes/${classId}/assignments/${batchId}/remedial`}>
                 <Button size="sm" className="w-full sm:w-auto">
-                  <Sparkles className="mr-2 size-4" /> Create Remedial Practice
+                  <Sparkles className="mr-2 size-4" /> Create follow-up practice
                 </Button>
               </Link>
             ) : null}
@@ -162,7 +162,7 @@ export default async function WorkspaceAssignmentDetailPage({
           <CardContent className="p-4">
             {remedialResult.data.weakTopics.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No post-assignment wrong answers are linked to a real topic yet. A remedial practice can be created after students make topic-linked mistakes.
+                No wrong answers are linked to a topic yet. Follow-up practice becomes available after students make topic-linked mistakes.
               </p>
             ) : (
               <div className="space-y-3">
@@ -239,7 +239,7 @@ export default async function WorkspaceAssignmentDetailPage({
                     open={focusedStudentId === recipient.studentId}
                   >
                     <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/30">
-                      Answer Review
+                      Review answers
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
                         Latest attempt · {formatDateTime(recipient.latestAttemptAt)}
                       </span>
@@ -252,7 +252,7 @@ export default async function WorkspaceAssignmentDetailPage({
                       </div>
                       {!recipient.answerReviewCaptured ? (
                         <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                          Detailed answer review was not captured for this attempt.
+                          This attempt was completed before detailed answer review was available.
                         </div>
                       ) : recipient.answerReview.length === 0 ? (
                         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">

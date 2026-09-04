@@ -123,9 +123,9 @@ export default function WorkspaceContentClient({
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <FileText className="size-8 text-primary" />
-            Content
+            Class materials
           </h1>
-          <p className="text-muted-foreground mt-1">Supplementary resources for your classes.</p>
+          <p className="text-muted-foreground mt-1">Notes and resources you share with your classes.</p>
         </div>
         <Button onClick={openAdd}>
           <Plus className="size-4 mr-2" /> Add Content

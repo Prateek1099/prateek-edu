@@ -103,7 +103,7 @@ export default function QuickPracticeClient({
         return;
       }
       
-      toast.success("Quick Practice generated!");
+      toast.success("Practice set created!");
       setBuilderOpen(false);
       window.location.reload();
     } catch (error: unknown) {
@@ -114,7 +114,7 @@ export default function QuickPracticeClient({
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this Quick Practice?")) return;
+    if (!confirm("Are you sure you want to delete this practice set?")) return;
     
     try {
       await deleteWorkspaceChallenge(id);
@@ -138,7 +138,7 @@ export default function QuickPracticeClient({
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
         <Input 
-          placeholder="Search quick practices..." 
+          placeholder="Search practice sets..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full sm:w-64"
@@ -150,7 +150,7 @@ export default function QuickPracticeClient({
           setNewTopic("none");
           setQuestionCount(5);
         }} className="w-full sm:w-auto gap-2">
-          <Zap className="h-4 w-4" /> Auto-Generate
+          <Zap className="h-4 w-4" /> Create practice set
         </Button>
       </div>
 
@@ -161,11 +161,11 @@ export default function QuickPracticeClient({
             <div className="mx-auto size-12 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mb-3">
               <Zap className="size-6" />
             </div>
-            <h3 className="text-lg font-medium">No Quick Practices</h3>
+            <h3 className="text-lg font-medium">No practice sets yet</h3>
             <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
-              Auto-generate short quizzes for exit tickets or warm-ups instantly.
+              Create a short quiz for an exit ticket, warm-up, or recap.
             </p>
-            <Button className="mt-4" onClick={() => setBuilderOpen(true)}>Generate Now</Button>
+            <Button className="mt-4" onClick={() => setBuilderOpen(true)}>Create practice set</Button>
           </div>
         ) : (
           filteredPractices.map(w => (
@@ -216,7 +216,7 @@ export default function QuickPracticeClient({
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Zap className="size-5 text-amber-500" /> Auto-Generate Practice
+              <Zap className="size-5 text-amber-500" /> Create practice set
             </DialogTitle>
             <DialogDescription>
               Let Vexa assemble a quick practice automatically. Students will not see it until you assign it.

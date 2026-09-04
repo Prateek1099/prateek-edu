@@ -25,10 +25,9 @@ export default async function TeacherPaperArchivePage({
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <header className="max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Teacher Paper Archive</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Saved papers</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Reopen immutable papers saved by this workspace and reproduce their previews,
-          answer keys, print output, and editable DOCX files.
+          Reopen papers saved by your workspace for preview, answer keys, printing, and editable DOCX files.
         </p>
       </header>
       <PaperBuilderModeNav
@@ -41,7 +40,7 @@ export default async function TeacherPaperArchivePage({
           href="/workspace/paper-builder"
           className={buttonVariants({ variant: "outline" })}
         >
-          Paper Builder
+          Quick Paper
         </Link>
         <Link
           href="/workspace/paper-builder/archive?status=active"
@@ -58,8 +57,7 @@ export default async function TeacherPaperArchivePage({
       </div>
       <TeacherArchiveClient papers={papers} status={status} />
       <p className="text-xs leading-5 text-muted-foreground">
-        Saved papers remain private to this workspace. Phase 1C does not assign papers to
-        students or permanently delete archive history.
+        Saved papers remain private to your workspace and are not assigned to students automatically.
       </p>
     </div>
   );

@@ -92,7 +92,7 @@ test("teacher policy allows every supported global type but only workspace MCQs"
 });
 
 test("teacher save creates only an immutable workspace-owned paper snapshot", () => {
-  assert.match(page, /private to this workspace/);
+  assert.match(page, /private to your workspace/);
   assert.match(archiveActions, /requireActiveWorkspace\(\)/);
   assert.match(archiveActions, /validateTeacherPaperSelectionForWorkspace/);
   assert.match(archiveActions, /workspaceId: teacher\.workspaceId/);

@@ -15,7 +15,7 @@ const access = read("src/lib/challenge-access.ts");
 const tracking = read("src/lib/workspace-assignment-tracking.ts");
 
 test("remedial entry point and every read/write path require an active teacher workspace", () => {
-  assert.match(detailPage, /Create Remedial Practice/);
+  assert.match(detailPage, /Create follow-up practice/);
   assert.match(remedialPage, /getTeacherRemedialPracticeContext/);
   assert.match(remedialAction, /createTeacherRemedialPractice/);
   assert.ok((service.match(/requireActiveWorkspace\(\)/g) ?? []).length >= 2);

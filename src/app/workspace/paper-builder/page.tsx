@@ -73,7 +73,7 @@ export default async function TeacherPaperBuilderPage({
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">Paper Builder Standard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Quick Paper</h1>
           <p className="mt-2 text-muted-foreground">
             Build printable mixed-format papers from the Question Bank available to your workspace.
           </p>
@@ -141,15 +141,15 @@ export default async function TeacherPaperBuilderPage({
   return (
     <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Paper Builder Standard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Quick Paper</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Assemble a mixed-format question paper from Vexa questions and MCQs in your workspace Question Bank.
-          Preview, print, download, or preserve an immutable copy in your workspace archive.
+          Create a mixed-format test quickly from the questions available to your workspace.
+          Preview, print, download, or save a copy when the paper is ready.
         </p>
       </header>
 
       <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        Saving is optional. A saved paper stays private to this workspace and does not create an assignment or publish student work.
+        Saving is optional. Saved papers stay private to your workspace and are not assigned to students automatically.
       </div>
 
       <PaperBuilderModeNav
@@ -234,6 +234,7 @@ export default async function TeacherPaperBuilderPage({
         defaultInstitutionName={workspace?.name || "VEXA"}
         academicScopeDescription="Choose an assigned subject and one or more topics. Global Vexa questions can use all supported types; workspace-owned questions remain MCQ-only."
         previewDescription="Validated against your active academic scope and current workspace Question Bank. Save an immutable copy only when the paper is final."
+        teacherFriendlyLabels
         savePaper={{
           action: saveTeacherGeneratedPaper,
           archiveHref: "/workspace/paper-builder/archive",

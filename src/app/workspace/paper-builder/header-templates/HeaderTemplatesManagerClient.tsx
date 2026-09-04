@@ -123,7 +123,7 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/workspace/paper-builder" className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft className="size-4" /> Back to Paper Builder
+          <ArrowLeft className="size-4" /> Back to Quick Paper
         </Link>
         <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Header template status">
           <Link
@@ -206,13 +206,13 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
           <h2 className="text-xl font-semibold">{status === "archived" ? "Archived templates" : "Active templates"}</h2>
           <p className="text-sm text-muted-foreground">
             {status === "archived"
-              ? "Restore a template before it can be selected in Paper Builder."
-              : "Active templates are available in Teacher Paper Builder."}
+              ? "Restore a paper header before it can be selected."
+              : "Active paper headers are available in both paper builders."}
           </p>
         </div>
         {templates.length === 0 ? (
           <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            {status === "archived" ? "No archived header templates." : "No header templates yet."}
+            {status === "archived" ? "No archived paper headers." : "No saved paper headers yet."}
           </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">

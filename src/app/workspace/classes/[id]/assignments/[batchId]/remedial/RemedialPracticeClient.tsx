@@ -30,7 +30,7 @@ import { createRemedialPracticeAction } from "./actions";
 
 function defaultTitle(context: RemedialPracticeContext) {
   const topic = context.weakTopics[0]?.name ?? context.sourceChallengeTitle;
-  return `Remedial Practice: ${topic}`;
+  return `Follow-up practice: ${topic}`;
 }
 
 function studentLabel(student: RemedialPracticeContext["students"][number]) {
@@ -78,7 +78,7 @@ export default function RemedialPracticeClient({
 
   function addQuestion(questionId: string) {
     if (selectedQuestionIds.length >= 10) {
-      toast.error("A remedial practice can contain at most 10 questions.");
+      toast.error("Follow-up practice can contain at most 10 questions.");
       return;
     }
     setSelectedQuestionIds((current) => current.includes(questionId) ? current : [...current, questionId]);
@@ -99,9 +99,9 @@ export default function RemedialPracticeClient({
   }
 
   function handleCreate() {
-    if (!title.trim()) return toast.error("Add a title for the remedial practice.");
+    if (!title.trim()) return toast.error("Add a title for the follow-up practice.");
     if (selectedQuestionIds.length < 1 || selectedQuestionIds.length > 10) {
-      return toast.error("Choose between 1 and 10 remedial questions.");
+      return toast.error("Choose between 1 and 10 follow-up questions.");
     }
     if (selectedStudentIds.length < 1) return toast.error("Select at least one active student.");
 
@@ -119,7 +119,7 @@ export default function RemedialPracticeClient({
         return;
       }
       toast.success(
-        `Remedial practice created and assigned to ${result.data.assignedCount} student${result.data.assignedCount === 1 ? "" : "s"}.`,
+        `Follow-up practice created and assigned to ${result.data.assignedCount} student${result.data.assignedCount === 1 ? "" : "s"}.`,
       );
       router.push(`/workspace/classes/${context.classId}/assignments/${result.data.batchId}`);
       router.refresh();
@@ -143,7 +143,7 @@ export default function RemedialPracticeClient({
           <Badge variant="outline">{context.subjectName}</Badge>
           <Badge variant="outline">{context.className}</Badge>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Create remedial practice</h1>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Create follow-up practice</h1>
         <p className="max-w-3xl text-sm text-muted-foreground">
           Review questions suggested from real wrong answers in “{context.sourceChallengeTitle}”.
           Nothing is created or assigned until you confirm below.

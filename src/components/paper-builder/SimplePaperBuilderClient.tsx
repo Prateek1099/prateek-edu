@@ -106,6 +106,7 @@ export type SimplePaperBuilderProps = {
   defaultInstitutionName?: string;
   academicScopeDescription?: string;
   previewDescription?: string;
+  teacherFriendlyLabels?: boolean;
   savePaper?: {
     action: (input: TeacherSaveGeneratedPaperInput) => Promise<SavePaperActionResult>;
     archiveHref: string;
@@ -165,6 +166,7 @@ export default function SimplePaperBuilderClient({
   defaultInstitutionName = initialDetails.institutionName,
   academicScopeDescription = "Choose one subject and one or more syllabus topics. Only global Vexa questions are available.",
   previewDescription = "Validated from current global Question Bank records. Nothing has been saved.",
+  teacherFriendlyLabels = false,
   savePaper,
 }: SimplePaperBuilderProps) {
   const router = useRouter();
@@ -763,7 +765,7 @@ export default function SimplePaperBuilderClient({
       setSavePaperName((current) =>
         current.trim()
           ? current
-          : `Paper Builder Standard - ${result.paper.subjectName} - ${new Date()
+          : `${teacherFriendlyLabels ? "Quick Paper" : "Paper Builder Standard"} - ${result.paper.subjectName} - ${new Date()
               .toISOString()
               .slice(0, 10)}`,
       );
@@ -1118,7 +1120,7 @@ export default function SimplePaperBuilderClient({
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <StepHeader step="4" title="Select questions" description="Choose manually or assemble random sections, then replace, remove, or reorder individual questions." />
-            <Button type="button" onClick={generateAllRandomly} disabled={!subjectId || topicIds.length === 0 || !availabilityOkay}><Shuffle className="size-4" /> Randomly fill all sections</Button>
+            <Button type="button" onClick={generateAllRandomly} disabled={!subjectId || topicIds.length === 0 || !availabilityOkay}><Shuffle className="size-4" /> {teacherFriendlyLabels ? "Choose questions for me" : "Randomly fill all sections"}</Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -1180,7 +1182,7 @@ export default function SimplePaperBuilderClient({
       </Card>
 
       <Card>
-        <CardHeader><StepHeader step="5" title="Validate and preview" description="The server rechecks authorization, ownership, scope, type-specific completeness, marks, and duplicates." /></CardHeader>
+        <CardHeader><StepHeader step="5" title={teacherFriendlyLabels ? "Preview paper" : "Validate and preview"} description={teacherFriendlyLabels ? "We’ll check the paper one more time before opening the preview." : "The server rechecks authorization, ownership, scope, type-specific completeness, marks, and duplicates."} /></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatusItem good={patternMarks > 0} label={`Sections total ${patternMarks} marks`} />
@@ -1189,7 +1191,7 @@ export default function SimplePaperBuilderClient({
             <StatusItem good={!duplicateError} label={duplicateError ?? "No duplicate IDs or text"} />
           </div>
           {!availabilityOkay && <Warning message="At least one pattern row does not have enough matching Question Bank records." />}
-          <Button type="button" size="lg" className="h-12 w-full sm:w-auto" onClick={validateAndPreview} disabled={!canValidate || validating}><FileCheck2 className="size-5" /> {validating ? "Validating…" : "Validate and open preview"}</Button>
+          <Button type="button" size="lg" className="h-12 w-full sm:w-auto" onClick={validateAndPreview} disabled={!canValidate || validating}><FileCheck2 className="size-5" /> {validating ? "Checking paper…" : teacherFriendlyLabels ? "Preview paper" : "Validate and open preview"}</Button>
         </CardContent>
       </Card>
       </div>
@@ -1222,7 +1224,7 @@ export default function SimplePaperBuilderClient({
                     value={savePaperName}
                     maxLength={200}
                     onChange={(event) => setSavePaperName(event.target.value)}
-                    placeholder={`Paper Builder Standard - ${validatedPaper.subjectName} - YYYY-MM-DD`}
+                    placeholder={`${teacherFriendlyLabels ? "Quick Paper" : "Paper Builder Standard"} - ${validatedPaper.subjectName} - YYYY-MM-DD`}
                   />
                 </Field>
                 <Button

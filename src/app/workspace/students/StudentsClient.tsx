@@ -54,15 +54,15 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
     return 0;
   });
 
-  const SortIcon = ({ field }: { field: keyof StudentData }) => {
+  const renderSortIcon = (field: keyof StudentData) => {
     if (sortField !== field) return null;
     return sortDirection === "asc" ? <ChevronUp className="inline w-4 h-4 ml-1" /> : <ChevronDown className="inline w-4 h-4 ml-1" />;
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="relative w-full max-w-md flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search students, emails, or classes..." 
@@ -76,16 +76,16 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
         </div>
       </div>
 
-      <div className="rounded-md border border-border overflow-hidden bg-card">
+      <div className="overflow-x-auto rounded-md border border-border bg-card">
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
               <TableHead className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("name")}>
-                Student <SortIcon field="name" />
+                Student {renderSortIcon("name")}
               </TableHead>
               <TableHead>Classes</TableHead>
               <TableHead className="cursor-pointer text-center hover:bg-muted/50 transition-colors" onClick={() => handleSort("averageScore")}>
-                Avg Score <SortIcon field="averageScore" />
+                Avg Score {renderSortIcon("averageScore")}
               </TableHead>
               <TableHead>Weak Topics</TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -95,7 +95,9 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
             {sorted.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8 text-muted-foreground bg-background">
-                  No students found matching your criteria.
+                  {initialStudents.length === 0
+                    ? "No one has joined yet. Share the class code with students."
+                    : "No students match your search."}
                 </TableCell>
               </TableRow>
             ) : (
@@ -144,12 +146,12 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                         ))}
                       </div>
                     ) : (
-                      <span className="text-muted-foreground text-xs">Insufficient Data</span>
+                      <span className="text-muted-foreground text-xs">Not enough attempts yet</span>
                     )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/workspace/students/${student.id}`}>
-                      <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary hover:bg-primary/10">
+                      <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10">
                         View Profile
                       </Button>
                     </Link>

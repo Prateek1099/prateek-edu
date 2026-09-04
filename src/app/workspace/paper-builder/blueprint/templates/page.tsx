@@ -45,10 +45,10 @@ export default async function TeacherBlueprintTemplatesPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">Blueprint Templates</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Saved chapter patterns</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Manage reusable topic-wise blueprint patterns for your assigned subjects. Templates store
-          rules only—never selected or generated questions.
+          Reuse chapter-wise question and marks patterns for your assigned subjects. Saved patterns
+          never contain selected questions.
         </p>
       </header>
 

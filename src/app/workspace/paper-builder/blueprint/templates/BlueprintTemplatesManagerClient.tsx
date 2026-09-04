@@ -179,7 +179,7 @@ export default function BlueprintTemplatesManagerClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/workspace/paper-builder/blueprint" className={buttonVariants({ variant: "outline" })}>
-          <ExternalLink className="size-4" /> Open Blueprint Builder
+          <ExternalLink className="size-4" /> Open Chapter-wise Paper
         </Link>
         <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Blueprint template status">
           {(["active", "archived"] as const).map((item) => (
@@ -204,11 +204,11 @@ export default function BlueprintTemplatesManagerClient({
       {templates.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
           <h2 className="font-semibold">
-            {status === "active" ? "No Blueprint Templates yet" : "No archived Blueprint Templates"}
+            {status === "active" ? "No saved chapter patterns yet" : "No archived chapter patterns"}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             {status === "active"
-              ? "Build a pattern in Blueprint Builder, then choose Save as Blueprint Template."
+              ? "Build a pattern in Chapter-wise Paper, then save it for later."
               : "Archived templates will appear here and can be restored safely."}
           </p>
         </div>

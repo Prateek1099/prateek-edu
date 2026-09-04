@@ -46,8 +46,8 @@ test("profile shows all approved statuses, attempt metrics, review states, and e
     "Open Assignment Detail",
     "This student has no assigned work in this class yet.",
     "This student has not attempted this assignment yet.",
-    "Detailed answer review was not captured for this older attempt.",
-    "No mistakes recorded yet.",
+    "This attempt was completed before detailed answer review was available.",
+    "No recorded mistakes yet. They’ll appear after this student completes assigned practice.",
   ]) {
     assert.match(page, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }

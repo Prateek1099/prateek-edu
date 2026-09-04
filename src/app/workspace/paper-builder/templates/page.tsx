@@ -38,10 +38,10 @@ export default async function WorkspacePaperTemplatesPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">Simple Paper Templates</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Saved paper setups</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Manage reusable subject, topic, and section patterns for Teacher Paper Builder Standard.
-          Templates never contain selected or generated questions.
+          Reuse the same subjects, topics, sections, and marks when creating a Quick Paper.
+          Saved setups do not contain selected questions.
         </p>
       </header>
 

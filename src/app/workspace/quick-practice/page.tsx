@@ -81,7 +81,7 @@ export default async function WorkspaceQuickPracticePage() {
   return (
     <div className="space-y-8 max-w-7xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Quick Practice</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Practice sets</h1>
         <p className="text-muted-foreground mt-1">
           Rapid-fire assessments for exit tickets and quick reviews.
         </p>

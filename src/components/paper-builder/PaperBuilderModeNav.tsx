@@ -8,6 +8,7 @@ export type PaperBuilderModeNavItem = {
   mode: PaperBuilderMode;
   href: string;
   label: string;
+  emphasis?: "primary" | "secondary";
 };
 
 export const ADMIN_PAPER_BUILDER_NAV_ITEMS: PaperBuilderModeNavItem[] = [
@@ -18,12 +19,12 @@ export const ADMIN_PAPER_BUILDER_NAV_ITEMS: PaperBuilderModeNavItem[] = [
 ];
 
 export const WORKSPACE_PAPER_BUILDER_NAV_ITEMS: PaperBuilderModeNavItem[] = [
-  { mode: "simple", href: "/workspace/paper-builder", label: "Simple Builder" },
-  { mode: "blueprint", href: "/workspace/paper-builder/blueprint", label: "Blueprint Builder" },
-  { mode: "templates", href: "/workspace/paper-builder/templates", label: "Simple Templates" },
-  { mode: "blueprint-templates", href: "/workspace/paper-builder/blueprint/templates", label: "Blueprint Templates" },
-  { mode: "header-templates", href: "/workspace/paper-builder/header-templates", label: "Header Templates" },
-  { mode: "archive", href: "/workspace/paper-builder/archive", label: "Teacher Paper Archive" },
+  { mode: "simple", href: "/workspace/paper-builder", label: "Quick Paper", emphasis: "primary" },
+  { mode: "blueprint", href: "/workspace/paper-builder/blueprint", label: "Chapter-wise Paper", emphasis: "primary" },
+  { mode: "templates", href: "/workspace/paper-builder/templates", label: "Saved paper setups", emphasis: "secondary" },
+  { mode: "blueprint-templates", href: "/workspace/paper-builder/blueprint/templates", label: "Saved chapter patterns", emphasis: "secondary" },
+  { mode: "header-templates", href: "/workspace/paper-builder/header-templates", label: "Paper headers", emphasis: "secondary" },
+  { mode: "archive", href: "/workspace/paper-builder/archive", label: "Saved papers", emphasis: "secondary" },
 ];
 
 export function PaperBuilderModeNav({
@@ -35,20 +36,34 @@ export function PaperBuilderModeNav({
   items?: PaperBuilderModeNavItem[];
   ariaLabel?: string;
 }) {
+  const isTeacherNavigation = items === WORKSPACE_PAPER_BUILDER_NAV_ITEMS;
+
   return (
-    <nav className="paper-builder-screen-only flex w-fit max-w-full flex-wrap rounded-xl border bg-muted/40 p-1" aria-label={ariaLabel}>
-      {items.map((item) => (
-        <Link
-          key={item.mode}
-          href={item.href}
-          className={cn(
-            "rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
-            mode === item.mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
+    <div className="paper-builder-screen-only space-y-2">
+      <nav className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border bg-muted/40 p-1" aria-label={ariaLabel}>
+        {items.map((item) => (
+          <Link
+            key={item.mode}
+            href={item.href}
+            className={cn(
+              "rounded-lg px-3 py-2 font-semibold transition-colors",
+              item.emphasis === "secondary" ? "text-xs" : "text-sm",
+              mode === item.mode
+                ? "bg-background text-foreground shadow-sm"
+                : item.emphasis === "secondary"
+                  ? "text-muted-foreground hover:bg-background/70 hover:text-foreground"
+                  : "text-foreground hover:bg-background/70",
+            )}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      {isTeacherNavigation ? (
+        <p className="text-sm text-muted-foreground">
+          Use Quick Paper for fast tests. Use Chapter-wise Paper when you need exact chapter marks.
+        </p>
+      ) : null}
+    </div>
   );
 }

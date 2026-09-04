@@ -68,7 +68,7 @@ export default async function TeacherBlueprintBuilderPage({
     return (
       <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
         <header className="paper-builder-screen-only max-w-4xl">
-          <h1 className="text-3xl font-bold tracking-tight">Blueprint Builder</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Chapter-wise Paper</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
             Build a paper from topic-wise marks and question distribution.
           </p>
@@ -84,14 +84,14 @@ export default async function TeacherBlueprintBuilderPage({
   return (
     <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Blueprint Builder</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Chapter-wise Paper</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Build a paper from topic-wise marks and question distribution. Generated papers can be saved to your Teacher Paper Archive.
+          Set exact marks and question types for each chapter, then build the complete paper.
         </p>
       </header>
 
       <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        Generation uses your active academic scope. Global Vexa questions support all seven paper types; workspace-owned questions remain MCQ-only.
+        You can use every supported question type from the Vexa library. Questions added by your workspace remain MCQ-only for now.
       </div>
 
       {navigation}
@@ -133,7 +133,7 @@ export default async function TeacherBlueprintBuilderPage({
       />
 
       <p className="paper-builder-screen-only text-xs leading-5 text-muted-foreground">
-        Blueprint templates save only reusable topic and section rules. Saving a generated paper still creates a separate private immutable snapshot in your Teacher Paper Archive; neither action assigns work to students.
+        Saved chapter patterns keep only your reusable chapter and marks setup. Saving a finished paper is separate, and neither action assigns work to students.
       </p>
     </div>
   );

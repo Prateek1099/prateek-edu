@@ -148,9 +148,9 @@ test("teacher template management route supports apply, edit, duplicate, archive
   assert.doesNotMatch(managerClient, /permanent|Delete pattern|hard delete/i);
 });
 
-test("teacher navigation gains Blueprint Templates while admin navigation is unchanged", () => {
+test("teacher navigation shows Saved chapter patterns while admin navigation is unchanged", () => {
   assert.match(navigation, /\/workspace\/paper-builder\/blueprint\/templates/);
-  assert.match(navigation, /label: "Blueprint Templates"/);
+  assert.match(navigation, /label: "Saved chapter patterns"/);
   const adminBlock = navigation.slice(
     navigation.indexOf("ADMIN_PAPER_BUILDER_NAV_ITEMS"),
     navigation.indexOf("WORKSPACE_PAPER_BUILDER_NAV_ITEMS"),

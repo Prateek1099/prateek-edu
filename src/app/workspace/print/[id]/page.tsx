@@ -60,7 +60,7 @@ export default async function WorkspaceContentPrintPage({
     <div className="mx-auto min-h-screen max-w-4xl py-2 print:py-0">
       <div className="mb-8 flex flex-col gap-3 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <Link href={backUrl} className="flex items-center gap-1 text-sm text-primary hover:underline">
-          <ArrowLeft className="size-4" /> Back to {content.type === "QUICK_PRACTICE" ? "Quick Practice" : "Worksheets"}
+          <ArrowLeft className="size-4" /> Back to {content.type === "QUICK_PRACTICE" ? "Practice sets" : "Worksheets"}
         </Link>
         <PrintButton label="Print questions and solutions" />
       </div>

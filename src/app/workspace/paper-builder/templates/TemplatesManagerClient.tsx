@@ -174,7 +174,7 @@ export default function TemplatesManagerClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/workspace/paper-builder" className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft className="size-4" /> Back to Paper Builder
+          <ArrowLeft className="size-4" /> Back to Quick Paper
         </Link>
         <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Paper template status">
           {(["active", "archived"] as const).map((item) => (
@@ -300,11 +300,11 @@ export default function TemplatesManagerClient({
         <div>
           <h2 className="text-xl font-semibold capitalize">{status} templates</h2>
           <p className="text-sm text-muted-foreground">
-            {status === "active" ? "Apply a template to start a fresh browser-session paper draft." : "Restore a template before using it in Paper Builder."}
+            {status === "active" ? "Apply a saved setup to start a fresh paper." : "Restore a saved setup before using it in Quick Paper."}
           </p>
         </div>
         {templates.length === 0 ? (
-          <Empty message={status === "active" ? "No simple paper templates yet." : "No archived simple paper templates."} />
+          <Empty message={status === "active" ? "Save a setup when you want to reuse the same topics and marks later." : "No archived paper setups."} />
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {templates.map((template) => (

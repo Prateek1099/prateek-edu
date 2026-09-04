@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
+  Home,
   Users,
   FileText,
   Settings,
@@ -22,16 +22,43 @@ import { useState } from "react";
 
 type NavItem = { href: string; label: string; icon: React.ElementType; match: "exact" | "prefix" };
 
-const navItems: NavItem[] = [
-  { href: "/workspace", label: "Dashboard", icon: LayoutDashboard, match: "exact" },
-  { href: "/workspace/classes", label: "Classes", icon: Users, match: "prefix" },
-  { href: "/workspace/students", label: "Students", icon: UserCircle, match: "prefix" },
-  { href: "/workspace/question-bank", label: "Question Bank", icon: Database, match: "prefix" },
-  { href: "/workspace/paper-builder", label: "Paper Builder", icon: FileStack, match: "exact" },
-  { href: "/workspace/paper-builder/archive", label: "Paper Archive", icon: Archive, match: "prefix" },
-  { href: "/workspace/worksheets", label: "Worksheets", icon: FileText, match: "prefix" },
-  { href: "/workspace/quick-practice", label: "Quick Practice", icon: Zap, match: "prefix" },
-  { href: "/workspace/settings", label: "Settings", icon: Settings, match: "prefix" },
+type NavSection = { label?: string; items: NavItem[] };
+
+const navSections: NavSection[] = [
+  {
+    items: [{ href: "/workspace", label: "Home", icon: Home, match: "exact" }],
+  },
+  {
+    label: "Teach",
+    items: [
+      { href: "/workspace/classes", label: "Classes", icon: Users, match: "prefix" },
+      { href: "/workspace/students", label: "All students", icon: UserCircle, match: "prefix" },
+    ],
+  },
+  {
+    label: "Create",
+    items: [
+      { href: "/workspace/quick-practice", label: "Practice sets", icon: Zap, match: "prefix" },
+      { href: "/workspace/worksheets", label: "Worksheets", icon: FileText, match: "prefix" },
+      { href: "/workspace/content", label: "Class materials", icon: Briefcase, match: "prefix" },
+      { href: "/workspace/question-bank", label: "Question bank", icon: Database, match: "prefix" },
+    ],
+  },
+  {
+    label: "Papers",
+    items: [
+      { href: "/workspace/paper-builder", label: "Quick Paper", icon: FileStack, match: "exact" },
+      { href: "/workspace/paper-builder/blueprint", label: "Chapter-wise Paper", icon: FileStack, match: "exact" },
+      { href: "/workspace/paper-builder/templates", label: "Saved paper setups", icon: FileStack, match: "prefix" },
+      { href: "/workspace/paper-builder/blueprint/templates", label: "Saved chapter patterns", icon: FileStack, match: "prefix" },
+      { href: "/workspace/paper-builder/header-templates", label: "Paper headers", icon: FileStack, match: "prefix" },
+      { href: "/workspace/paper-builder/archive", label: "Saved papers", icon: Archive, match: "prefix" },
+    ],
+  },
+  {
+    label: "Settings",
+    items: [{ href: "/workspace/settings", label: "Settings", icon: Settings, match: "prefix" }],
+  },
 ];
 
 function linkActive(pathname: string, href: string, match: "exact" | "prefix") {
@@ -53,7 +80,7 @@ function WorkspaceNavigation({
       <div className="border-b border-border/60 p-5">
         <Link href="/workspace" className="block" onClick={onNavigate}>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
-            Workspace
+            Teacher workspace
           </p>
           <h1 className="mt-0.5 flex items-center gap-2 text-lg font-bold tracking-tight text-foreground">
             <Briefcase className="size-5 shrink-0 text-primary" />
@@ -63,27 +90,36 @@ function WorkspaceNavigation({
       </div>
 
       <nav className="flex flex-1 flex-col overflow-y-auto p-3">
-        <div className="flex flex-col gap-0.5">
-          {navItems.map((item) => {
-            const active = linkActive(pathname, item.href, item.match);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={onNavigate}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="size-4 shrink-0 opacity-80" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
+        {navSections.map((section, sectionIndex) => (
+          <div key={section.label ?? "home"} className={sectionIndex === 0 ? "" : "mt-4"}>
+            {section.label ? (
+              <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/65">
+                {section.label}
+              </p>
+            ) : null}
+            <div className="flex flex-col gap-0.5">
+              {section.items.map((item) => {
+                const active = linkActive(pathname, item.href, item.match);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    className={cn(
+                      "flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <item.icon className="size-4 shrink-0 opacity-80" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Sign out */}
@@ -107,7 +143,7 @@ export function WorkspaceSidebar({ workspaceName }: { workspaceName: string }) {
 
   return (
     <>
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-4 backdrop-blur lg:hidden print:hidden">
+      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-border/60 bg-background/95 px-4 backdrop-blur lg:hidden print:hidden">
         <Link href="/workspace" className="flex min-w-0 items-center gap-2 font-bold" onClick={() => setMobileOpen(false)}>
           <Briefcase className="size-5 shrink-0 text-primary" />
           <span className="truncate">{workspaceName}</span>

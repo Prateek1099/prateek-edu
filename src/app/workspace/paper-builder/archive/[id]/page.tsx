@@ -20,7 +20,7 @@ export default async function TeacherSavedGeneratedPaperPage({
     <SavedPaperViewerClient
       saved={saved}
       archiveHref="/workspace/paper-builder/archive"
-      archiveLabel="Teacher Paper Archive"
+      archiveLabel="Saved papers"
     />
   );
 }

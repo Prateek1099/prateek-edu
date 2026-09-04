@@ -28,9 +28,9 @@ export default async function WorkspacePaperHeaderTemplatesPage({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight">Paper Header Templates</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Paper headers</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Reuse school, exam, class, timing, and instruction defaults in Teacher Paper Builder. Templates never contain questions or marks.
+          Reuse your school, exam, class, timing, and instruction details across papers.
         </p>
       </header>
 
