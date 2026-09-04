@@ -185,6 +185,9 @@ test("admin Blueprint remains SUPER_ADMIN-only and the teacher UI uses only the 
   assert.match(teacherClient, /validateTeacherBlueprintSelection/);
   assert.match(teacherClient, /saveTeacherBlueprintGeneratedPaper/);
   assert.doesNotMatch(teacherClient, /@\/app\/admin|\/admin\/paper-builder/);
-  assert.doesNotMatch(workspaceSidebar, /\/workspace\/paper-builder\/blueprint/);
+  assert.match(
+    workspaceSidebar,
+    /href: "\/workspace\/paper-builder\/blueprint", label: "Chapter-wise Paper"/,
+  );
   assert.doesNotMatch(schema, /model WorkspacePaperBlueprint|model TeacherPaperBlueprint/);
 });
