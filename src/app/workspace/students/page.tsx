@@ -101,7 +101,7 @@ export default async function WorkspaceStudentsPage() {
           All students
         </h1>
         <p className="text-muted-foreground mt-2 text-lg">
-          See students across all of your active classes.
+          A workspace-wide directory. Open a student from a class to keep their subject and assignment context clear.
         </p>
       </div>
       

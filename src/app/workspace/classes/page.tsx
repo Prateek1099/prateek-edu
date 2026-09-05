@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import WorkspaceClassesClient from "./WorkspaceClassesClient";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import { summarizeClassWork } from "@/lib/teacher-daily-workflow";
+import { getWorkspaceClassAssignmentTracking } from "@/lib/workspace-assignment-tracking";
 
 export default async function WorkspaceClassesPage() {
   const user = await requireActiveWorkspace();
@@ -25,5 +27,20 @@ export default async function WorkspaceClassesPage() {
     new Map(subjects.map((subject) => [subject.qualification.id, subject.qualification])).values(),
   );
 
-  return <WorkspaceClassesClient classes={classes} subjects={subjects} qualifications={qualifications} hasAcademicScope={scopes.length > 0} />;
+  const assignmentGroups = await Promise.all(
+    classes.map((classData) =>
+      classData.status === "ACTIVE"
+        ? getWorkspaceClassAssignmentTracking({
+            workspaceId: user.workspaceId,
+            classId: classData.id,
+          })
+        : Promise.resolve([]),
+    ),
+  );
+  const classesWithWork = classes.map((classData, index) => ({
+    ...classData,
+    workSummary: summarizeClassWork(assignmentGroups[index]),
+  }));
+
+  return <WorkspaceClassesClient classes={classesWithWork} subjects={subjects} qualifications={qualifications} hasAcademicScope={scopes.length > 0} />;
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
+  ChevronRight,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -27,7 +27,7 @@ import {
 } from "@/app/actions/workspace-assignments";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -96,6 +96,10 @@ function contentTypeLabel(type: string) {
   return "Worksheet";
 }
 
+function statusLabel(status: string) {
+  return status.charAt(0) + status.slice(1).toLowerCase();
+}
+
 function formatClassDate(value: Date | string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
@@ -126,6 +130,15 @@ export default function ClassDetailClient({
   const [studentEmail, setStudentEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [joinCode, setJoinCode] = useState(classData.joinCode);
+  const orderedAssignments = [...assignments].sort((left, right) => {
+    const priority = (assignment: Assignment) => {
+      if (assignment.status === "CANCELLED") return 3;
+      if (assignment.summary.overdue > 0) return 0;
+      if (assignment.summary.pending > 0) return 1;
+      return 2;
+    };
+    return priority(left) - priority(right);
+  });
 
   const handleAddStudent = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -212,13 +225,13 @@ export default function ClassDetailClient({
   };
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl space-y-7 pb-10">
       <div>
-        <Link href="/workspace/classes" className="inline-flex">
-          <Button variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="mr-2 size-4" /> Back to Classes
-          </Button>
-        </Link>
+        <nav aria-label="Breadcrumb" className="mb-4 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+          <Link href="/workspace/classes" className="shrink-0 hover:text-foreground hover:underline">Classes</Link>
+          <ChevronRight className="size-3.5 shrink-0" />
+          <span className="truncate font-medium text-foreground" aria-current="page">{classData.name}</span>
+        </nav>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">{classData.name}</h1>
@@ -228,14 +241,14 @@ export default function ClassDetailClient({
               <span>· {classData.academicYear}</span>
             </div>
           </div>
-          <Badge variant={classData.status === "ACTIVE" ? "default" : "secondary"}>{classData.status}</Badge>
+          <Badge variant={classData.status === "ACTIVE" ? "default" : "secondary"}>{statusLabel(classData.status)}</Badge>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl border bg-muted/15">
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="mb-1 text-sm font-medium text-muted-foreground">Join Code</p>
+            <p className="mb-1 text-sm font-medium text-muted-foreground">Join code</p>
             <p className="text-2xl font-mono font-bold tracking-wider">{joinCode}</p>
             <p className="mt-1 text-xs text-muted-foreground">Share this code with student accounts only.</p>
           </div>
@@ -247,13 +260,13 @@ export default function ClassDetailClient({
               <RefreshCw className="mr-1 size-4" /> Regenerate
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="students" className="gap-2"><Users className="size-4" /> Students</TabsTrigger>
+        <TabsList className="mb-4 grid h-auto w-full grid-cols-2 sm:w-auto">
           <TabsTrigger value="assignments" className="gap-2"><BookOpen className="size-4" /> Assigned Work</TabsTrigger>
+          <TabsTrigger value="students" className="gap-2"><Users className="size-4" /> Students</TabsTrigger>
         </TabsList>
 
         <TabsContent value="students">
@@ -267,7 +280,26 @@ export default function ClassDetailClient({
                 <Button size="sm" onClick={() => setIsAddOpen(true)}><UserPlus className="mr-2 size-4" /> Add Student</Button>
               </div>
             </CardHeader>
-            <div className="overflow-x-auto border-t">
+            <div className="divide-y border-t md:hidden">
+              {classData.students.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">No one has joined yet. Share the class code with students.</p>
+              ) : classData.students.map((enrollment) => (
+                <article key={enrollment.id} className="space-y-3 p-4">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-semibold">{enrollment.student.name || "Unnamed student"}</h3>
+                    <p className="break-all text-sm text-muted-foreground">{enrollment.student.email}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Joined {formatClassDate(enrollment.enrolledAt)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link href={`/workspace/classes/${classData.id}/students/${enrollment.student.id}`} className="flex-1">
+                      <Button variant="outline" size="sm" className="w-full">View Profile</Button>
+                    </Link>
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveStudent(enrollment.student.id)} title="Remove student"><UserMinus className="size-4 text-destructive" /></Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto border-t md:block">
               <Table>
                 <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Enrolled</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -281,7 +313,7 @@ export default function ClassDetailClient({
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Link href={`/workspace/classes/${classData.id}/students/${enrollment.student.id}`}>
-                            <Button variant="ghost" size="sm">View Profile</Button>
+                            <Button variant="outline" size="sm">View Profile</Button>
                           </Link>
                           <Button variant="ghost" size="sm" onClick={() => handleRemoveStudent(enrollment.student.id)} title="Remove student"><UserMinus className="size-4 text-destructive" /></Button>
                         </div>
@@ -307,17 +339,46 @@ export default function ClassDetailClient({
                 </Button>
               </div>
             </CardHeader>
-            <div className="overflow-x-auto border-t">
+            <div className="divide-y border-t md:hidden">
+              {assignments.length === 0 ? (
+                <p className="p-8 text-center text-sm text-muted-foreground">Nothing assigned to this class yet. Choose a practice set or worksheet to begin.</p>
+              ) : orderedAssignments.map((assignment) => (
+                <article key={assignment.id} className={"space-y-4 p-4 " + (assignment.status === "CANCELLED" ? "opacity-60" : "")}>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge>
+                      <Badge variant={assignment.status === "ACTIVE" ? "default" : "secondary"}>{statusLabel(assignment.status)}</Badge>
+                    </div>
+                    <h3 className="mt-2 break-words font-semibold">{assignment.challenge.title}</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {assignment.audience === "CLASS" ? "Entire class" : "Selected students"} · Due {assignment.dueDate ? formatClassDate(assignment.dueDate) : "No due date"}
+                    </p>
+                  </div>
+                  <dl className="grid grid-cols-3 gap-2 text-sm">
+                    <div><dt className="text-xs text-muted-foreground">Assigned</dt><dd className="font-semibold">{assignment.summary.assigned}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Completed</dt><dd className="font-semibold text-emerald-600">{assignment.summary.completed}</dd></div>
+                    <div><dt className="text-xs text-muted-foreground">Pending</dt><dd className="font-semibold">{assignment.summary.pending}</dd></div>
+                  </dl>
+                  {assignment.summary.overdue > 0 ? <p className="text-sm font-semibold text-destructive">{assignment.summary.overdue} student{assignment.summary.overdue === 1 ? " is" : "s are"} overdue</p> : null}
+                  <div className="flex flex-col gap-2">
+                    <Link href={`/workspace/classes/${classData.id}/assignments/${assignment.id}`}><Button size="sm" className="w-full">View details</Button></Link>
+                    <Button variant="outline" size="sm" onClick={() => setRecipientAssignment(assignment)}>Manage recipients</Button>
+                    {assignment.status === "ACTIVE" ? <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleCancelAssignment(assignment)}><XCircle className="mr-1 size-4" /> Cancel assignment</Button> : null}
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto border-t md:block">
               <Table>
                 <TableHeader><TableRow><TableHead>Assignment</TableHead><TableHead>Audience</TableHead><TableHead>Due</TableHead><TableHead>Progress</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {assignments.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">Nothing assigned to this class yet. Choose a practice set or worksheet to begin.</TableCell></TableRow>
-                  ) : assignments.map((assignment) => (
+                  ) : orderedAssignments.map((assignment) => (
                     <TableRow key={assignment.id} className={assignment.status === "CANCELLED" ? "opacity-60" : ""}>
                       <TableCell>
                         <p className="font-medium">{assignment.challenge.title}</p>
-                        <div className="mt-1 flex flex-wrap gap-1.5"><Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge><Badge variant={assignment.status === "ACTIVE" ? "default" : "secondary"}>{assignment.status}</Badge></div>
+                        <div className="mt-1 flex flex-wrap gap-1.5"><Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge><Badge variant={assignment.status === "ACTIVE" ? "default" : "secondary"}>{statusLabel(assignment.status)}</Badge></div>
                         <p className="mt-1 text-xs text-muted-foreground">
                           Assigned {formatClassDate(assignment.createdAt)}
                         </p>
@@ -338,7 +399,7 @@ export default function ClassDetailClient({
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Link href={`/workspace/classes/${classData.id}/assignments/${assignment.id}`}>
-                            <Button variant="ghost" size="sm">View Details</Button>
+                            <Button size="sm">View details</Button>
                           </Link>
                           <Button variant="ghost" size="sm" onClick={() => setRecipientAssignment(assignment)}>Recipients</Button>
                           {assignment.status === "ACTIVE" ? <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleCancelAssignment(assignment)}><XCircle className="mr-1 size-4" /> Cancel</Button> : null}

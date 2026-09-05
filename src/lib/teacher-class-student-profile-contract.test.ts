@@ -41,7 +41,7 @@ test("profile reuses class assignment tracking and remains read-only", () => {
 test("profile shows all approved statuses, attempt metrics, review states, and empty states", () => {
   for (const copy of [
     "Assigned Work",
-    "Mistake Summary",
+    "Areas to revisit",
     "Review Answers",
     "Open Assignment Detail",
     "This student has no assigned work in this class yet.",
@@ -90,8 +90,9 @@ test("legacy workspace student profile redirects into one class-scoped experienc
   assert.match(legacyProfile, /redirect\(`\/workspace\/classes\/\$\{membership\.classId\}\/students\/\$\{studentId\}`\)/);
 });
 
-test("responsive profile uses cards and avoids a wide data table", () => {
-  assert.match(page, /grid gap-4 lg:grid-cols-2/);
+test("responsive profile uses compact rows and avoids a wide data table", () => {
+  assert.match(page, /divide-y overflow-hidden rounded-xl border bg-card/);
+  assert.match(page, /Learning snapshot/);
   assert.match(page, /flex flex-col gap-2 sm:flex-row/);
   assert.doesNotMatch(page, /<Table|overflow-x-auto/);
 });

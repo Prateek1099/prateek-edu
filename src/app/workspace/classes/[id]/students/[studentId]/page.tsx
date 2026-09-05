@@ -1,11 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import {
-  ArrowLeft,
-  BookOpen,
-  CalendarDays,
+  ChevronRight,
   CheckCircle2,
-  Clock,
   ExternalLink,
   Target,
   UserRound,
@@ -73,17 +70,12 @@ export default async function TeacherClassStudentProfilePage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
-      <nav className="flex flex-wrap gap-2" aria-label="Student profile navigation">
-        <Link href={`/workspace/classes/${profile.class.id}`}>
-          <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-            <ArrowLeft className="mr-2 size-4" /> Back to Class
-          </Button>
-        </Link>
-        <Link href={`/workspace/classes/${profile.class.id}?tab=assignments#assigned-work`}>
-          <Button variant="outline" size="sm">
-            <BookOpen className="mr-2 size-4" /> Back to Assigned Work
-          </Button>
-        </Link>
+      <nav className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground" aria-label="Breadcrumb">
+        <Link href="/workspace/classes" className="shrink-0 hover:text-foreground hover:underline">Classes</Link>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <Link href={`/workspace/classes/${profile.class.id}`} aria-label="Back to Class" className="max-w-40 truncate hover:text-foreground hover:underline sm:max-w-64">{profile.class.name}</Link>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span className="truncate font-medium text-foreground" aria-current="page">{studentName}</span>
       </nav>
 
       <Card className="overflow-hidden">
@@ -93,7 +85,7 @@ export default async function TeacherClassStudentProfilePage({
               <UserRound className="size-7" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">Student Profile</p>
+              <p className="text-sm font-medium text-primary">Student in {profile.class.name}</p>
               <h1 className="mt-1 break-words text-2xl font-bold tracking-tight sm:text-3xl">
                 {studentName}
               </h1>
@@ -115,21 +107,34 @@ export default async function TeacherClassStudentProfilePage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Assigned</p><p className="mt-1 text-2xl font-bold">{profile.summary.total}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Completed</p><p className="mt-1 text-2xl font-bold text-emerald-600">{profile.summary.completed}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="mt-1 text-2xl font-bold">{profile.summary.pending}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Overdue</p><p className="mt-1 text-2xl font-bold text-destructive">{profile.summary.overdue}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Average score</p><p className="mt-1 text-2xl font-bold">{profile.summary.averageScore === null ? "—" : `${profile.summary.averageScore}%`}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Latest attempt</p><p className="mt-1 text-sm font-bold leading-snug">{formatDateTime(profile.summary.latestAttemptAt)}</p></CardContent></Card>
-      </div>
+      <section aria-labelledby="learning-snapshot-heading">
+        <h2 id="learning-snapshot-heading" className="mb-3 text-lg font-bold">Learning snapshot</h2>
+        <dl className="grid grid-cols-2 divide-x divide-y overflow-hidden rounded-xl border bg-card sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
+          {[
+            { label: "Assigned", value: profile.summary.total, className: "" },
+            { label: "Completed", value: profile.summary.completed, className: "text-emerald-600" },
+            { label: "Pending", value: profile.summary.pending, className: "" },
+            { label: "Overdue", value: profile.summary.overdue, className: profile.summary.overdue > 0 ? "text-destructive" : "" },
+            { label: "Average score", value: profile.summary.averageScore === null ? "—" : `${profile.summary.averageScore}%`, className: "" },
+            { label: "Latest attempt", value: formatDateTime(profile.summary.latestAttemptAt), className: "" },
+          ].map((item) => (
+            <div key={item.label} className={`min-w-0 p-4 ${item.className}`}>
+              <dt className="text-xs text-muted-foreground">{item.label}</dt>
+              <dd className="mt-1 break-words font-bold">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-xl font-bold">Assigned Work</h2>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+          <h2 className="text-xl font-bold">Recent Assigned Work</h2>
           <p className="text-sm text-muted-foreground">
             Class-specific completion and attempt history for this student.
           </p>
+          </div>
+          <Link href={`/workspace/classes/${profile.class.id}?tab=assignments#assigned-work`} className="text-sm font-semibold text-primary hover:underline">Back to Assigned Work</Link>
         </div>
 
         {profile.assignments.length === 0 ? (
@@ -137,25 +142,25 @@ export default async function TeacherClassStudentProfilePage({
             This student has no assigned work in this class yet.
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="divide-y overflow-hidden rounded-xl border bg-card">
             {profile.assignments.map((assignment) => {
               const reviewHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}?studentId=${profile.student.id}#answer-review-${profile.student.id}`;
               const assignmentHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}`;
 
               return (
-                <Card key={assignment.id} className="min-w-0">
-                  <CardHeader className="gap-3 border-b p-4 sm:p-5">
+                <article key={assignment.id} className="min-w-0 p-4 sm:p-5">
+                  <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge>
                       <Badge variant={assignment.recipient.status === "OVERDUE" ? "destructive" : assignment.recipient.status === "PENDING" ? "outline" : "default"}>
                         {statusLabel(assignment.recipient.status)}
                       </Badge>
                     </div>
-                    <CardTitle className="break-words text-base leading-snug">
+                    <h3 className="break-words text-base font-semibold leading-snug">
                       {assignment.challenge.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4 p-4 sm:p-5">
+                    </h3>
+                  </div>
+                  <div className="mt-4 space-y-4">
                     <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
                       <div><p className="text-xs text-muted-foreground">Due date</p><p className="mt-1 font-semibold">{assignment.dueDate ? formatAssignmentDueDate(assignment.dueDate) : "No due date"}</p></div>
                       <div><p className="text-xs text-muted-foreground">Attempts</p><p className="mt-1 font-semibold">{assignment.challenge.type === "QUICK_PRACTICE" ? assignment.recipient.attemptCount : "—"}</p></div>
@@ -189,8 +194,8 @@ export default async function TeacherClassStudentProfilePage({
                         </Button>
                       </Link>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </article>
               );
             })}
           </div>
@@ -199,9 +204,9 @@ export default async function TeacherClassStudentProfilePage({
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-xl font-bold">Mistake Summary</h2>
+          <h2 className="text-xl font-bold">Areas to revisit</h2>
           <p className="text-sm text-muted-foreground">
-            Snapshot-backed wrong answers from this student&apos;s latest class assignment attempts.
+            Recorded wrong answers from this student&apos;s latest class assignment attempts.
           </p>
         </div>
 
@@ -250,12 +255,9 @@ export default async function TeacherClassStudentProfilePage({
         )}
       </section>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-        <CheckCircle2 className="size-4 text-emerald-600" />
-        This profile is read-only and includes only this class, this student, and this teacher workspace.
-        <CalendarDays className="ml-auto hidden size-4 sm:block" />
-        <Clock className="hidden size-4 sm:block" />
-      </div>
+      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+        <CheckCircle2 className="size-4 text-emerald-600" /> Showing learning activity from {profile.class.name} only.
+      </p>
     </div>
   );
 }

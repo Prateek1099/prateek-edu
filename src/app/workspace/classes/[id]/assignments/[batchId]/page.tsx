@@ -1,10 +1,11 @@
 export const dynamic = "force-dynamic";
 
 import {
-  ArrowLeft,
+  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   Clock,
+  ChevronRight,
   FileText,
   Sparkles,
   Target,
@@ -95,48 +96,85 @@ export default async function WorkspaceAssignmentDetailPage({
     : assignment.challenge.type === "PDF_WORKSHEET"
       ? "PDF Worksheet"
       : "Worksheet";
+  const studentsNeedingAttention = assignment.recipients.filter(
+    (recipient) =>
+      recipient.status === "OVERDUE" ||
+      recipient.status === "PENDING" ||
+      (isPractice && recipient.mistakesCount > 0),
+  );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
-      <Link href={`/workspace/classes/${classId}`} className="inline-flex">
-        <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
-          <ArrowLeft className="mr-2 size-4" /> Back to {classData.name}
-        </Button>
-      </Link>
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/workspace/classes" className="shrink-0 hover:text-foreground hover:underline">Classes</Link>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <Link href={`/workspace/classes/${classId}`} className="max-w-40 truncate hover:text-foreground hover:underline sm:max-w-64">{classData.name}</Link>
+        <ChevronRight className="size-3.5 shrink-0" />
+        <span className="truncate font-medium text-foreground" aria-current="page">{assignment.challenge.title}</span>
+      </nav>
 
       <header>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{contentLabel}</Badge>
           <Badge variant={assignment.status === "ACTIVE" ? "default" : "secondary"}>
-            {assignment.status}
+            {statusLabel(assignment.status)}
           </Badge>
         </div>
         <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
           {assignment.challenge.title}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Assignment tracking for {classData.name}. Removed or revoked recipients are excluded.
+          Progress for the students currently receiving this work in {classData.name}.
         </p>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Recipients</p><p className="mt-1 text-2xl font-bold">{assignment.summary.assigned}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Completed</p><p className="mt-1 text-2xl font-bold text-emerald-600">{assignment.summary.completed}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="mt-1 text-2xl font-bold">{assignment.summary.pending}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Overdue</p><p className="mt-1 text-2xl font-bold text-destructive">{assignment.summary.overdue}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Average score</p><p className="mt-1 text-2xl font-bold">{isPractice && assignment.summary.averageScore !== null ? `${assignment.summary.averageScore}%` : "—"}</p></CardContent></Card>
-      </div>
+      <dl className="grid grid-cols-2 divide-x divide-y overflow-hidden rounded-xl border bg-card sm:grid-cols-5 sm:divide-y-0">
+        {[
+          { label: "Assigned", value: assignment.summary.assigned, className: "" },
+          { label: "Completed", value: assignment.summary.completed, className: "text-emerald-600" },
+          { label: "Pending", value: assignment.summary.pending, className: "" },
+          { label: "Overdue", value: assignment.summary.overdue, className: assignment.summary.overdue > 0 ? "text-destructive" : "" },
+          { label: "Average score", value: isPractice && assignment.summary.averageScore !== null ? `${assignment.summary.averageScore}%` : "—", className: "col-span-2 sm:col-span-1" },
+        ].map((item) => (
+          <div key={item.label} className={`p-4 ${item.className}`}>
+            <dt className="text-xs text-muted-foreground">{item.label}</dt>
+            <dd className="mt-1 text-2xl font-bold">{item.value}</dd>
+          </div>
+        ))}
+      </dl>
 
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="text-base">Assignment details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 p-4 text-sm sm:grid-cols-3">
+      <section aria-labelledby="assignment-details-heading" className="rounded-xl border bg-card">
+        <h2 id="assignment-details-heading" className="border-b px-4 py-3 text-base font-semibold">Assignment details</h2>
+        <div className="grid gap-3 p-4 text-sm sm:grid-cols-3">
           <p className="flex items-center gap-2"><CalendarDays className="size-4 text-muted-foreground" /> Assigned {formatDate(assignment.createdAt)}</p>
           <p className="flex items-center gap-2"><Clock className="size-4 text-muted-foreground" /> Due {assignment.dueDate ? formatAssignmentDueDate(assignment.dueDate) : "No due date"}</p>
           <p className="flex items-center gap-2"><Users className="size-4 text-muted-foreground" /> {assignment.audience === "CLASS" ? "Entire class" : "Selected students"}</p>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+
+      <section aria-labelledby="students-needing-attention-heading" className="space-y-3">
+        <div>
+          <h2 id="students-needing-attention-heading" className="text-lg font-bold">Students who may need attention</h2>
+          <p className="text-sm text-muted-foreground">Pending, overdue, or recorded wrong-answer activity from this assignment.</p>
+        </div>
+        {studentsNeedingAttention.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="size-4" /> No active student currently needs attention for this assignment.
+          </div>
+        ) : (
+          <div className="divide-y overflow-hidden rounded-xl border bg-card">
+            {studentsNeedingAttention.map((recipient) => (
+              <div key={recipient.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <AlertTriangle className={`mt-0.5 size-4 shrink-0 ${recipient.status === "OVERDUE" ? "text-destructive" : "text-amber-600"}`} />
+                  <div className="min-w-0"><p className="truncate font-semibold">{recipient.student.name || recipient.student.email || "Unnamed student"}</p><p className="text-sm text-muted-foreground">{statusLabel(recipient.status)}{isPractice && recipient.mistakesCount > 0 ? ` · ${recipient.mistakesCount} wrong answer${recipient.mistakesCount === 1 ? "" : "s"}` : ""}</p></div>
+                </div>
+                <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`} className="w-full sm:w-auto"><Button variant="outline" size="sm" className="w-full sm:w-auto">View student</Button></Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {isPractice && remedialResult?.success ? (
         <Card className="border-violet-500/20">
@@ -174,7 +212,7 @@ export default async function WorkspaceAssignmentDetailPage({
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {remedialResult.data.suggestedStudentIds.length} student{remedialResult.data.suggestedStudentIds.length === 1 ? "" : "s"} with mistakes · {remedialResult.data.candidates.length} scoped MCQ candidate{remedialResult.data.candidates.length === 1 ? "" : "s"}
+                  {remedialResult.data.suggestedStudentIds.length} student{remedialResult.data.suggestedStudentIds.length === 1 ? "" : "s"} with mistakes · {remedialResult.data.candidates.length} question{remedialResult.data.candidates.length === 1 ? "" : "s"} available for follow-up
                 </p>
                 {remedialResult.data.candidates.length === 0 ? (
                   <p className="rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
@@ -218,6 +256,11 @@ export default async function WorkspaceAssignmentDetailPage({
                   <div><p className="text-xs text-muted-foreground">Score</p><p className="mt-1 font-semibold">{isPractice && recipient.latestPercentage !== null ? `Latest ${recipient.latestPercentage}% · Best ${recipient.bestPercentage}%` : "—"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Completed</p><p className="mt-1 font-semibold">{formatDate(recipient.completedAt)}</p>{isPractice ? <p className="text-xs text-muted-foreground">{recipient.mistakesCount} wrong answer{recipient.mistakesCount === 1 ? "" : "s"}</p> : null}</div>
                   <div className="flex flex-col gap-2">
+                    {isPractice && recipient.attemptCount > 0 ? (
+                      <Link href={`?studentId=${recipient.studentId}#answer-review-${recipient.studentId}`}>
+                        <Button size="sm" className="w-full md:w-auto">Review answers</Button>
+                      </Link>
+                    ) : null}
                     <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
                       <Button variant="outline" size="sm" className="w-full md:w-auto">
                         <Target className="mr-1 size-4" /> Student Profile

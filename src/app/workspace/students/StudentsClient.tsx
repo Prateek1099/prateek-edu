@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, AlertTriangle, ArrowRight } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type StudentData = {
@@ -76,7 +76,33 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-md border border-border bg-card">
+      <div className="divide-y rounded-xl border bg-card md:hidden">
+        {sorted.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            {initialStudents.length === 0 ? "No one has joined yet. Share the class code with students." : "No students match your search."}
+          </div>
+        ) : sorted.map((student) => {
+          const primaryClass = student.classes[0];
+          return (
+            <article key={student.id} className="space-y-4 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="size-10 border border-border"><AvatarImage src={student.image || ""} /><AvatarFallback className="bg-primary/10 text-primary">{student.name.charAt(0).toUpperCase()}</AvatarFallback></Avatar>
+                <div className="min-w-0"><h2 className="break-words font-semibold">{student.name}</h2><p className="truncate text-xs text-muted-foreground">{student.email}</p></div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-sm">
+                {student.classes.map((classData) => <Link key={classData.id} href={`/workspace/classes/${classData.id}/students/${student.id}`} className="rounded-md bg-muted px-2 py-1 text-xs font-medium hover:text-primary">{classData.name}</Link>)}
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><p className="text-xs text-muted-foreground">Average score</p><p className="mt-1 font-semibold">{student.averageScore === null ? "Not enough attempts" : `${student.averageScore}%`}</p></div>
+                <div><p className="text-xs text-muted-foreground">Needs practice</p><p className="mt-1 font-semibold">{student.weakTopics[0] || "Not enough attempts"}</p></div>
+              </div>
+              {primaryClass ? <Link href={`/workspace/classes/${primaryClass.id}/students/${student.id}`}><Button variant="outline" size="sm" className="w-full">Open in {primaryClass.name} <ArrowRight className="ml-2 size-4" /></Button></Link> : null}
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-md border border-border bg-card md:block">
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
@@ -117,11 +143,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {student.classes.map(c => (
-                        <Badge key={c.id} variant="secondary" className="text-[10px] font-medium bg-muted text-foreground">
-                          {c.name}
-                        </Badge>
-                      ))}
+                      {student.classes.map(c => <Link key={c.id} href={`/workspace/classes/${c.id}/students/${student.id}`}><Badge variant="secondary" className="bg-muted text-[10px] font-medium text-foreground hover:text-primary">{c.name}</Badge></Link>)}
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
@@ -150,7 +172,7 @@ export default function StudentsClient({ initialStudents }: { initialStudents: S
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/workspace/students/${student.id}`}>
+                    <Link href={student.classes[0] ? `/workspace/classes/${student.classes[0].id}/students/${student.id}` : `/workspace/students/${student.id}`}>
                       <Button variant="outline" size="sm" className="text-primary hover:text-primary hover:bg-primary/10">
                         View Profile
                       </Button>

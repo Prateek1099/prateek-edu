@@ -67,7 +67,13 @@ export default async function ClassDetailPage({
         (challenge) => !activeChallengeIds.has(challenge.id),
       )}
       assignments={assignments}
-      defaultTab={query.tab === "assignments" ? "assignments" : "students"}
+      defaultTab={
+        query.tab === "assignments"
+          ? "assignments"
+          : query.tab === "students"
+            ? "students"
+            : "assignments"
+      }
     />
   );
 }
