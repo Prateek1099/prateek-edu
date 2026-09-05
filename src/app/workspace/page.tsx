@@ -255,18 +255,25 @@ export default async function WorkspaceDashboardPage() {
       </section>
 
       <section aria-labelledby="create-heading">
-        <h2 id="create-heading" className="mb-3 text-lg font-bold">Create for your class</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="create-heading" className="text-lg font-bold">Create for your class</h2>
+          <Link href="/workspace/question-bank" className="text-sm font-semibold text-primary hover:underline">
+            Manage question bank
+          </Link>
+        </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          {[
-            { href: "/workspace/quick-practice", label: "Practice set", icon: Zap },
-            { href: "/workspace/worksheets", label: "Worksheet", icon: FileText },
-            { href: "/workspace/paper-builder", label: "Quick paper", icon: BookOpen },
-          ].map((action) => (
-            <Link key={action.href} href={action.href} className="flex min-h-12 items-center justify-between rounded-lg border px-4 py-3 font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <span className="flex items-center gap-2"><action.icon className="size-4 text-primary" /> {action.label}</span>
-              <ArrowRight className="size-4 text-muted-foreground" />
-            </Link>
-          ))}
+          <Link href="/workspace/quick-practice" className="flex min-h-12 items-center justify-between rounded-lg border px-4 py-3 font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex items-center gap-2"><Zap className="size-4 text-primary" /> Practice set</span>
+            <ArrowRight className="size-4 text-muted-foreground" />
+          </Link>
+          <Link href="/workspace/worksheets" className="flex min-h-12 items-center justify-between rounded-lg border px-4 py-3 font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex items-center gap-2"><FileText className="size-4 text-primary" /> Worksheet</span>
+            <ArrowRight className="size-4 text-muted-foreground" />
+          </Link>
+          <Link href="/workspace/paper-builder" className="flex min-h-12 items-center justify-between rounded-lg border px-4 py-3 font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <span className="flex items-center gap-2"><BookOpen className="size-4 text-primary" /> Quick paper</span>
+            <ArrowRight className="size-4 text-muted-foreground" />
+          </Link>
         </div>
       </section>
 
