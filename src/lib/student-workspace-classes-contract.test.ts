@@ -57,6 +57,7 @@ test("teacher dashboard contains no named demo students or fabricated AI insight
     assert.doesNotMatch(teacherDashboard, new RegExp(fakeValue));
   }
   assert.match(teacherDashboard, /workspaceId: workspace\.id/);
-  assert.match(teacherDashboard, /No student activity yet/);
-  assert.match(teacherDashboard, /No intervention data yet/);
+  assert.match(teacherDashboard, /Activity will appear after students join or you create and assign work/);
+  assert.match(teacherDashboard, /No active assigned work currently needs attention/);
+  assert.doesNotMatch(teacherDashboard, /No intervention data yet/);
 });
