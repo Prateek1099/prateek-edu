@@ -32,8 +32,11 @@ test("workspace print route permits only the active teacher's owned content", ()
 });
 
 test("workspace cards use the teacher print route instead of the admin route", () => {
-  for (const source of [worksheetsClient, quickPracticeClient]) {
-    assert.match(source, /href=\{`\/workspace\/print\/\$\{w\.id\}`\}/);
+  for (const [source, itemName] of [
+    [worksheetsClient, "w"],
+    [quickPracticeClient, "practice"],
+  ] as const) {
+    assert.match(source, new RegExp(`href=\\{\\\`/workspace/print/\\$\\{${itemName}\\.id\\}\\\`\\}`));
     assert.doesNotMatch(source, /\/admin\/worksheets\/\$\{w\.id\}\/print/);
   }
 });

@@ -2,6 +2,7 @@ import { requireActiveWorkspace } from "@/lib/require-role";
 import { prisma } from "@/lib/prisma";
 import QuickPracticeClient from "./QuickPracticeClient";
 import { listActiveWorkspaceScopes } from "@/lib/workspace-academic-scope";
+import { countPracticeSetAssignmentUsage } from "@/lib/human-ui-density-rules";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,48 @@ export default async function WorkspaceQuickPracticePage() {
       include: {
         subject: { include: { qualification: { include: { board: true } } } },
         topic: true,
-        _count: { select: { questions: true, assignments: true } },
+        _count: {
+          select: {
+            questions: true,
+            assignments: {
+              where: {
+                user: {
+                  classEnrollments: {
+                    some: {
+                      status: "ACTIVE",
+                      class: {
+                        workspaceId: user.workspaceId,
+                        status: "ACTIVE",
+                        workspace: { status: "ACTIVE" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         assignmentBatches: {
-          where: { status: "ACTIVE" },
-          select: { _count: { select: { recipients: { where: { revokedAt: null } } } } },
+          where: {
+            status: "ACTIVE",
+            class: { workspaceId: user.workspaceId, status: "ACTIVE" },
+          },
+          select: {
+            classId: true,
+            class: {
+              select: {
+                name: true,
+                students: {
+                  where: { status: "ACTIVE" },
+                  select: { studentId: true },
+                },
+              },
+            },
+            recipients: {
+              where: { revokedAt: null },
+              select: { studentId: true },
+            },
+          },
         },
       },
       orderBy: { createdAt: "desc" },
@@ -78,6 +117,45 @@ export default async function WorkspaceQuickPracticePage() {
     subjectId: t.subjectId,
   }));
 
+  const practiceItems = practices.map((practice) => {
+    const contexts = new Map<string, { classId: string; className: string; recipientCount: number }>();
+
+    for (const batch of practice.assignmentBatches) {
+      const activeStudentIds = new Set(batch.class.students.map((membership) => membership.studentId));
+      const recipientCount = batch.recipients.filter((recipient) =>
+        activeStudentIds.has(recipient.studentId),
+      ).length;
+      if (recipientCount === 0) continue;
+
+      const current = contexts.get(batch.classId);
+      contexts.set(batch.classId, {
+        classId: batch.classId,
+        className: batch.class.name,
+        recipientCount: (current?.recipientCount ?? 0) + recipientCount,
+      });
+    }
+
+    const assignmentContexts = [...contexts.values()];
+    const assignedRecipientCount = countPracticeSetAssignmentUsage({
+      validLegacyAssignmentCount: practice._count.assignments,
+      assignmentContexts,
+    });
+
+    return {
+      id: practice.id,
+      title: practice.title,
+      subjectId: practice.subjectId,
+      topicId: practice.topicId,
+      difficulty: practice.difficulty,
+      estimatedTime: practice.estimatedTime,
+      subject: { name: practice.subject.name },
+      topic: practice.topic ? { topicName: practice.topic.topicName } : null,
+      _count: { questions: practice._count.questions },
+      assignmentContexts,
+      assignedRecipientCount,
+    };
+  });
+
   return (
     <div className="space-y-8 max-w-7xl">
       <div>
@@ -96,15 +174,7 @@ export default async function WorkspaceQuickPracticePage() {
         Students will see a practice only after you assign it to their class or account.
       </div>
       <QuickPracticeClient
-        practices={practices.map((practice) => ({
-          ...practice,
-          assignedRecipientCount:
-            practice._count.assignments +
-            practice.assignmentBatches.reduce(
-              (total, batch) => total + batch._count.recipients,
-              0,
-            ),
-        }))}
+        practices={practiceItems}
         subjectOptions={subjectOptions}
         topicOptions={topicOptions}
         bankQuestions={bankQuestions}

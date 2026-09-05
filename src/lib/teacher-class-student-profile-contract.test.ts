@@ -42,11 +42,11 @@ test("profile shows all approved statuses, attempt metrics, review states, and e
   for (const copy of [
     "Assigned Work",
     "Areas to revisit",
-    "Review Answers",
-    "Open Assignment Detail",
+    "Review answers",
+    "Open assignment",
     "This student has no assigned work in this class yet.",
-    "This student has not attempted this assignment yet.",
-    "This attempt was completed before detailed answer review was available.",
+    "Not attempted yet",
+    "Detailed answer review was not captured for this older attempt.",
     "No recorded mistakes yet. They’ll appear after this student completes assigned practice.",
   ]) {
     assert.match(page, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
@@ -62,8 +62,8 @@ test("class member list and assignment detail provide class-scoped profile entry
   assert.match(classClient, /workspace\/classes\/\$\{classData\.id\}\/students\/\$\{enrollment\.student\.id\}/);
   assert.match(classClient, />View Profile</);
   assert.match(assignmentPage, /workspace\/classes\/\$\{classId\}\/students\/\$\{recipient\.studentId\}/);
-  assert.match(assignmentPage, /Student Profile/);
-  assert.match(assignmentPage, /View full student profile/);
+  assert.match(assignmentPage, /aria-label="Open Student Profile"/);
+  assert.match(assignmentPage, /View student/);
 });
 
 test("review shortcut safely focuses the matching assignment recipient", () => {

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireActiveWorkspace } from "@/lib/require-role";
 import { getTeacherClassStudentProfile } from "@/lib/teacher-class-student-profile";
+import { groupStudentAssignments } from "@/lib/human-ui-density-rules";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 
 function formatDate(value: Date | string | null) {
@@ -67,6 +68,27 @@ export default async function TeacherClassStudentProfilePage({
   if (!profile) notFound();
 
   const studentName = profile.student.name || profile.student.email || "Unnamed student";
+  const assignmentGroups = groupStudentAssignments(profile.assignments);
+  const workSections = [
+    {
+      key: "needsAttention" as const,
+      label: "Needs attention",
+      description: "Overdue work and completed practice with recorded mistakes.",
+      assignments: assignmentGroups.needsAttention,
+    },
+    {
+      key: "inProgress" as const,
+      label: "In progress",
+      description: "Assigned work that has not been completed yet.",
+      assignments: assignmentGroups.inProgress,
+    },
+    {
+      key: "completed" as const,
+      label: "Completed",
+      description: "Finished work without a current recorded attention signal.",
+      assignments: assignmentGroups.completed,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
@@ -142,62 +164,82 @@ export default async function TeacherClassStudentProfilePage({
             This student has no assigned work in this class yet.
           </div>
         ) : (
-          <div className="divide-y overflow-hidden rounded-xl border bg-card">
-            {profile.assignments.map((assignment) => {
-              const reviewHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}?studentId=${profile.student.id}#answer-review-${profile.student.id}`;
-              const assignmentHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}`;
-
-              return (
-                <article key={assignment.id} className="min-w-0 p-4 sm:p-5">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge>
-                      <Badge variant={assignment.recipient.status === "OVERDUE" ? "destructive" : assignment.recipient.status === "PENDING" ? "outline" : "default"}>
-                        {statusLabel(assignment.recipient.status)}
-                      </Badge>
-                    </div>
-                    <h3 className="break-words text-base font-semibold leading-snug">
-                      {assignment.challenge.title}
+          <div className="space-y-6">
+            {workSections.map((section) => section.assignments.length > 0 ? (
+              <section key={section.key} aria-labelledby={`student-work-${section.key}`} className="space-y-2">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <h3 id={`student-work-${section.key}`} className="font-semibold">
+                      {section.label} <span className="text-sm font-normal text-muted-foreground">{section.assignments.length}</span>
                     </h3>
+                    <p className="text-xs text-muted-foreground">{section.description}</p>
                   </div>
-                  <div className="mt-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                      <div><p className="text-xs text-muted-foreground">Due date</p><p className="mt-1 font-semibold">{assignment.dueDate ? formatAssignmentDueDate(assignment.dueDate) : "No due date"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Attempts</p><p className="mt-1 font-semibold">{assignment.challenge.type === "QUICK_PRACTICE" ? assignment.recipient.attemptCount : "—"}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Last attempted</p><p className="mt-1 font-semibold">{formatDateTime(assignment.recipient.latestAttemptAt)}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Latest score</p><p className="mt-1 font-semibold">{assignment.recipient.latestPercentage === null ? "—" : `${assignment.recipient.latestPercentage}%`}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Best score</p><p className="mt-1 font-semibold">{assignment.recipient.bestPercentage === null ? "—" : `${assignment.recipient.bestPercentage}%`}</p></div>
-                      <div><p className="text-xs text-muted-foreground">Wrong answers</p><p className="mt-1 font-semibold">{assignment.challenge.type === "QUICK_PRACTICE" ? assignment.recipient.mistakesCount : "—"}</p></div>
-                    </div>
+                </div>
+                <div className="divide-y overflow-hidden rounded-xl border bg-card">
+                  {section.assignments.map((assignment) => {
+                    const isPractice = assignment.challenge.type === "QUICK_PRACTICE";
+                    const attempted = isPractice && assignment.recipient.attemptCount > 0;
+                    const reviewHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}?studentId=${profile.student.id}#answer-review-${profile.student.id}`;
+                    const assignmentHref = `/workspace/classes/${profile.class.id}/assignments/${assignment.id}`;
 
-                    {assignment.answerReviewState === "OLDER_ATTEMPT" ? (
-                      <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        This attempt was completed before detailed answer review was available.
-                      </p>
-                    ) : assignment.answerReviewState === "NOT_ATTEMPTED" ? (
-                      <p className="rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                        This student has not attempted this assignment yet.
-                      </p>
-                    ) : null}
+                    return (
+                      <article key={assignment.id} className="grid min-w-0 gap-3 p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="outline">{contentTypeLabel(assignment.challenge.type)}</Badge>
+                            <Badge variant={assignment.recipient.status === "OVERDUE" ? "destructive" : assignment.recipient.status === "PENDING" ? "outline" : "default"}>
+                              {statusLabel(assignment.recipient.status)}
+                            </Badge>
+                          </div>
+                          <h4 className="mt-2 break-words font-semibold leading-snug">
+                            {assignment.challenge.title}
+                          </h4>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {assignment.dueDate ? `Due ${formatAssignmentDueDate(assignment.dueDate)}` : "No due date"}
+                            {!attempted && isPractice ? " · Not attempted yet" : ""}
+                            {!isPractice && assignment.recipient.status === "PENDING" ? " · Waiting for student" : ""}
+                          </p>
+                          {attempted ? (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Latest {assignment.recipient.latestPercentage}% · Best {assignment.recipient.bestPercentage}%
+                              <span aria-hidden="true"> · </span>
+                              {assignment.recipient.attemptCount} attempt{assignment.recipient.attemptCount === 1 ? "" : "s"}
+                              <span aria-hidden="true"> · </span>
+                              {assignment.recipient.mistakesCount} mistake{assignment.recipient.mistakesCount === 1 ? "" : "s"}
+                              {assignment.recipient.latestAttemptAt ? ` · Last attempted ${formatDate(assignment.recipient.latestAttemptAt)}` : ""}
+                            </p>
+                          ) : assignment.recipient.completedAt ? (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Completed {formatDate(assignment.recipient.completedAt)}
+                            </p>
+                          ) : null}
+                          {assignment.answerReviewState === "OLDER_ATTEMPT" ? (
+                            <p className="mt-1 text-xs text-muted-foreground">Detailed answer review was not captured for this older attempt.</p>
+                          ) : null}
+                        </div>
 
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                      {assignment.answerReviewState === "AVAILABLE" ? (
-                        <Link href={reviewHref} className="w-full sm:w-auto">
-                          <Button size="sm" className="w-full sm:w-auto">
-                            <Target className="mr-2 size-4" /> Review Answers
+                        <Link
+                          href={assignment.answerReviewState === "AVAILABLE" ? reviewHref : assignmentHref}
+                          className="w-full md:w-auto"
+                        >
+                          <Button
+                            variant={assignment.answerReviewState === "AVAILABLE" ? "default" : "outline"}
+                            size="sm"
+                            className="w-full md:w-auto"
+                          >
+                            {assignment.answerReviewState === "AVAILABLE" ? (
+                              <><Target className="mr-2 size-4" /> Review answers</>
+                            ) : (
+                              <><ExternalLink className="mr-2 size-4" /> Open assignment</>
+                            )}
                           </Button>
                         </Link>
-                      ) : null}
-                      <Link href={assignmentHref} className="w-full sm:w-auto">
-                        <Button variant="outline" size="sm" className="w-full sm:w-auto">
-                          <ExternalLink className="mr-2 size-4" /> Open Assignment Detail
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null)}
           </div>
         )}
       </section>

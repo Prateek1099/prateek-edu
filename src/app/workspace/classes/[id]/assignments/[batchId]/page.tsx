@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import {
-  AlertTriangle,
   CalendarDays,
   CheckCircle2,
   Clock,
@@ -21,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { getTeacherRemedialPracticeContext } from "@/lib/remedial-practice/service";
 import { requireActiveWorkspace } from "@/lib/require-role";
+import { groupAssignmentRecipients } from "@/lib/human-ui-density-rules";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 import { getWorkspaceClassAssignmentTracking } from "@/lib/workspace-assignment-tracking";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
@@ -96,12 +96,27 @@ export default async function WorkspaceAssignmentDetailPage({
     : assignment.challenge.type === "PDF_WORKSHEET"
       ? "PDF Worksheet"
       : "Worksheet";
-  const studentsNeedingAttention = assignment.recipients.filter(
-    (recipient) =>
-      recipient.status === "OVERDUE" ||
-      recipient.status === "PENDING" ||
-      (isPractice && recipient.mistakesCount > 0),
-  );
+  const recipientGroups = groupAssignmentRecipients(assignment.recipients);
+  const recipientSections = [
+    {
+      key: "needsAttention" as const,
+      label: "Needs attention",
+      description: "Overdue students and completed practice with recorded mistakes.",
+      recipients: recipientGroups.needsAttention,
+    },
+    {
+      key: "pending" as const,
+      label: "Pending",
+      description: "Students who have not completed this assignment yet.",
+      recipients: recipientGroups.pending,
+    },
+    {
+      key: "completed" as const,
+      label: "Completed",
+      description: "Completed work without a current recorded attention signal.",
+      recipients: recipientGroups.completed,
+    },
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
@@ -150,30 +165,6 @@ export default async function WorkspaceAssignmentDetailPage({
           <p className="flex items-center gap-2"><Clock className="size-4 text-muted-foreground" /> Due {assignment.dueDate ? formatAssignmentDueDate(assignment.dueDate) : "No due date"}</p>
           <p className="flex items-center gap-2"><Users className="size-4 text-muted-foreground" /> {assignment.audience === "CLASS" ? "Entire class" : "Selected students"}</p>
         </div>
-      </section>
-
-      <section aria-labelledby="students-needing-attention-heading" className="space-y-3">
-        <div>
-          <h2 id="students-needing-attention-heading" className="text-lg font-bold">Students who may need attention</h2>
-          <p className="text-sm text-muted-foreground">Pending, overdue, or recorded wrong-answer activity from this assignment.</p>
-        </div>
-        {studentsNeedingAttention.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">
-            <CheckCircle2 className="size-4" /> No active student currently needs attention for this assignment.
-          </div>
-        ) : (
-          <div className="divide-y overflow-hidden rounded-xl border bg-card">
-            {studentsNeedingAttention.map((recipient) => (
-              <div key={recipient.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  <AlertTriangle className={`mt-0.5 size-4 shrink-0 ${recipient.status === "OVERDUE" ? "text-destructive" : "text-amber-600"}`} />
-                  <div className="min-w-0"><p className="truncate font-semibold">{recipient.student.name || recipient.student.email || "Unnamed student"}</p><p className="text-sm text-muted-foreground">{statusLabel(recipient.status)}{isPractice && recipient.mistakesCount > 0 ? ` · ${recipient.mistakesCount} wrong answer${recipient.mistakesCount === 1 ? "" : "s"}` : ""}</p></div>
-                </div>
-                <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`} className="w-full sm:w-auto"><Button variant="outline" size="sm" className="w-full sm:w-auto">View student</Button></Link>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       {isPractice && remedialResult?.success ? (
@@ -232,6 +223,7 @@ export default async function WorkspaceAssignmentDetailPage({
             {isPractice
               ? "Completion and scores come from real attempts made after this assignment was created."
               : "Document worksheets are completed only when the assigned student selects Mark as Done."}
+            {" "}Students who may need attention appear first.
           </p>
         </div>
 
@@ -240,135 +232,152 @@ export default async function WorkspaceAssignmentDetailPage({
             No active recipients for this assignment.
           </div>
         ) : (
-          <div className="space-y-3">
-            {assignment.recipients.map((recipient) => (
-              <Card
-                key={recipient.id}
-                className={focusedStudentId === recipient.studentId ? "ring-2 ring-primary/40" : undefined}
-              >
-                <CardContent className="grid gap-4 p-4 md:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))_auto] md:items-center">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{recipient.student.name || recipient.student.email || "Unnamed student"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{recipient.student.email || "No email"}</p>
-                  </div>
-                  <div><p className="text-xs text-muted-foreground">Status</p><Badge className="mt-1" variant={recipient.status === "OVERDUE" ? "destructive" : recipient.status === "PENDING" ? "outline" : "default"}>{statusLabel(recipient.status)}</Badge></div>
-                  <div><p className="text-xs text-muted-foreground">Attempts</p><p className="mt-1 font-semibold">{isPractice ? recipient.attemptCount : "—"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Score</p><p className="mt-1 font-semibold">{isPractice && recipient.latestPercentage !== null ? `Latest ${recipient.latestPercentage}% · Best ${recipient.bestPercentage}%` : "—"}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Completed</p><p className="mt-1 font-semibold">{formatDate(recipient.completedAt)}</p>{isPractice ? <p className="text-xs text-muted-foreground">{recipient.mistakesCount} wrong answer{recipient.mistakesCount === 1 ? "" : "s"}</p> : null}</div>
-                  <div className="flex flex-col gap-2">
-                    {isPractice && recipient.attemptCount > 0 ? (
-                      <Link href={`?studentId=${recipient.studentId}#answer-review-${recipient.studentId}`}>
-                        <Button size="sm" className="w-full md:w-auto">Review answers</Button>
-                      </Link>
-                    ) : null}
-                    <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
-                      <Button variant="outline" size="sm" className="w-full md:w-auto">
-                        <Target className="mr-1 size-4" /> Student Profile
-                      </Button>
-                    </Link>
-                    {!isPractice ? (
-                      <Link href={`/workspace/print/${assignment.challenge.id}`}>
-                        <Button variant="ghost" size="sm" className="w-full md:w-auto">
-                          <FileText className="mr-1 size-4" /> View worksheet
-                        </Button>
-                      </Link>
-                    ) : null}
-                  </div>
-                </CardContent>
-                {isPractice && recipient.attemptCount > 0 ? (
-                  <details
-                    id={`answer-review-${recipient.studentId}`}
-                    className="scroll-mt-24 border-t border-border/70"
-                    open={focusedStudentId === recipient.studentId}
-                  >
-                    <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary hover:bg-muted/30">
-                      Review answers
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        Latest attempt · {formatDateTime(recipient.latestAttemptAt)}
-                      </span>
-                    </summary>
-                    <div className="space-y-3 px-4 pb-4">
-                      <div className="flex justify-end">
-                        <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
-                          <Button variant="ghost" size="sm">View full student profile</Button>
-                        </Link>
+          <div className="space-y-6">
+            {recipientSections.map((section) => section.recipients.length > 0 ? (
+              <section key={section.key} aria-labelledby={`assignment-group-${section.key}`} className="space-y-2">
+                <div>
+                  <h3 id={`assignment-group-${section.key}`} className="font-semibold">
+                    {section.label} <span className="text-sm font-normal text-muted-foreground">{section.recipients.length}</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground">{section.description}</p>
+                </div>
+                <div className="divide-y overflow-hidden rounded-xl border bg-card">
+                  {section.recipients.map((recipient) => (
+                    <article
+                      key={recipient.id}
+                      className={focusedStudentId === recipient.studentId ? "ring-2 ring-inset ring-primary/40" : undefined}
+                    >
+                      <div className="grid min-w-0 gap-3 p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] md:items-center">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{recipient.student.name || recipient.student.email || "Unnamed student"}</p>
+                          <p className="truncate text-xs text-muted-foreground">{recipient.student.email || "No email"}</p>
+                        </div>
+                        <div className="min-w-0">
+                          <Badge variant={recipient.status === "OVERDUE" ? "destructive" : recipient.status === "PENDING" ? "outline" : "default"}>
+                            {statusLabel(recipient.status)}
+                          </Badge>
+                          <p className="mt-1 break-words text-sm text-muted-foreground">
+                            {isPractice && recipient.attemptCount > 0
+                              ? `Latest ${recipient.latestPercentage}% · Best ${recipient.bestPercentage}% · ${recipient.attemptCount} attempt${recipient.attemptCount === 1 ? "" : "s"} · ${recipient.mistakesCount} mistake${recipient.mistakesCount === 1 ? "" : "s"}`
+                              : isPractice
+                                ? "No attempt yet"
+                                : recipient.completedAt
+                                  ? `Marked done ${formatDate(recipient.completedAt)}`
+                                  : "Waiting for student"}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 md:justify-end">
+                          {isPractice && recipient.attemptCount > 0 ? (
+                            <Link href={`?studentId=${recipient.studentId}#answer-review-${recipient.studentId}`}>
+                              <Button size="sm">Review answers</Button>
+                            </Link>
+                          ) : null}
+                          <Link href={`/workspace/classes/${classId}/students/${recipient.studentId}`}>
+                            <Button variant="outline" size="sm" aria-label="Open Student Profile">
+                              <Target className="mr-1 size-4" /> View student
+                            </Button>
+                          </Link>
+                          {!isPractice ? (
+                            <Link href={`/workspace/print/${assignment.challenge.id}`}>
+                              <Button variant="ghost" size="sm">
+                                <FileText className="mr-1 size-4" /> View worksheet
+                              </Button>
+                            </Link>
+                          ) : null}
+                        </div>
                       </div>
-                      {!recipient.answerReviewCaptured ? (
-                        <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                          This attempt was completed before detailed answer review was available.
-                        </div>
-                      ) : recipient.answerReview.length === 0 ? (
-                        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">
-                          <CheckCircle2 className="size-4" /> No incorrect answers in this attempt.
-                        </div>
-                      ) : (
-                        recipient.answerReview.map((answer, index) => {
-                          const options = readOptionSnapshot(answer.options);
-                          return (
-                          <div key={answer.id} className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant="destructive" className="gap-1">
-                                <XCircle className="size-3" /> Wrong
-                              </Badge>
-                              {answer.topicLabel ? <Badge variant="outline">{answer.topicLabel}</Badge> : null}
-                              {answer.difficulty ? <Badge variant="secondary">{answer.difficulty}</Badge> : null}
-                              <span className="text-xs text-muted-foreground">
-                                {answer.marksAwarded}/{answer.maxMarks} marks
-                              </span>
-                            </div>
-                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                              Question {index + 1}
-                            </p>
-                            <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed">
-                              {answer.questionText}
-                            </p>
-                            {options ? (
-                              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                                {(["A", "B", "C", "D"] as const).map((key) => (
-                                  <div
-                                    key={key}
-                                    className={`rounded-lg border p-2.5 text-sm ${
-                                      key === answer.correctOptionKey
-                                        ? "border-emerald-500/40 bg-emerald-500/10"
-                                        : key === answer.selectedOptionKey
-                                          ? "border-destructive/40 bg-destructive/10"
-                                          : "border-border/70 bg-background"
-                                    }`}
-                                  >
-                                    <strong>{key}.</strong> {options[key]}
+                      {isPractice && recipient.attemptCount > 0 ? (
+                        <details
+                          id={`answer-review-${recipient.studentId}`}
+                          className="scroll-mt-24 border-t border-border/70"
+                          open={focusedStudentId === recipient.studentId}
+                        >
+                          <summary className="min-h-11 cursor-pointer list-none px-4 py-3 text-sm font-semibold text-primary outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                            Answer details
+                            <span className="ml-2 text-xs font-normal text-muted-foreground">
+                              Latest attempt · {formatDateTime(recipient.latestAttemptAt)}
+                            </span>
+                          </summary>
+                          <div className="space-y-3 px-4 pb-4">
+                            {!recipient.answerReviewCaptured ? (
+                              <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                                This attempt was completed before detailed answer review was available.
+                              </div>
+                            ) : recipient.answerReview.length === 0 ? (
+                              <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm text-emerald-700 dark:text-emerald-300">
+                                <CheckCircle2 className="size-4" /> No incorrect answers in this attempt.
+                              </div>
+                            ) : (
+                              recipient.answerReview.map((answer, index) => {
+                                const options = readOptionSnapshot(answer.options);
+                                return (
+                                  <div key={answer.id} className="rounded-xl border border-destructive/20 bg-destructive/[0.03] p-4">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <Badge variant="destructive" className="gap-1">
+                                        <XCircle className="size-3" /> Wrong
+                                      </Badge>
+                                      {answer.topicLabel ? <Badge variant="outline">{answer.topicLabel}</Badge> : null}
+                                      {answer.difficulty ? <Badge variant="secondary">{answer.difficulty}</Badge> : null}
+                                      <span className="text-xs text-muted-foreground">
+                                        {answer.marksAwarded}/{answer.maxMarks} marks
+                                      </span>
+                                    </div>
+                                    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                      Question {index + 1}
+                                    </p>
+                                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-relaxed">
+                                      {answer.questionText}
+                                    </p>
+                                    {options ? (
+                                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                        {(["A", "B", "C", "D"] as const).map((key) => (
+                                          <div
+                                            key={key}
+                                            className={`rounded-lg border p-2.5 text-sm ${
+                                              key === answer.correctOptionKey
+                                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                                : key === answer.selectedOptionKey
+                                                  ? "border-destructive/40 bg-destructive/10"
+                                                  : "border-border/70 bg-background"
+                                            }`}
+                                          >
+                                            <strong>{key}.</strong> {options[key]}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                                      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                                        <p className="text-xs font-semibold text-destructive">Student selected</p>
+                                        <p className="mt-1 break-words">
+                                          <strong>{answer.selectedOptionKey}.</strong> {answer.selectedOptionText}
+                                        </p>
+                                      </div>
+                                      <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+                                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Correct answer</p>
+                                        <p className="mt-1 break-words">
+                                          <strong>{answer.correctOptionKey}.</strong> {answer.correctOptionText}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {answer.explanation ? (
+                                      <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm">
+                                        <p className="text-xs font-semibold text-muted-foreground">Explanation</p>
+                                        <p className="mt-1 whitespace-pre-wrap leading-relaxed">{answer.explanation}</p>
+                                      </div>
+                                    ) : null}
                                   </div>
-                                ))}
-                              </div>
-                            ) : null}
-                            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                              <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
-                                <p className="text-xs font-semibold text-destructive">Student selected</p>
-                                <p className="mt-1 break-words">
-                                  <strong>{answer.selectedOptionKey}.</strong> {answer.selectedOptionText}
-                                </p>
-                              </div>
-                              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-                                <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Correct answer</p>
-                                <p className="mt-1 break-words">
-                                  <strong>{answer.correctOptionKey}.</strong> {answer.correctOptionText}
-                                </p>
-                              </div>
-                            </div>
-                            {answer.explanation ? (
-                              <div className="mt-3 rounded-lg bg-muted/50 p-3 text-sm">
-                                <p className="text-xs font-semibold text-muted-foreground">Explanation</p>
-                                <p className="mt-1 whitespace-pre-wrap leading-relaxed">{answer.explanation}</p>
-                              </div>
-                            ) : null}
+                                );
+                              })
+                            )}
                           </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </details>
-                ) : null}
-              </Card>
-            ))}
+                        </details>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null)}
           </div>
         )}
       </section>

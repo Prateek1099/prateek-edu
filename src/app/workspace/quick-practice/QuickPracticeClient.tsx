@@ -2,18 +2,22 @@
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Zap, Trash2, Clock, Users, ExternalLink, Shuffle } from "lucide-react";
+import { Zap, Trash2, ExternalLink, Shuffle, Search, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { createQuickPractice, deleteWorkspaceChallenge } from "@/app/actions/workspace-worksheets";
 import AssignContentDialog, { type AssignmentClassOption } from "@/components/workspace/AssignContentDialog";
+import {
+  filterPracticeSets,
+  isPracticeSetAssigned,
+  type PracticeSetSegment,
+} from "@/lib/human-ui-density-rules";
 
 type SubjectOption = { id: string; label: string; board: string };
 type TopicOption = { id: string; label: string; subjectId: string };
@@ -21,18 +25,18 @@ type WorkspaceQuickPractice = {
   id: string;
   title: string;
   subjectId: string;
+  topicId: string | null;
   difficulty: string;
   estimatedTime: number;
   assignedRecipientCount: number;
+  assignmentContexts: Array<{
+    classId: string;
+    className: string;
+    recipientCount: number;
+  }>;
   subject: { name: string };
   topic: { topicName: string } | null;
   _count: { questions: number };
-};
-
-const difficultyColor: Record<string, string> = {
-  easy: "border-emerald-500/50 text-emerald-600 bg-emerald-500/10",
-  medium: "border-amber-500/50 text-amber-600 bg-amber-500/10",
-  hard: "border-red-500/50 text-red-600 bg-red-500/10",
 };
 
 export default function QuickPracticeClient({
@@ -50,6 +54,11 @@ export default function QuickPracticeClient({
 }) {
   const [data, setData] = useState(practices);
   const [searchQuery, setSearchQuery] = useState("");
+  const [segment, setSegment] = useState<PracticeSetSegment>("all");
+  const [classFilter, setClassFilter] = useState("all");
+  const [subjectFilter, setSubjectFilter] = useState("all");
+  const [topicFilter, setTopicFilter] = useState("all");
+  const [difficultyFilter, setDifficultyFilter] = useState("all");
 
   // Builder state
   const [builderOpen, setBuilderOpen] = useState(false);
@@ -61,10 +70,17 @@ export default function QuickPracticeClient({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Derived filtered options for Builder
-  const filteredTopicOptions = useMemo(() => {
+  const builderTopicOptions = useMemo(() => {
     if (!newSubject) return [];
     return topicOptions.filter((t) => t.subjectId === newSubject);
   }, [newSubject, topicOptions]);
+
+  const filterTopicOptions = useMemo(
+    () => subjectFilter === "all"
+      ? topicOptions
+      : topicOptions.filter((topic) => topic.subjectId === subjectFilter),
+    [subjectFilter, topicOptions],
+  );
 
   // Derived available questions for Builder
   const availableQuestions = useMemo(() => {
@@ -126,23 +142,53 @@ export default function QuickPracticeClient({
   };
 
   // Main UI filtering
-  const filteredPractices = useMemo(() => {
-    if (!searchQuery) return data;
-    const query = searchQuery.toLowerCase();
-    return data.filter(w => w.title.toLowerCase().includes(query) || w.subject.name.toLowerCase().includes(query));
-  }, [data, searchQuery]);
+  const filteredPractices = useMemo(
+    () => filterPracticeSets(data, {
+      segment,
+      searchQuery,
+      classId: classFilter,
+      subjectId: subjectFilter,
+      topicId: topicFilter,
+      difficulty: difficultyFilter,
+    }),
+    [classFilter, data, difficultyFilter, searchQuery, segment, subjectFilter, topicFilter],
+  );
+
+  const segmentCounts = useMemo(() => {
+    const assigned = data.filter(isPracticeSetAssigned).length;
+    return { all: data.length, assigned, unassigned: data.length - assigned };
+  }, [data]);
+
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() ||
+    classFilter !== "all" ||
+    subjectFilter !== "all" ||
+    topicFilter !== "all" ||
+    difficultyFilter !== "all",
+  );
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSegment("all");
+    setClassFilter("all");
+    setSubjectFilter("all");
+    setTopicFilter("all");
+    setDifficultyFilter("all");
+  };
 
   return (
     <div className="space-y-6">
-      
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-card p-4 rounded-xl border shadow-sm">
-        <Input 
-          placeholder="Search practice sets..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full sm:w-64"
-        />
+      <div className="flex flex-col gap-3 border-b pb-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Search practice sets"
+            placeholder="Search title, subject, topic, or class"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="pl-9"
+          />
+        </div>
         <Button onClick={() => {
           setBuilderOpen(true);
           setNewTitle("");
@@ -154,60 +200,212 @@ export default function QuickPracticeClient({
         </Button>
       </div>
 
-      {/* Grid of Practices */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="space-y-4" aria-label="Practice set filters">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Assignment state">
+          {([
+            ["all", "All", segmentCounts.all],
+            ["unassigned", "Unassigned", segmentCounts.unassigned],
+            ["assigned", "Assigned", segmentCounts.assigned],
+          ] as const).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={segment === value}
+              onClick={() => setSegment(value)}
+              className={cn(
+                "min-h-10 flex-1 whitespace-nowrap rounded-md px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                segment === value
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {label} <span className="ml-1 text-xs font-normal">{count}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="practice-class-filter" className="text-xs text-muted-foreground">Class</Label>
+            <Select value={classFilter} onValueChange={(value) => setClassFilter(value || "all")}>
+              <SelectTrigger id="practice-class-filter" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All classes</SelectItem>
+                {assignmentClasses.map((classOption) => (
+                  <SelectItem key={classOption.id} value={classOption.id}>{classOption.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="practice-subject-filter" className="text-xs text-muted-foreground">Subject</Label>
+            <Select value={subjectFilter} onValueChange={(value) => {
+              setSubjectFilter(value || "all");
+              setTopicFilter("all");
+            }}>
+              <SelectTrigger id="practice-subject-filter" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All subjects</SelectItem>
+                {subjectOptions.map((subject) => (
+                  <SelectItem key={subject.id} value={subject.id}>{subject.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="practice-topic-filter" className="text-xs text-muted-foreground">Topic</Label>
+            <Select value={topicFilter} onValueChange={(value) => setTopicFilter(value || "all")}>
+              <SelectTrigger id="practice-topic-filter" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All topics</SelectItem>
+                {filterTopicOptions.map((topic) => (
+                  <SelectItem key={topic.id} value={topic.id}>{topic.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="practice-difficulty-filter" className="text-xs text-muted-foreground">Difficulty</Label>
+            <Select value={difficultyFilter} onValueChange={(value) => setDifficultyFilter(value || "all")}>
+              <SelectTrigger id="practice-difficulty-filter" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All difficulties</SelectItem>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+                <SelectItem value="mixed">Mixed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <p className="text-muted-foreground">
+          Showing <span className="font-semibold text-foreground">{filteredPractices.length}</span> of {data.length} practice sets
+        </p>
+        {hasActiveFilters || segment !== "all" ? (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-2">
+            <SlidersHorizontal className="size-4" /> Clear filters
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="overflow-hidden rounded-xl border bg-card">
         {filteredPractices.length === 0 ? (
-          <div className="col-span-full py-12 text-center border rounded-xl bg-card">
-            <div className="mx-auto size-12 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mb-3">
+          <div className="px-5 py-12 text-center">
+            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500">
               <Zap className="size-6" />
             </div>
-            <h3 className="text-lg font-medium">No practice sets yet</h3>
-            <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
-              Create a short quiz for an exit ticket, warm-up, or recap.
+            <h3 className="text-lg font-medium">
+              {data.length === 0
+                ? "No practice sets yet"
+                : hasActiveFilters
+                  ? "No practice sets match these filters"
+                  : segment === "unassigned"
+                    ? "No unassigned practice sets"
+                    : "No assigned practice sets yet"}
+            </h3>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              {data.length === 0
+                ? "Create a short quiz for an exit ticket, warm-up, or recap."
+                : hasActiveFilters
+                  ? "Clear the filters to return to the full worklist."
+                  : segment === "unassigned"
+                    ? "Everything here has already been used with a class."
+                    : "Assign a practice set to a class and it will appear here."}
             </p>
-            <Button className="mt-4" onClick={() => setBuilderOpen(true)}>Create practice set</Button>
+            {data.length === 0 ? (
+              <Button className="mt-4" onClick={() => setBuilderOpen(true)}>Create practice set</Button>
+            ) : (
+              <Button variant="outline" className="mt-4" onClick={clearFilters}>Clear filters</Button>
+            )}
           </div>
         ) : (
-          filteredPractices.map(w => (
-            <Card key={w.id} className="flex flex-col border-amber-200 dark:border-amber-900/50">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start gap-4">
-                  <CardTitle className="text-xl line-clamp-2">{w.title}</CardTitle>
-                  <Button variant="ghost" size="icon-sm" onClick={() => handleDelete(w.id)} className="text-muted-foreground hover:text-destructive shrink-0">
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-1">
-                  <span>{w.subject.name}</span>
-                  {w.topic && <span>{w.topic.topicName}</span>}
-                </div>
-              </CardHeader>
-              <CardContent className="mt-auto pt-4 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className={cn("capitalize", difficultyColor[w.difficulty] || difficultyColor.medium)}>
-                    {w.difficulty}
-                  </Badge>
-                  <Badge variant="secondary" className="gap-1"><Clock className="size-3" /> {w.estimatedTime}m</Badge>
-                  <Badge variant="secondary" className="gap-1"><Zap className="size-3 text-amber-500" /> {w._count.questions} Qs</Badge>
-                  <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"><Users className="size-3" /> {w.assignedRecipientCount} assigned</Badge>
-                </div>
-                
-                <div className="flex gap-2">
-                  <AssignContentDialog
-                    challengeId={w.id}
-                    challengeTitle={w.title}
-                    subjectId={w.subjectId}
-                    classes={assignmentClasses}
-                  />
-                  <Link href={`/workspace/print/${w.id}`} className="flex-1">
-                    <Button variant="outline" className="w-full gap-2 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-900/50 dark:hover:bg-amber-900/20 dark:hover:text-amber-400">
-                      <ExternalLink className="size-4" /> Print / PDF
+          <div className="divide-y">
+            {filteredPractices.map((practice) => {
+              const assigned = isPracticeSetAssigned(practice);
+              const batchRecipientCount = practice.assignmentContexts.reduce(
+                (total, context) => total + context.recipientCount,
+                0,
+              );
+              const legacyRecipientCount = Math.max(0, practice.assignedRecipientCount - batchRecipientCount);
+
+              return (
+                <article key={practice.id} className="grid min-w-0 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.7fr)_auto] lg:items-center lg:px-5">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-semibold leading-snug">{practice.title}</h3>
+                    <p className="mt-1 break-words text-sm text-muted-foreground">
+                      {practice.subject.name}{practice.topic ? ` · ${practice.topic.topicName}` : " · All topics"}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      <span className="capitalize">{practice.difficulty}</span>
+                      <span aria-hidden="true"> · </span>
+                      {practice._count.questions} question{practice._count.questions === 1 ? "" : "s"}
+                      <span aria-hidden="true"> · </span>
+                      {practice.estimatedTime} min
+                    </p>
+                  </div>
+
+                  <div className="min-w-0">
+                    {assigned ? (
+                      practice.assignmentContexts.length > 1 ? (
+                        <details className="group text-sm">
+                          <summary className="min-h-10 cursor-pointer list-none rounded-md py-2 font-medium text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                            Assigned to {practice.assignmentContexts.length} classes · {practice.assignedRecipientCount} recipients
+                          </summary>
+                          <ul className="space-y-1 pb-1 text-xs text-muted-foreground">
+                            {practice.assignmentContexts.map((context) => (
+                              <li key={context.classId}>{context.className} · {context.recipientCount} student{context.recipientCount === 1 ? "" : "s"}</li>
+                            ))}
+                            {legacyRecipientCount > 0 ? <li>{legacyRecipientCount} legacy recipient{legacyRecipientCount === 1 ? "" : "s"}</li> : null}
+                          </ul>
+                        </details>
+                      ) : (
+                        <div className="space-y-1">
+                          <Badge className="bg-emerald-600 hover:bg-emerald-600">Assigned</Badge>
+                          <p className="break-words text-sm text-muted-foreground">
+                            {practice.assignmentContexts[0]
+                              ? `${practice.assignmentContexts[0].className} · ${practice.assignmentContexts[0].recipientCount} student${practice.assignmentContexts[0].recipientCount === 1 ? "" : "s"}${legacyRecipientCount > 0 ? ` · ${legacyRecipientCount} legacy` : ""}`
+                              : `${practice.assignedRecipientCount} legacy recipient${practice.assignedRecipientCount === 1 ? "" : "s"}`}
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="space-y-1">
+                        <Badge variant="outline">Unassigned</Badge>
+                        <p className="text-sm text-muted-foreground">Private until assigned to a class or student.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+                    <AssignContentDialog
+                      challengeId={practice.id}
+                      challengeTitle={practice.title}
+                      subjectId={practice.subjectId}
+                      classes={assignmentClasses}
+                    />
+                    <Link href={`/workspace/print/${practice.id}`}>
+                      <Button variant="outline" className="gap-2">
+                        <ExternalLink className="size-4" /> Print / PDF
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Delete ${practice.title}`}
+                      title="Delete practice set"
+                      onClick={() => handleDelete(practice.id)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="size-4" />
                     </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -249,7 +447,7 @@ export default function QuickPracticeClient({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">All Topics in Subject</SelectItem>
-                  {filteredTopicOptions.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
+                  {builderTopicOptions.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
