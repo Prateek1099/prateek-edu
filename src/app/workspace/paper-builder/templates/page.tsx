@@ -38,10 +38,11 @@ export default async function WorkspacePaperTemplatesPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <header>
+        <p className="text-sm font-semibold text-primary">Papers · Reuse</p>
         <h1 className="text-3xl font-bold tracking-tight">Saved paper setups</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Reuse the same subjects, topics, sections, and marks when creating a Quick Paper.
-          Saved setups do not contain selected questions.
+          Reuse how you want to build a Quick Paper: subject, topics, question types and marks.
+          Choose fresh questions each time.
         </p>
       </header>
 

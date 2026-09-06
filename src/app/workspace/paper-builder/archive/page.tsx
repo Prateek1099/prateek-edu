@@ -25,9 +25,10 @@ export default async function TeacherPaperArchivePage({
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <header className="max-w-4xl">
+        <p className="text-sm font-semibold text-primary">Papers · Library</p>
         <h1 className="text-3xl font-bold tracking-tight">Saved papers</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Reopen papers saved by your workspace for preview, answer keys, printing, and editable DOCX files.
+          Open finished papers you previously chose to save.
         </p>
       </header>
       <PaperBuilderModeNav
@@ -36,12 +37,6 @@ export default async function TeacherPaperArchivePage({
         ariaLabel="Teacher Paper Builder navigation"
       />
       <div className="flex flex-wrap gap-2">
-        <Link
-          href="/workspace/paper-builder"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          Quick Paper
-        </Link>
         <Link
           href="/workspace/paper-builder/archive?status=active"
           className={buttonVariants({ variant: status === "active" ? "default" : "outline" })}
@@ -57,7 +52,7 @@ export default async function TeacherPaperArchivePage({
       </div>
       <TeacherArchiveClient papers={papers} status={status} />
       <p className="text-xs leading-5 text-muted-foreground">
-        Saved papers remain private to your workspace and are not assigned to students automatically.
+        These are actual generated papers. They remain private to your workspace and are not assigned automatically.
       </p>
     </div>
   );

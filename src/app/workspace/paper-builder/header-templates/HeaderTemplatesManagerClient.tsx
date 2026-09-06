@@ -83,24 +83,24 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
         ? await updateWorkspacePaperHeaderTemplate(editingId, form)
         : await createWorkspacePaperHeaderTemplate(form);
       if (!result.success) return toast.error(result.error);
-      toast.success(editingId ? "Header template updated." : "Header template created.");
+      toast.success(editingId ? "Paper header updated." : "Paper header created.");
       resetForm();
       router.refresh();
     } catch {
-      toast.error("Could not save the header template.");
+      toast.error("Could not save the paper header.");
     } finally {
       setSaving(false);
     }
   };
 
   const archive = async (template: WorkspacePaperHeaderTemplate) => {
-    if (!window.confirm(`Archive header template “${template.name}”?`)) return;
+    if (!window.confirm(`Archive paper header “${template.name}”?`)) return;
     setChangingId(template.id);
     try {
       const result = await archiveWorkspacePaperHeaderTemplate(template.id);
       if (!result.success) return toast.error(result.error);
       if (editingId === template.id) resetForm();
-      toast.success("Header template archived.");
+      toast.success("Paper header archived.");
       router.refresh();
     } finally {
       setChangingId(null);
@@ -112,7 +112,7 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
     try {
       const result = await restoreWorkspacePaperHeaderTemplate(template.id);
       if (!result.success) return toast.error(result.error);
-      toast.success("Header template restored.");
+      toast.success("Paper header restored.");
       router.refresh();
     } finally {
       setChangingId(null);
@@ -123,9 +123,9 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/workspace/paper-builder" className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft className="size-4" /> Back to Quick Paper
+          <ArrowLeft className="size-4" /> Back to Papers
         </Link>
-        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Header template status">
+        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Paper header status">
           <Link
             href="/workspace/paper-builder/header-templates?status=active"
             className={cn(
@@ -148,15 +148,20 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
       </div>
 
       {status === "active" && (
-        <Card>
+        <details className="rounded-2xl border bg-card" open={editingId ? true : undefined}>
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5">
+            {editingId ? "Editing paper header" : "Create a new paper header"}
+            <span aria-hidden="true" className="text-muted-foreground">+</span>
+          </summary>
+        <Card className="rounded-t-none border-x-0 border-b-0 shadow-none">
           <CardHeader>
-            <CardTitle>{editingId ? "Edit header template" : "Create header template"}</CardTitle>
+            <CardTitle>{editingId ? "Edit paper header" : "Create paper header"}</CardTitle>
             <CardDescription>
-              Save reusable school and exam header defaults. Maximum marks always come from the generated paper.
+              Save school and exam details so you do not type them again.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
-            <Field label="Template name">
+            <Field label="Header name">
               <Input value={form.name} maxLength={200} onChange={(event) => update("name", event.target.value)} placeholder="Class Test header" />
             </Field>
             <Field label="Institution name">
@@ -193,17 +198,18 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
             <div className="flex flex-wrap gap-2 md:col-span-2">
               <Button type="button" onClick={submit} disabled={saving || !form.name.trim() || !form.institutionName.trim() || !form.examLabel.trim()}>
                 {editingId ? <Pencil className="size-4" /> : <Plus className="size-4" />}
-                {saving ? "Saving…" : editingId ? "Update template" : "Create template"}
+                {saving ? "Saving…" : editingId ? "Update header" : "Save header"}
               </Button>
               {editingId && <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Cancel edit</Button>}
             </div>
           </CardContent>
         </Card>
+        </details>
       )}
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-xl font-semibold">{status === "archived" ? "Archived templates" : "Active templates"}</h2>
+          <h2 className="text-xl font-semibold">{status === "archived" ? "Archived headers" : "Saved headers"}</h2>
           <p className="text-sm text-muted-foreground">
             {status === "archived"
               ? "Restore a paper header before it can be selected."
@@ -215,27 +221,25 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
             {status === "archived" ? "No archived paper headers." : "No saved paper headers yet."}
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="divide-y overflow-hidden rounded-2xl border bg-card">
             {templates.map((template) => (
-              <Card key={template.id}>
-                <CardHeader>
+              <article key={template.id} className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription>{template.institutionName}</CardDescription>
+                    <div className="min-w-0">
+                      <h3 className="break-words text-base font-semibold">{template.name}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">{template.institutionName}</p>
                     </div>
                     <Badge variant={template.archivedAt ? "outline" : "secondary"}>
                       {template.archivedAt ? "Archived" : "Active"}
                     </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm">
-                  <dl className="grid gap-2 sm:grid-cols-2">
+                <div className="space-y-4 text-sm">
+                  <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <div><dt className="text-muted-foreground">Exam label</dt><dd className="font-medium">{template.examLabel}</dd></div>
                     <div><dt className="text-muted-foreground">Duration</dt><dd className="font-medium">{template.defaultDuration} minutes</dd></div>
-                    <div className="sm:col-span-2"><dt className="text-muted-foreground">Course line</dt><dd className="font-medium">{template.courseLine || "Not set"}</dd></div>
+                    <div><dt className="text-muted-foreground">Class / course</dt><dd className="font-medium">{template.courseLine || template.defaultClassLine || "Not set"}</dd></div>
+                    <div><dt className="text-muted-foreground">Updated</dt><dd className="font-medium">{template.updatedAt.slice(0, 10)}</dd></div>
                   </dl>
-                  <p className="text-xs text-muted-foreground">Updated {template.updatedAt.slice(0, 10)}</p>
                   <div className="flex flex-wrap gap-2">
                     {status === "active" ? (
                       <>
@@ -252,8 +256,8 @@ export default function HeaderTemplatesManagerClient({ status, templates }: Prop
                       </Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </article>
             ))}
           </div>
         )}

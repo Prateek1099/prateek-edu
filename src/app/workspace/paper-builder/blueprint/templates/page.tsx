@@ -45,10 +45,11 @@ export default async function TeacherBlueprintTemplatesPage({
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       <header>
+        <p className="text-sm font-semibold text-primary">Papers · Reuse</p>
         <h1 className="text-3xl font-bold tracking-tight">Saved chapter patterns</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Reuse chapter-wise question and marks patterns for your assigned subjects. Saved patterns
-          never contain selected questions.
+          Reuse how marks should be distributed chapter by chapter. Choose fresh questions after
+          applying a pattern.
         </p>
       </header>
 

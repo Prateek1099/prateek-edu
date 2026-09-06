@@ -28,9 +28,10 @@ export default async function WorkspacePaperHeaderTemplatesPage({
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <header>
+        <p className="text-sm font-semibold text-primary">Papers · Prepare</p>
         <h1 className="text-3xl font-bold tracking-tight">Paper headers</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground sm:text-base">
-          Reuse your school, exam, class, timing, and instruction details across papers.
+          Save school and exam details so you do not type them again.
         </p>
       </header>
 

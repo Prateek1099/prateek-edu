@@ -20,6 +20,7 @@ const workspaceScope = read("src/lib/workspace-academic-scope.ts");
 const adminActions = read("src/app/admin/paper-builder/blueprint/actions.ts");
 const teacherClient = read("src/app/workspace/paper-builder/blueprint/BlueprintBuilderClient.tsx");
 const workspaceSidebar = read("src/components/WorkspaceSidebar.tsx");
+const paperModeNav = read("src/components/paper-builder/PaperBuilderModeNav.tsx");
 const schema = read("prisma/schema.prisma");
 
 function exportedFunctionBody(source: string, name: string) {
@@ -186,8 +187,9 @@ test("admin Blueprint remains SUPER_ADMIN-only and the teacher UI uses only the 
   assert.match(teacherClient, /saveTeacherBlueprintGeneratedPaper/);
   assert.doesNotMatch(teacherClient, /@\/app\/admin|\/admin\/paper-builder/);
   assert.match(
-    workspaceSidebar,
-    /href: "\/workspace\/paper-builder\/blueprint", label: "Chapter-wise Paper"/,
+    paperModeNav,
+    /href: "\/workspace\/paper-builder\/blueprint"[\s\S]*?label: "Chapter-wise Paper"/,
   );
+  assert.match(workspaceSidebar, /href: "\/workspace\/paper-builder", label: "Papers"/);
   assert.doesNotMatch(schema, /model WorkspacePaperBlueprint|model TeacherPaperBlueprint/);
 });

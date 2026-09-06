@@ -20,6 +20,7 @@ const sharedValidation = read("src/lib/paper-builder/validate-selection.ts");
 const adminActions = read("src/app/admin/paper-builder/actions.ts");
 const adminClient = read("src/app/admin/paper-builder/PaperBuilderClient.tsx");
 const sidebar = read("src/components/WorkspaceSidebar.tsx");
+const paperModeNav = read("src/components/paper-builder/PaperBuilderModeNav.tsx");
 
 test("teacher Paper Builder route is active-workspace and academic-scope restricted", () => {
   assert.match(page, /requireActiveWorkspace\(\)/);
@@ -31,7 +32,7 @@ test("teacher Paper Builder route is active-workspace and academic-scope restric
   assert.match(page, /questionType: \{ in: \[\.\.\.TEACHER_WORKSPACE_PAPER_QUESTION_TYPES\] \}/);
   assert.match(page, /subjects\.length === 1 \? subjects\[0\]\.id/);
   assert.match(sidebar, /href: "\/workspace\/paper-builder"/);
-  assert.match(sidebar, /href: "\/workspace\/paper-builder\/archive"/);
+  assert.match(paperModeNav, /href: "\/workspace\/paper-builder\/archive"/);
 });
 
 test("teacher validation independently enforces subject, topic, type, and ownership", () => {
@@ -92,7 +93,7 @@ test("teacher policy allows every supported global type but only workspace MCQs"
 });
 
 test("teacher save creates only an immutable workspace-owned paper snapshot", () => {
-  assert.match(page, /private to your workspace/);
+  assert.match(page, /Saving the finished paper is optional/);
   assert.match(archiveActions, /requireActiveWorkspace\(\)/);
   assert.match(archiveActions, /validateTeacherPaperSelectionForWorkspace/);
   assert.match(archiveActions, /workspaceId: teacher\.workspaceId/);

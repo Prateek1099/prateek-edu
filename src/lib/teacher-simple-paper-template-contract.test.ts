@@ -107,9 +107,9 @@ test("management UI includes required metadata and safe lifecycle actions withou
   assert.match(managementPage, /requireActiveWorkspace\(\)/);
   assert.match(managementClient, /Target marks/);
   assert.match(managementClient, /Topics/);
-  assert.match(managementClient, /Sections/);
-  assert.match(managementClient, /Header/);
-  assert.match(managementClient, /Apply/);
+  assert.match(managementClient, /Structure/);
+  assert.match(managementClient, /Preferred paper header/);
+  assert.match(managementClient, /Use setup/);
   assert.match(managementClient, /Edit/);
   assert.match(managementClient, /Duplicate/);
   assert.match(managementClient, /Archive/);

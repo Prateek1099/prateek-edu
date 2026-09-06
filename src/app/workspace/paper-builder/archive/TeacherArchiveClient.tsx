@@ -8,7 +8,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatAdminDateTime } from "@/lib/admin-date-format";
 import type { SavedGeneratedPaperSummary } from "@/lib/paper-builder/saved-paper-types";
 
@@ -70,41 +69,40 @@ export default function TeacherArchiveClient({
   }
 
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="divide-y overflow-hidden rounded-2xl border bg-card">
       {papers.map((paper) => (
-        <Card key={paper.id}>
-          <CardHeader>
+        <article key={paper.id} className="space-y-4 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <CardTitle className="break-words">{paper.name}</CardTitle>
-                <CardDescription className="mt-1">
+                <h2 className="break-words text-base font-semibold">{paper.name}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
                   {paper.description || `${paper.subjectName} paper`}
-                </CardDescription>
+                </p>
               </div>
               <Badge variant={paper.archivedAt ? "outline" : "secondary"}>
                 {paper.archivedAt ? "Archived" : "Active"}
               </Badge>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
+          <div className="space-y-4">
+            <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <Summary
-                label="Academic scope"
-                value={`${paper.boardTitle} · ${paper.qualificationTitle} · ${paper.subjectName}`}
+                label="Subject"
+                value={paper.subjectName}
               />
               <Summary
                 label="Paper"
                 value={`${paper.totalMarks} marks · ${paper.questionCount} questions`}
               />
               <Summary label="Duration" value={`${paper.durationMinutes} minutes`} />
-              <Summary label="Created" value={formatAdminDateTime(paper.createdAt)} />
+              <Summary label="Saved" value={formatAdminDateTime(paper.createdAt)} />
+              <Summary label="Class / board" value={`${paper.qualificationTitle} · ${paper.boardTitle}`} />
             </div>
             <div className="flex flex-wrap gap-2">
               <Link
                 href={`/workspace/paper-builder/archive/${paper.id}`}
                 className={buttonVariants({ variant: "outline" })}
               >
-                <ExternalLink className="size-4" /> Open
+                <ExternalLink className="size-4" /> Open paper
               </Link>
               {paper.archivedAt ? (
                 <Button
@@ -136,8 +134,8 @@ export default function TeacherArchiveClient({
                 </Button>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </article>
       ))}
     </div>
   );

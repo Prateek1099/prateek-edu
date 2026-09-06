@@ -72,8 +72,8 @@ test("teacher capability config enables templates and teacher review tools", () 
   assert.match(client, /rowRegeneration: true/);
   assert.match(client, /chapterRegeneration: true/);
   assert.match(client, /confirmRegeneration: true/);
-  assert.match(client, /replacementButtonLabel: "Replace Question"/);
-  assert.match(client, /chapterRegenerationLabel: "Regenerate Topic"/);
+  assert.match(client, /replacementButtonLabel: "Choose different question"/);
+  assert.match(client, /chapterRegenerationLabel: "Choose different questions for this chapter"/);
   assert.match(page, /listWorkspaceBlueprintTemplateSummaries/);
   assert.match(page, /blueprintTemplates=\{blueprintTemplates\}/);
   assert.match(client, /templateManagementHref: "\/workspace\/paper-builder\/blueprint\/templates"/);
@@ -102,7 +102,7 @@ test("teacher adapter contains only workspace routes and teacher-friendly Saved 
   assert.match(client, /`\/workspace\/paper-builder\/archive\/\$\{paperId\}`/);
   assert.match(client, /archiveLabel: "Saved papers"/);
   assert.doesNotMatch(`${page}\n${client}`, /@\/app\/admin|\/admin\/paper-builder|SUPER_ADMIN/);
-  assert.match(modeNav, /href: "\/workspace\/paper-builder\/archive", label: "Saved papers"/);
+  assert.match(modeNav, /href: "\/workspace\/paper-builder\/archive"[\s\S]*?label: "Saved papers"/);
   assert.match(teacherArchivePage, />Saved papers<\/h1>/);
   assert.match(teacherArchiveDetail, /archiveLabel="Saved papers"/);
   assert.doesNotMatch(`${page}\n${client}\n${teacherArchivePage}\n${teacherArchiveDetail}`, /Workspace Paper Archive/);

@@ -21,6 +21,7 @@ export default async function TeacherSavedGeneratedPaperPage({
       saved={saved}
       archiveHref="/workspace/paper-builder/archive"
       archiveLabel="Saved papers"
+      teacherFriendly
     />
   );
 }

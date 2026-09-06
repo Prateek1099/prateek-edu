@@ -136,12 +136,12 @@ export default function BlueprintTemplatesManagerClient({
     setPending(true);
     try {
       const result = await mutation();
-      if (!result.success) return toast.error(result.error ?? "Could not update the template.");
-      toast.success(result.message ?? "Blueprint template updated.");
+      if (!result.success) return toast.error(result.error ?? "Could not update the chapter pattern.");
+      toast.success(result.message ?? "Chapter pattern updated.");
       success?.();
       router.refresh();
     } catch {
-      toast.error("Could not update the blueprint template.");
+      toast.error("Could not update the chapter pattern.");
     } finally {
       setPending(false);
     }
@@ -181,7 +181,7 @@ export default function BlueprintTemplatesManagerClient({
         <Link href="/workspace/paper-builder/blueprint" className={buttonVariants({ variant: "outline" })}>
           <ExternalLink className="size-4" /> Open Chapter-wise Paper
         </Link>
-        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Blueprint template status">
+        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Saved chapter pattern status">
           {(["active", "archived"] as const).map((item) => (
             <Link
               key={item}
@@ -197,9 +197,14 @@ export default function BlueprintTemplatesManagerClient({
         </nav>
       </div>
 
-      <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
-        Section labels are paper-wide. Use the same question type and marks for the same section across all chapters.
-      </div>
+      <details className="rounded-xl border bg-muted/20">
+        <summary className="min-h-11 cursor-pointer px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+          How section labels work
+        </summary>
+        <p className="border-t px-4 py-3 text-sm text-muted-foreground">
+          Use the same section label, question type and marks when a section continues across chapters.
+        </p>
+      </details>
 
       {templates.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
@@ -209,39 +214,35 @@ export default function BlueprintTemplatesManagerClient({
           <p className="mt-2 text-sm text-muted-foreground">
             {status === "active"
               ? "Build a pattern in Chapter-wise Paper, then save it for later."
-              : "Archived templates will appear here and can be restored safely."}
+              : "Archived chapter patterns appear here and can be restored."}
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="divide-y overflow-hidden rounded-2xl border bg-card">
           {templates.map((template) => (
-            <Card key={template.id} className={cn(template.staleReason && "border-amber-500/50")}>
-              <CardHeader>
+            <article key={template.id} className={cn("space-y-4 p-4 sm:p-5", template.staleReason && "bg-amber-500/5")}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <CardTitle className="break-words">{template.name}</CardTitle>
-                    <CardDescription className="mt-1">
+                    <h3 className="break-words text-base font-semibold">{template.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {template.subjectName} · {template.qualificationTitle} · {template.boardTitle}
-                    </CardDescription>
+                    </p>
                   </div>
                   <Badge variant={template.staleReason ? "destructive" : template.archivedAt ? "outline" : "secondary"}>
                     {template.staleReason ? "Unavailable" : template.archivedAt ? "Archived" : "Active"}
                   </Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
+              <div className="space-y-4 text-sm">
                 {template.description && <p className="text-muted-foreground">{template.description}</p>}
                 {template.staleReason && (
                   <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">
                     {template.staleReason}
                   </p>
                 )}
-                <dl className="grid gap-2 sm:grid-cols-2">
-                  <Summary label="Topics" value={String(template.chapterCount)} />
-                  <Summary label="Rows" value={String(template.rowCount)} />
-                  <Summary label="Total questions" value={String(template.chapters.reduce((total, chapter) => total + chapter.rows.reduce((rowTotal, row) => rowTotal + row.questionCount, 0), 0))} />
+                <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  <Summary label="Chapters" value={template.chapters.map((chapter) => chapter.topicName).join(" · ")} />
+                  <Summary label="Structure" value={`${template.rowCount} sections · ${template.chapters.reduce((total, chapter) => total + chapter.rows.reduce((rowTotal, row) => rowTotal + row.questionCount, 0), 0)} questions`} />
                   <Summary label="Total marks" value={String(template.totalMarks)} />
-                  <Summary label="Preferred header" value={template.preferredHeaderTemplateName ?? "None"} />
                   <Summary label="Updated" value={template.updatedAt.slice(0, 10)} />
                 </dl>
                 <div className="flex flex-wrap gap-2">
@@ -252,7 +253,7 @@ export default function BlueprintTemplatesManagerClient({
                         aria-disabled={Boolean(template.staleReason)}
                         className={cn(buttonVariants({ size: "sm" }), template.staleReason && "pointer-events-none opacity-50")}
                       >
-                        <ExternalLink className="size-4" /> Apply in Builder
+                        <ExternalLink className="size-4" /> Use pattern
                       </Link>
                       <Button type="button" size="sm" variant="outline" disabled={pending || Boolean(template.staleReason)} onClick={() => setEditor(editorFromTemplate(template))}>
                         <Pencil className="size-4" /> Edit
@@ -261,7 +262,7 @@ export default function BlueprintTemplatesManagerClient({
                         <Copy className="size-4" /> Duplicate
                       </Button>
                       <Button type="button" size="sm" variant="outline" disabled={pending} onClick={() => {
-                        if (window.confirm(`Archive Blueprint Template “${template.name}”?`)) {
+                        if (window.confirm(`Archive chapter pattern “${template.name}”?`)) {
                           runMutation(() => archiveTeacherBlueprintTemplate(template.id));
                         }
                       }}>
@@ -274,8 +275,8 @@ export default function BlueprintTemplatesManagerClient({
                     </Button>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </article>
           ))}
         </div>
       )}
@@ -347,14 +348,14 @@ function TemplateEditor({
   return (
     <Card className="border-primary/30">
       <CardHeader>
-        <CardTitle>Edit Blueprint Template</CardTitle>
+        <CardTitle>Edit chapter pattern</CardTitle>
         <CardDescription>
-          Update reusable rules only. Generated questions, availability, previews, and archived papers are never stored here.
+          Update the reusable chapter and marks plan. It does not change any saved paper.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Template name"><Input value={editor.name} maxLength={200} onChange={(event) => onChange({ ...editor, name: event.target.value })} /></Field>
+          <Field label="Pattern name"><Input value={editor.name} maxLength={200} onChange={(event) => onChange({ ...editor, name: event.target.value })} /></Field>
           <Field label="Assigned subject">
             <Select value={editor.subjectId} onValueChange={(subjectId) => onChange({ ...editor, subjectId: subjectId || "", chapters: [] })}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
@@ -362,7 +363,7 @@ function TemplateEditor({
             </Select>
           </Field>
           <Field label="Description (optional)" className="md:col-span-2"><Textarea rows={2} maxLength={1000} value={editor.description} onChange={(event) => onChange({ ...editor, description: event.target.value })} /></Field>
-          <Field label="Preferred header template (optional)" className="md:col-span-2">
+          <Field label="Preferred paper header (optional)" className="md:col-span-2">
             <Select value={editor.preferredHeaderTemplateId ?? "none"} onValueChange={(value) => onChange({ ...editor, preferredHeaderTemplateId: !value || value === "none" ? null : value })}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="none">No preferred header</SelectItem>{headerTemplates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent>
@@ -371,7 +372,7 @@ function TemplateEditor({
         </div>
 
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div><h3 className="font-semibold">Topic-wise blueprint</h3><p className="text-sm text-muted-foreground">Calculated total: {totalMarks} marks</p></div>
+          <div><h3 className="font-semibold">Chapter marks plan</h3><p className="text-sm text-muted-foreground">Calculated total: {totalMarks} marks</p></div>
           <Field label="Add topic">
             <Select value="" onValueChange={(value) => { if (value) addTopic(value); }} disabled={unusedTopics.length === 0}>
               <SelectTrigger className="w-64 max-w-full"><SelectValue placeholder={unusedTopics.length ? "Choose topic" : "All topics added"} /></SelectTrigger>
@@ -380,7 +381,7 @@ function TemplateEditor({
           </Field>
         </div>
 
-        {editor.chapters.length === 0 && <Empty message="Add at least one topic and one blueprint row." />}
+        {editor.chapters.length === 0 && <Empty message="Add at least one chapter and one question section." />}
         {editor.chapters.map((chapter, chapterIndex) => (
           <div key={chapter.id} className="space-y-3 rounded-xl border bg-muted/15 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -399,14 +400,14 @@ function TemplateEditor({
                 <NumberField label="Marks each" value={row.marksPerQuestion} onChange={(marksPerQuestion) => updateRows(chapter.id, chapter.rows.map((item) => item.id === row.id ? { ...item, marksPerQuestion } : item))} />
                 <Field label="Difficulty"><Select value={row.difficulty} onValueChange={(difficulty) => updateRows(chapter.id, chapter.rows.map((item) => item.id === row.id ? { ...item, difficulty: difficulty as BlueprintRowDraft["difficulty"] } : item))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PAPER_DIFFICULTIES.map((difficulty) => <SelectItem key={difficulty} value={difficulty} className="capitalize">{difficulty === "any" ? "Any" : difficulty}</SelectItem>)}</SelectContent></Select></Field>
                 <div className="flex gap-1">
-                  <IconButton label="Move row up" disabled={rowIndex === 0} onClick={() => updateRows(chapter.id, moveItem(chapter.rows, rowIndex, rowIndex - 1))}><ArrowUp /></IconButton>
-                  <IconButton label="Move row down" disabled={rowIndex === chapter.rows.length - 1} onClick={() => updateRows(chapter.id, moveItem(chapter.rows, rowIndex, rowIndex + 1))}><ArrowDown /></IconButton>
-                  <IconButton label="Remove row" disabled={chapter.rows.length === 1} onClick={() => updateRows(chapter.id, chapter.rows.filter((item) => item.id !== row.id))}><Trash2 /></IconButton>
+                  <IconButton label="Move section up" disabled={rowIndex === 0} onClick={() => updateRows(chapter.id, moveItem(chapter.rows, rowIndex, rowIndex - 1))}><ArrowUp /></IconButton>
+                  <IconButton label="Move section down" disabled={rowIndex === chapter.rows.length - 1} onClick={() => updateRows(chapter.id, moveItem(chapter.rows, rowIndex, rowIndex + 1))}><ArrowDown /></IconButton>
+                  <IconButton label="Remove section" disabled={chapter.rows.length === 1} onClick={() => updateRows(chapter.id, chapter.rows.filter((item) => item.id !== row.id))}><Trash2 /></IconButton>
                 </div>
               </div>
             ))}
             <Button type="button" size="sm" variant="outline" onClick={() => updateRows(chapter.id, [...chapter.rows, { id: clientId("row"), topicId: chapter.topicId, sectionLabel: `Section ${String.fromCharCode(65 + Math.min(chapter.rows.length, 25))}`, questionType: "MCQ", questionCount: 1, marksPerQuestion: 1, difficulty: "any" }])}>
-              <Plus className="size-4" /> Add row
+              <Plus className="size-4" /> Add section
             </Button>
           </div>
         ))}
@@ -414,7 +415,7 @@ function TemplateEditor({
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>Cancel</Button>
           <Button type="button" disabled={pending || !editor.name.trim() || editor.chapters.length === 0 || totalMarks < 1} onClick={onSave}>
-            {pending ? "Saving…" : `Update ${totalMarks}-mark template`}
+            {pending ? "Saving…" : `Update ${totalMarks}-mark pattern`}
           </Button>
         </div>
       </CardContent>

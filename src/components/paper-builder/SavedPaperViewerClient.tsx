@@ -22,10 +22,12 @@ export function SavedPaperViewerClient({
   saved,
   archiveHref,
   archiveLabel = "Paper Archive",
+  teacherFriendly = false,
 }: {
   saved: SavedGeneratedPaperDetail;
   archiveHref: string;
   archiveLabel?: string;
+  teacherFriendly?: boolean;
 }) {
   const [preview, setPreview] = useState<"questions" | "answers">("questions");
   const [downloading, setDownloading] = useState<OutputMode | null>(null);
@@ -70,7 +72,7 @@ export function SavedPaperViewerClient({
         )}
         <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <Summary
-            label="Academic scope"
+            label={teacherFriendly ? "Subject" : "Academic scope"}
             value={`${saved.boardTitle} · ${saved.qualificationTitle} · ${saved.subjectName}`}
           />
           <Summary
@@ -78,14 +80,14 @@ export function SavedPaperViewerClient({
             value={`${saved.totalMarks} marks · ${saved.questionCount} questions · ${saved.durationMinutes} minutes`}
           />
           <Summary label="Final order" value={FINAL_PAPER_ORDER_LABELS[saved.finalOrderMode]} />
-          <Summary label="Created" value={formatAdminDateTime(saved.createdAt)} />
+          <Summary label={teacherFriendly ? "Saved" : "Created"} value={formatAdminDateTime(saved.createdAt)} />
           <Summary
-            label="Created by"
+            label={teacherFriendly ? "Saved by" : "Created by"}
             value={saved.createdByName || saved.createdByEmail || "Unknown user"}
           />
           <Summary
-            label="Source template"
-            value={saved.sourceBlueprintTemplateName || "Manual blueprint"}
+            label={teacherFriendly ? "Chapter pattern" : "Source template"}
+            value={saved.sourceBlueprintTemplateName || (teacherFriendly ? "No saved pattern" : "Manual blueprint")}
           />
         </div>
       </section>
@@ -95,7 +97,7 @@ export function SavedPaperViewerClient({
           variant={preview === "questions" ? "default" : "outline"}
           onClick={() => setPreview("questions")}
         >
-          <Eye className="size-4" /> Student paper
+          <Eye className="size-4" /> {teacherFriendly ? "Preview paper" : "Student paper"}
         </Button>
         <Button
           type="button"

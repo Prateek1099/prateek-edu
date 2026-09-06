@@ -134,15 +134,15 @@ test("Teacher Blueprint page exposes template management alongside scoped review
   assert.match(teacherAdapter, /replacement: true/);
   assert.match(teacherAdapter, /rowRegeneration: true/);
   assert.match(teacherAdapter, /chapterRegeneration: true/);
-  assert.match(sharedClient, /Using template:/);
-  assert.match(sharedClient, /Update template/);
+  assert.match(sharedClient, /Using chapter pattern/);
+  assert.match(sharedClient, /Update pattern/);
   assert.match(sharedClient, /clearGenerated\(\)/);
 });
 
-test("teacher template management route supports apply, edit, duplicate, archive, and restore", () => {
+test("teacher template management route supports use, edit, duplicate, archive, and restore", () => {
   assert.match(managerPage, /requireActiveWorkspace/);
   assert.match(managerPage, /mode="blueprint-templates"/);
-  ["Apply", "Edit", "Duplicate", "Archive", "Restore"].forEach((label) => {
+  ["Use pattern", "Edit", "Duplicate", "Archive", "Restore"].forEach((label) => {
     assert.match(managerClient, new RegExp(`>${label}<|${label}`));
   });
   assert.doesNotMatch(managerClient, /permanent|Delete pattern|hard delete/i);

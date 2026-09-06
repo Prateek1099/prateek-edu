@@ -36,6 +36,7 @@ export const teacherBlueprintBuilderActions: BlueprintBuilderActions = {
 };
 
 export const teacherBlueprintBuilderConfig: BlueprintBuilderConfig = {
+  teacherFacing: true,
   capabilities: {
     templates: true,
     archive: true,
@@ -51,19 +52,19 @@ export const teacherBlueprintBuilderConfig: BlueprintBuilderConfig = {
     questionBankLabel: "Vexa library and your questions",
     archiveLabel: "Saved papers",
     templateManagementLabel: "Manage saved chapter patterns",
-    availabilitySuccess: "Availability checked against your current academic scope and eligible Question Bank records.",
-    generationSuccess: "Complete paper generated. Review the topic allocations before previewing.",
+    availabilitySuccess: "Question availability checked for every chapter and section.",
+    generationSuccess: "Questions chosen. Review each chapter before previewing the paper.",
     savedPaperSuccess: "Paper saved to Saved papers.",
-    summaryDescription: "Build from your assigned subjects using the Vexa library and eligible MCQs added by your workspace. Saving keeps a private copy for your workspace.",
+    summaryDescription: "Use your assigned subjects to plan the paper chapter by chapter.",
   },
   templateHeaderBehavior: "workspace_preference",
   reviewTools: {
     confirmRegeneration: true,
     showAlternativeWarnings: true,
     showModifiedStatus: true,
-    replacementButtonLabel: "Replace Question",
-    chapterRegenerationLabel: "Regenerate Topic",
-    chapterRegenerationSuccess: "Topic regenerated. Every other topic was preserved.",
+    replacementButtonLabel: "Choose different question",
+    chapterRegenerationLabel: "Choose different questions for this chapter",
+    chapterRegenerationSuccess: "Different questions chosen for this chapter. Every other chapter was preserved.",
   },
 };
 

@@ -338,7 +338,7 @@ export default function SimplePaperBuilderClient({
 
   const applyTemplate = () => {
     const template = headerTemplates.find((item) => item.id === selectedTemplateId);
-    if (!template) return toast.error("Choose a header template first.");
+    if (!template) return toast.error(teacherFriendlyLabels ? "Choose a saved header first." : "Choose a header template first.");
     setTemplateName(template.name);
     setDetails((current) => ({
       ...current,
@@ -353,7 +353,7 @@ export default function SimplePaperBuilderClient({
       topicLine: template.defaultTopicLine ?? "",
     }));
     invalidatePreview();
-    toast.success(`Applied “${template.name}”. Header fields remain editable.`);
+    toast.success(teacherFriendlyLabels ? `Using “${template.name}”. You can still edit the paper details.` : `Applied “${template.name}”. Header fields remain editable.`);
   };
 
   const saveTemplate = async () => {
@@ -362,7 +362,7 @@ export default function SimplePaperBuilderClient({
     try {
       const result = await headerTemplateActions.create(currentTemplateInput());
       if (!result.success) return toast.error(result.error);
-      toast.success("Header template saved.");
+      toast.success(teacherFriendlyLabels ? "Paper header saved." : "Header template saved.");
       router.refresh();
     } finally {
       setSavingTemplate(false);
@@ -371,12 +371,12 @@ export default function SimplePaperBuilderClient({
 
   const updateTemplate = async () => {
     if (!headerTemplateActions) return;
-    if (!selectedTemplateId) return toast.error("Choose a template to update.");
+    if (!selectedTemplateId) return toast.error(teacherFriendlyLabels ? "Choose a saved header to update." : "Choose a template to update.");
     setSavingTemplate(true);
     try {
       const result = await headerTemplateActions.update(selectedTemplateId, currentTemplateInput());
       if (!result.success) return toast.error(result.error);
-      toast.success("Header template updated.");
+      toast.success(teacherFriendlyLabels ? "Paper header updated." : "Header template updated.");
       router.refresh();
     } finally {
       setSavingTemplate(false);
@@ -388,15 +388,15 @@ export default function SimplePaperBuilderClient({
     const template = headerTemplates.find((item) => item.id === selectedTemplateId);
     const action = headerTemplateActions.archive ?? headerTemplateActions.delete;
     const verb = headerTemplateActions.archive ? "archive" : "delete";
-    if (!template || !action) return toast.error(`Choose a template to ${verb}.`);
-    if (!window.confirm(`${verb === "archive" ? "Archive" : "Delete"} header template “${template.name}”?`)) return;
+    if (!template || !action) return toast.error(`Choose a ${teacherFriendlyLabels ? "saved header" : "template"} to ${verb}.`);
+    if (!window.confirm(`${verb === "archive" ? "Archive" : "Delete"} ${teacherFriendlyLabels ? "paper header" : "header template"} “${template.name}”?`)) return;
     setSavingTemplate(true);
     try {
       const result = await action(template.id);
       if (!result.success) return toast.error(result.error);
       setSelectedTemplateId("");
       setTemplateName("");
-      toast.success(`Header template ${verb === "archive" ? "archived" : "deleted"}.`);
+      toast.success(`${teacherFriendlyLabels ? "Paper header" : "Header template"} ${verb === "archive" ? "archived" : "deleted"}.`);
       router.refresh();
     } finally {
       setSavingTemplate(false);
@@ -433,7 +433,7 @@ export default function SimplePaperBuilderClient({
   const applyPaperTemplateSnapshot = (template: WorkspacePaperTemplateSnapshot) => {
     const subject = subjects.find((item) => item.id === template.subjectId);
     if (!subject) {
-      toast.error("This template subject is no longer available in your workspace.");
+      toast.error(teacherFriendlyLabels ? "This setup uses a subject that is no longer available." : "This template subject is no longer available in your workspace.");
       return;
     }
     const nextTopicIds = template.topics.map((topic) => topic.id);
@@ -478,12 +478,12 @@ export default function SimplePaperBuilderClient({
       }));
     }
     clearGeneratedPaperState();
-    toast.success(`Applied “${template.name}” as a fresh paper draft.`);
+    toast.success(teacherFriendlyLabels ? `Using “${template.name}”. Choose fresh questions for this paper.` : `Applied “${template.name}” as a fresh paper draft.`);
   };
 
   const applyPaperTemplate = async () => {
     if (!paperTemplateActions || !selectedPaperTemplateId) {
-      toast.error("Choose a saved paper template first.");
+      toast.error(teacherFriendlyLabels ? "Choose a saved paper setup first." : "Choose a saved paper template first.");
       return;
     }
     setSavingPaperTemplate(true);
@@ -492,7 +492,7 @@ export default function SimplePaperBuilderClient({
       if (!result.success) return toast.error(result.error);
       applyPaperTemplateSnapshot(result.template);
     } catch {
-      toast.error("Could not apply the paper template.");
+      toast.error(teacherFriendlyLabels ? "Could not use the saved setup." : "Could not apply the paper template.");
     } finally {
       setSavingPaperTemplate(false);
     }
@@ -507,7 +507,7 @@ export default function SimplePaperBuilderClient({
       toast.success(result.message);
       router.refresh();
     } catch {
-      toast.error("Could not save the paper template.");
+      toast.error(teacherFriendlyLabels ? "Could not save the paper setup." : "Could not save the paper template.");
     } finally {
       setSavingPaperTemplate(false);
     }
@@ -515,7 +515,7 @@ export default function SimplePaperBuilderClient({
 
   const updateCurrentPaperTemplate = async () => {
     if (!paperTemplateActions || !selectedPaperTemplateId) {
-      toast.error("Choose a saved paper template to update.");
+      toast.error(teacherFriendlyLabels ? "Choose a saved paper setup to update." : "Choose a saved paper template to update.");
       return;
     }
     setSavingPaperTemplate(true);
@@ -528,7 +528,7 @@ export default function SimplePaperBuilderClient({
       toast.success(result.message);
       router.refresh();
     } catch {
-      toast.error("Could not update the paper template.");
+      toast.error(teacherFriendlyLabels ? "Could not update the paper setup." : "Could not update the paper template.");
     } finally {
       setSavingPaperTemplate(false);
     }
@@ -536,7 +536,7 @@ export default function SimplePaperBuilderClient({
 
   const duplicatePaperTemplate = async () => {
     if (!paperTemplateActions || !selectedPaperTemplateId) {
-      toast.error("Choose a saved paper template to duplicate.");
+      toast.error(teacherFriendlyLabels ? "Choose a saved paper setup to duplicate." : "Choose a saved paper template to duplicate.");
       return;
     }
     setSavingPaperTemplate(true);
@@ -546,7 +546,7 @@ export default function SimplePaperBuilderClient({
       toast.success(result.message);
       router.refresh();
     } catch {
-      toast.error("Could not duplicate the paper template.");
+      toast.error(teacherFriendlyLabels ? "Could not duplicate the paper setup." : "Could not duplicate the paper template.");
     } finally {
       setSavingPaperTemplate(false);
     }
@@ -554,11 +554,11 @@ export default function SimplePaperBuilderClient({
 
   const archivePaperTemplate = async () => {
     if (!paperTemplateActions || !selectedPaperTemplateId) {
-      toast.error("Choose a saved paper template to archive.");
+      toast.error(teacherFriendlyLabels ? "Choose a saved paper setup to archive." : "Choose a saved paper template to archive.");
       return;
     }
     const selected = paperTemplates.find((template) => template.id === selectedPaperTemplateId);
-    if (!selected || !window.confirm(`Archive paper template “${selected.name}”?`)) return;
+    if (!selected || !window.confirm(`Archive ${teacherFriendlyLabels ? "paper setup" : "paper template"} “${selected.name}”?`)) return;
     setSavingPaperTemplate(true);
     try {
       const result = await paperTemplateActions.archive(selectedPaperTemplateId);
@@ -569,7 +569,7 @@ export default function SimplePaperBuilderClient({
       toast.success(result.message);
       router.refresh();
     } catch {
-      toast.error("Could not archive the paper template.");
+      toast.error(teacherFriendlyLabels ? "Could not archive the paper setup." : "Could not archive the paper template.");
     } finally {
       setSavingPaperTemplate(false);
     }
@@ -843,21 +843,35 @@ export default function SimplePaperBuilderClient({
       )
     : [];
 
+  const headerTemplateButtons = headerTemplateActions ? (
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" size="sm" onClick={saveTemplate} disabled={savingTemplate || !templateName.trim()}>
+          {teacherFriendlyLabels ? "Save current header" : "Save current header as template"}
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={updateTemplate} disabled={savingTemplate || !selectedTemplateId || !templateName.trim()}>
+          Update selected
+        </Button>
+        {(headerTemplateActions.archive || headerTemplateActions.delete) && (
+          <Button type="button" size="sm" variant={headerTemplateActions.archive ? "outline" : "destructive"} onClick={removeTemplate} disabled={savingTemplate || !selectedTemplateId}>
+            {headerTemplateActions.archive ? "Archive selected" : "Delete selected"}
+          </Button>
+        )}
+        {headerTemplateManageHref && (
+          <Link href={headerTemplateManageHref} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-muted">
+            <Settings2 className="size-4" /> {teacherFriendlyLabels ? "Manage paper headers" : "Manage templates"}
+          </Link>
+        )}
+      </div>
+  ) : null;
+
   return (
     <div className="space-y-6">
       <div className="paper-builder-screen-only space-y-6">
       {paperTemplateActions && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Saved paper templates</CardTitle>
-            <CardDescription>
-              Reuse academic scope and section rules. Templates never save selected or generated questions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SavedSetupPanel teacherFriendly={teacherFriendlyLabels}>
             {initialPaperTemplateError && <Warning message={initialPaperTemplateError} />}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-end">
-              <Field label="Saved template">
+              <Field label={teacherFriendlyLabels ? "Saved setup" : "Saved template"}>
                 <Select
                   value={selectedPaperTemplateId}
                   onValueChange={(value) => {
@@ -871,7 +885,7 @@ export default function SimplePaperBuilderClient({
                   }}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a paper template">
+                    <SelectValue placeholder={teacherFriendlyLabels ? "Choose a saved paper setup" : "Choose a paper template"}>
                       {paperTemplates.find((template) => template.id === selectedPaperTemplateId)?.name}
                     </SelectValue>
                   </SelectTrigger>
@@ -889,7 +903,7 @@ export default function SimplePaperBuilderClient({
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="Template name">
+              <Field label={teacherFriendlyLabels ? "Setup name" : "Template name"}>
                 <Input
                   value={paperTemplateName}
                   onChange={(event) => setPaperTemplateName(event.target.value)}
@@ -903,7 +917,7 @@ export default function SimplePaperBuilderClient({
                 onClick={applyPaperTemplate}
                 disabled={!selectedPaperTemplateId || savingPaperTemplate}
               >
-                Apply
+                {teacherFriendlyLabels ? "Use setup" : "Apply"}
               </Button>
             </div>
             <Field label="Description (optional)">
@@ -922,7 +936,7 @@ export default function SimplePaperBuilderClient({
                 onClick={saveCurrentPaperTemplate}
                 disabled={savingPaperTemplate || !paperTemplateName.trim()}
               >
-                <Save className="size-4" /> Save current setup
+                <Save className="size-4" /> {teacherFriendlyLabels ? "Save this setup" : "Save current setup"}
               </Button>
               <Button
                 type="button"
@@ -956,51 +970,55 @@ export default function SimplePaperBuilderClient({
                   href={paperTemplateManageHref}
                   className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-muted"
                 >
-                  <Settings2 className="size-4" /> Manage paper templates
+                  <Settings2 className="size-4" /> {teacherFriendlyLabels ? "Manage saved setups" : "Manage paper templates"}
                 </Link>
               )}
             </div>
             <p className="text-xs leading-5 text-muted-foreground">
-              Applying a template starts a fresh browser-session draft and clears selected questions,
-              availability results, validation, preview, and unsaved paper state.
+              {teacherFriendlyLabels
+                ? "A saved setup reuses topics, question types and marks. It does not contain selected questions."
+                : "Applying a template starts a fresh browser-session draft and clears selected questions, availability results, validation, preview, and unsaved paper state."}
             </p>
-          </CardContent>
-        </Card>
+        </SavedSetupPanel>
       )}
       <Card>
         <CardHeader>
-          <StepHeader step="1" title="Paper header" description="Customize the printed identity, student fields, timing, and instructions." />
+          <StepHeader step="1" title={teacherFriendlyLabels ? "Paper details" : "Paper header"} description={teacherFriendlyLabels ? "Set the heading, timing and instructions for this paper." : "Customize the printed identity, student fields, timing, and instructions."} />
         </CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {headerTemplateActions && (
           <div className="rounded-xl border bg-muted/20 p-4 md:col-span-2 xl:col-span-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end">
-              <Field label="Header template">
+            <div className={cn("grid gap-3 sm:items-end", teacherFriendlyLabels ? "sm:grid-cols-[minmax(0,1fr)_auto]" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]")}>
+              <Field label={teacherFriendlyLabels ? "Use saved header" : "Header template"}>
                 <Select value={selectedTemplateId} onValueChange={(value) => { const next = value || ""; setSelectedTemplateId(next); const template = headerTemplates.find((item) => item.id === next); if (template) setTemplateName(template.name); }}>
                   <SelectTrigger className="w-full"><SelectValue placeholder="Select a saved template">{headerTemplates.find((template) => template.id === selectedTemplateId)?.name}</SelectValue></SelectTrigger>
                   <SelectContent>{headerTemplates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent>
                 </Select>
               </Field>
-              <Field label="Template name">
-                <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} maxLength={200} placeholder="e.g. Lucky International School - Class Test" />
-              </Field>
-              <Button type="button" variant="outline" onClick={applyTemplate} disabled={!selectedTemplateId}>Apply template</Button>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button type="button" size="sm" onClick={saveTemplate} disabled={savingTemplate || !templateName.trim()}>Save current header as template</Button>
-              <Button type="button" size="sm" variant="outline" onClick={updateTemplate} disabled={savingTemplate || !selectedTemplateId || !templateName.trim()}>Update selected</Button>
-              {(headerTemplateActions.archive || headerTemplateActions.delete) && (
-                <Button type="button" size="sm" variant={headerTemplateActions.archive ? "outline" : "destructive"} onClick={removeTemplate} disabled={savingTemplate || !selectedTemplateId}>
-                  {headerTemplateActions.archive ? "Archive selected" : "Delete selected"}
-                </Button>
+              {!teacherFriendlyLabels && (
+                <Field label="Template name">
+                  <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} maxLength={200} placeholder="e.g. Lucky International School - Class Test" />
+                </Field>
               )}
-              {headerTemplateManageHref && (
-                <Link href={headerTemplateManageHref} className="inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium hover:bg-muted">
-                  <Settings2 className="size-4" /> Manage templates
-                </Link>
-              )}
+              <Button type="button" variant="outline" onClick={applyTemplate} disabled={!selectedTemplateId}>{teacherFriendlyLabels ? "Use header" : "Apply template"}</Button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">Templates save reusable header defaults only. The generated paper is still temporary and is never saved.</p>
+            {teacherFriendlyLabels ? (
+              <details className="group mt-3 rounded-lg border bg-background/70">
+                <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between px-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                  Manage saved headers
+                  <span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
+                </summary>
+                <div className="space-y-3 border-t p-3">
+                  <Field label="Header name">
+                    <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} maxLength={200} placeholder="e.g. Lucky International School - Class Test" />
+                  </Field>
+                  {headerTemplateButtons}
+                </div>
+              </details>
+            ) : (
+              <div className="mt-3">{headerTemplateButtons}</div>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">{teacherFriendlyLabels ? "A saved header fills school and exam details so you do not type them again." : "Templates save reusable header defaults only. The generated paper is still temporary and is never saved."}</p>
           </div>
           )}
           <Field label="Institution name" className="md:col-span-2">
@@ -1081,7 +1099,7 @@ export default function SimplePaperBuilderClient({
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <StepHeader step="3" title="Paper sections" description="Define each section by question type, count, marks, and difficulty." />
+            <StepHeader step="3" title={teacherFriendlyLabels ? "Paper structure" : "Paper sections"} description={teacherFriendlyLabels ? "Choose the question type, number of questions, marks and difficulty for each section." : "Define each section by question type, count, marks, and difficulty."} />
             <Button type="button" variant="outline" onClick={addPattern}><Plus className="size-4" /> Add section</Button>
           </div>
         </CardHeader>
@@ -1098,10 +1116,10 @@ export default function SimplePaperBuilderClient({
                   <Field label="Questions"><Input type="number" min={1} max={100} value={pattern.questionCount} onChange={(event) => updatePattern(pattern.id, { questionCount: Number(event.target.value) })} /></Field>
                   <Field label="Marks each"><Input type="number" min={1} max={100} value={pattern.marksPerQuestion} onChange={(event) => updatePattern(pattern.id, { marksPerQuestion: Number(event.target.value) })} /></Field>
                   <Field label="Difficulty"><Select value={pattern.difficulty} onValueChange={(value) => updatePattern(pattern.id, { difficulty: (value || "any") as PaperPatternRow["difficulty"] })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{PAPER_DIFFICULTIES.map((difficulty) => <SelectItem key={difficulty} value={difficulty} className="capitalize">{difficulty === "any" ? "Mixed" : difficulty}</SelectItem>)}</SelectContent></Select></Field>
-                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove pattern row ${index + 1}`} disabled={patterns.length === 1} onClick={() => removePattern(pattern.id)}><Trash2 className="size-4" /></Button>
+                  <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${teacherFriendlyLabels ? "section" : "pattern row"} ${index + 1}`} disabled={patterns.length === 1} onClick={() => removePattern(pattern.id)}><Trash2 className="size-4" /></Button>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                  <Badge variant={insufficient ? "destructive" : "secondary"}>{available} unique matching available</Badge>
+                  <Badge variant={insufficient ? "destructive" : "secondary"}>{available} {teacherFriendlyLabels ? "matching questions available" : "unique matching available"}</Badge>
                   <span className="text-muted-foreground">Section marks: {pattern.questionCount * pattern.marksPerQuestion}</span>
                   {insufficient && <span className="text-destructive">Need {pattern.questionCount - available} more matching questions.</span>}
                 </div>
@@ -1111,7 +1129,7 @@ export default function SimplePaperBuilderClient({
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
             <div><p className="font-semibold">Calculated paper total: {patternMarks} marks</p><p className="text-sm text-muted-foreground">Maximum marks always comes from section count × marks.</p></div>
-            <Badge className="bg-emerald-600">Server recalculated</Badge>
+            <Badge className="bg-emerald-600">{teacherFriendlyLabels ? "Total checked" : "Server recalculated"}</Badge>
           </div>
         </CardContent>
       </Card>
@@ -1119,7 +1137,7 @@ export default function SimplePaperBuilderClient({
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <StepHeader step="4" title="Select questions" description="Choose manually or assemble random sections, then replace, remove, or reorder individual questions." />
+            <StepHeader step="4" title={teacherFriendlyLabels ? "Questions" : "Select questions"} description={teacherFriendlyLabels ? "Choose questions yourself or let Vexa fill each section. You can still change the result." : "Choose manually or assemble random sections, then replace, remove, or reorder individual questions."} />
             <Button type="button" onClick={generateAllRandomly} disabled={!subjectId || topicIds.length === 0 || !availabilityOkay}><Shuffle className="size-4" /> {teacherFriendlyLabels ? "Choose questions for me" : "Randomly fill all sections"}</Button>
           </div>
         </CardHeader>
@@ -1133,8 +1151,8 @@ export default function SimplePaperBuilderClient({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div><h3 className="font-semibold">{pattern.label || "Untitled section"}</h3><p className="mt-1 text-sm text-muted-foreground">{BANK_QUESTION_TYPE_LABELS[pattern.questionType]} · {ids.length} of {pattern.questionCount} selected · {pattern.marksPerQuestion} mark{pattern.marksPerQuestion === 1 ? "" : "s"} each · {pattern.difficulty === "any" ? "mixed difficulty" : pattern.difficulty}</p></div>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" size="sm" variant="outline" onClick={() => { setManualPatternId(manualPatternId === pattern.id ? null : pattern.id); setManualSearch(""); }}><ListChecks className="size-4" /> Manual selection</Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => regenerateSection(pattern)}><RefreshCw className="size-4" /> Regenerate section</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setManualPatternId(manualPatternId === pattern.id ? null : pattern.id); setManualSearch(""); }}><ListChecks className="size-4" /> {teacherFriendlyLabels ? "Choose manually" : "Manual selection"}</Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => regenerateSection(pattern)}><RefreshCw className="size-4" /> {teacherFriendlyLabels ? "Choose different questions" : "Regenerate section"}</Button>
                   </div>
                 </div>
 
@@ -1168,7 +1186,7 @@ export default function SimplePaperBuilderClient({
                         <div className="flex shrink-0 flex-wrap gap-1">
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question up" disabled={index === 0} onClick={() => moveQuestion(pattern.id, index, -1)}><ArrowUp className="size-4" /></Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Move question down" disabled={index === ids.length - 1} onClick={() => moveQuestion(pattern.id, index, 1)}><ArrowDown className="size-4" /></Button>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => replaceQuestion(pattern, id)}><RefreshCw className="size-4" /> Replace</Button>
+                          <Button type="button" variant="ghost" size="sm" onClick={() => replaceQuestion(pattern, id)}><RefreshCw className="size-4" /> {teacherFriendlyLabels ? "Choose different question" : "Replace"}</Button>
                           <Button type="button" variant="ghost" size="icon" aria-label="Remove question" onClick={() => removeQuestion(pattern.id, id)}><X className="size-4" /></Button>
                         </div>
                       </div>
@@ -1182,15 +1200,15 @@ export default function SimplePaperBuilderClient({
       </Card>
 
       <Card>
-        <CardHeader><StepHeader step="5" title={teacherFriendlyLabels ? "Preview paper" : "Validate and preview"} description={teacherFriendlyLabels ? "We’ll check the paper one more time before opening the preview." : "The server rechecks authorization, ownership, scope, type-specific completeness, marks, and duplicates."} /></CardHeader>
+        <CardHeader><StepHeader step="5" title={teacherFriendlyLabels ? (previewIsCurrent ? "Paper ready" : "Preview, export & save") : "Validate and preview"} description={teacherFriendlyLabels ? "Check the paper, then preview, print, download or save it." : "The server rechecks authorization, ownership, scope, type-specific completeness, marks, and duplicates."} /></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatusItem good={patternMarks > 0} label={`Sections total ${patternMarks} marks`} />
             <StatusItem good={selectionComplete} label={selectionComplete ? "All sections complete" : "Selections incomplete"} />
             <StatusItem good={selectedMarks === patternMarks} label={`Selected ${selectedMarks}/${patternMarks} marks`} />
-            <StatusItem good={!duplicateError} label={duplicateError ?? "No duplicate IDs or text"} />
+            <StatusItem good={!duplicateError} label={duplicateError ?? (teacherFriendlyLabels ? "No repeated questions" : "No duplicate IDs or text")} />
           </div>
-          {!availabilityOkay && <Warning message="At least one pattern row does not have enough matching Question Bank records." />}
+          {!availabilityOkay && <Warning message={teacherFriendlyLabels ? "At least one section does not have enough matching questions." : "At least one pattern row does not have enough matching Question Bank records."} />}
           <Button type="button" size="lg" className="h-12 w-full sm:w-auto" onClick={validateAndPreview} disabled={!canValidate || validating}><FileCheck2 className="size-5" /> {validating ? "Checking paper…" : teacherFriendlyLabels ? "Preview paper" : "Validate and open preview"}</Button>
         </CardContent>
       </Card>
@@ -1200,7 +1218,7 @@ export default function SimplePaperBuilderClient({
         <section id="paper-preview" className="space-y-5 pt-4">
           {!previewIsCurrent && <Warning message="The builder changed after validation. Validate again before printing." />}
           <div className="paper-builder-screen-only flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><h2 className="text-xl font-semibold">Paper preview</h2><p className="mt-1 text-sm text-muted-foreground">{previewDescription}</p></div>
+            <div><h2 className="text-xl font-semibold">{teacherFriendlyLabels ? "Paper ready" : "Paper preview"}</h2><p className="mt-1 text-sm text-muted-foreground">{previewDescription}</p></div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => setPreviewTab("questions")}><Eye className="size-4" /> Student paper</Button>
               <Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => setPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button>
@@ -1243,11 +1261,11 @@ export default function SimplePaperBuilderClient({
                   }
                   className="inline-flex h-9 items-center justify-center rounded-md border bg-background px-4 text-sm font-medium hover:bg-muted"
                 >
-                  Open Paper Archive
+                  {teacherFriendlyLabels ? "Open saved papers" : "Open Paper Archive"}
                 </a>
               </div>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Saving creates an immutable workspace-owned snapshot. It does not assign or publish the paper.
+                {teacherFriendlyLabels ? "Saving keeps this exact paper for later. It does not assign the paper to students." : "Saving creates an immutable workspace-owned snapshot. It does not assign or publish the paper."}
               </p>
             </div>
           )}
@@ -1278,6 +1296,45 @@ function QuestionCandidateSummary({ question }: { question: PaperBuilderQuestion
       )}
       <p className="mt-2 text-xs text-muted-foreground">{question.topicName ?? question.topicTag ?? "Topic"}</p>
     </div>
+  );
+}
+
+function SavedSetupPanel({
+  teacherFriendly,
+  children,
+}: {
+  teacherFriendly: boolean;
+  children: React.ReactNode;
+}) {
+  if (teacherFriendly) {
+    return (
+      <details className="group rounded-2xl border bg-card">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5">
+          <span>
+            <span className="block text-sm font-semibold">Use a saved paper setup</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Reuse topics, question types and marks from a previous Quick Paper.
+            </span>
+          </span>
+          <span aria-hidden="true" className="text-muted-foreground transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="space-y-4 border-t p-4 sm:p-5">{children}</div>
+      </details>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Saved paper templates</CardTitle>
+        <CardDescription>
+          Reuse academic scope and section rules. Templates never save selected or generated questions.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">{children}</CardContent>
+    </Card>
   );
 }
 

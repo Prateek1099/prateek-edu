@@ -126,7 +126,7 @@ export default function TemplatesManagerClient({
       reset();
       router.refresh();
     } catch {
-      toast.error("Could not save the paper template.");
+      toast.error("Could not save the paper setup.");
     } finally {
       setSaving(false);
     }
@@ -145,7 +145,7 @@ export default function TemplatesManagerClient({
   };
 
   const archive = async (template: ManagedWorkspacePaperTemplate) => {
-    if (!window.confirm(`Archive paper template “${template.name}”?`)) return;
+    if (!window.confirm(`Archive paper setup “${template.name}”?`)) return;
     setChangingId(template.id);
     try {
       const result = await archiveWorkspacePaperTemplate(template.id);
@@ -174,9 +174,9 @@ export default function TemplatesManagerClient({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href="/workspace/paper-builder" className={buttonVariants({ variant: "outline" })}>
-          <ArrowLeft className="size-4" /> Back to Quick Paper
+          <ArrowLeft className="size-4" /> Back to Papers
         </Link>
-        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Paper template status">
+        <nav className="flex rounded-xl border bg-muted/30 p-1" aria-label="Saved paper setup status">
           {(["active", "archived"] as const).map((item) => (
             <Link
               key={item}
@@ -193,16 +193,21 @@ export default function TemplatesManagerClient({
       </div>
 
       {status === "active" && (
-        <Card>
+        <details className="rounded-2xl border bg-card" open={editingId ? true : undefined}>
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5">
+            {editingId ? "Editing saved paper setup" : "Create a new saved paper setup"}
+            <span aria-hidden="true" className="text-muted-foreground">+</span>
+          </summary>
+        <Card className="rounded-t-none border-x-0 border-b-0 shadow-none">
           <CardHeader>
-            <CardTitle>{editingId ? "Edit simple paper template" : "Create simple paper template"}</CardTitle>
+            <CardTitle>{editingId ? "Edit saved paper setup" : "Create saved paper setup"}</CardTitle>
             <CardDescription>
-              Save the subject, topics, section rules, calculated marks, and an optional preferred header.
+              Reuse this subject, topic and marks structure without saving the selected questions.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Template name">
+              <Field label="Setup name">
                 <Input value={draft.name} maxLength={200} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Class 12 SQL unit test" />
               </Field>
               <Field label="Assigned subject">
@@ -214,7 +219,7 @@ export default function TemplatesManagerClient({
               <Field label="Description (optional)" className="md:col-span-2">
                 <Textarea value={draft.description} maxLength={1000} rows={2} onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))} />
               </Field>
-              <Field label="Preferred header template (optional)" className="md:col-span-2">
+              <Field label="Preferred paper header (optional)" className="md:col-span-2">
                 <Select value={draft.preferredHeaderTemplateId ?? "none"} onValueChange={(value) => setDraft((current) => ({ ...current, preferredHeaderTemplateId: !value || value === "none" ? null : value }))}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -283,22 +288,23 @@ export default function TemplatesManagerClient({
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
               <p className="font-semibold">Calculated target: {targetMarks} marks</p>
-              <Badge>Rules only · no question IDs</Badge>
+              <Badge>Reusable setup · choose fresh questions</Badge>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={submit} disabled={saving || !draft.name.trim()}>
                 {editingId ? <Pencil className="size-4" /> : <Plus className="size-4" />}
-                {saving ? "Saving…" : editingId ? "Update template" : "Create template"}
+                {saving ? "Saving…" : editingId ? "Update setup" : "Save setup"}
               </Button>
               {editingId && <Button type="button" variant="outline" onClick={reset} disabled={saving}>Cancel edit</Button>}
             </div>
           </CardContent>
         </Card>
+        </details>
       )}
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-xl font-semibold capitalize">{status} templates</h2>
+          <h2 className="text-xl font-semibold capitalize">{status} setups</h2>
           <p className="text-sm text-muted-foreground">
             {status === "active" ? "Apply a saved setup to start a fresh paper." : "Restore a saved setup before using it in Quick Paper."}
           </p>
@@ -306,35 +312,31 @@ export default function TemplatesManagerClient({
         {templates.length === 0 ? (
           <Empty message={status === "active" ? "Save a setup when you want to reuse the same topics and marks later." : "No archived paper setups."} />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="divide-y overflow-hidden rounded-2xl border bg-card">
             {templates.map((template) => (
-              <Card key={template.id}>
-                <CardHeader>
+              <article key={template.id} className="space-y-4 p-4 sm:p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <CardTitle className="text-lg">{template.name}</CardTitle>
-                      <CardDescription>{template.subjectName}</CardDescription>
+                    <div className="min-w-0">
+                      <h3 className="break-words text-base font-semibold">{template.name}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">{template.subjectName}</p>
                     </div>
                     <Badge variant={template.staleReason ? "destructive" : template.archivedAt ? "outline" : "secondary"}>
                       {template.staleReason ? "Unavailable" : template.archivedAt ? "Archived" : "Active"}
                     </Badge>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4 text-sm">
+                <div className="space-y-4 text-sm">
                   {template.description && <p className="text-muted-foreground">{template.description}</p>}
                   {template.staleReason && <p className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-900 dark:text-amber-200">{template.staleReason}</p>}
-                  <dl className="grid gap-2 sm:grid-cols-2">
-                    <div><dt className="text-muted-foreground">Topics</dt><dd className="font-medium">{template.topicCount}</dd></div>
-                    <div><dt className="text-muted-foreground">Sections</dt><dd className="font-medium">{template.rowCount}</dd></div>
+                  <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div><dt className="text-muted-foreground">Topics</dt><dd className="font-medium">{template.topics.map((topic) => topic.name).join(" · ") || template.topicCount}</dd></div>
+                    <div><dt className="text-muted-foreground">Structure</dt><dd className="font-medium">{template.rows.map((row) => `${row.questionCount} ${BANK_QUESTION_TYPE_LABELS[row.questionType]} × ${row.marksPerQuestion}`).join(" · ")}</dd></div>
                     <div><dt className="text-muted-foreground">Target marks</dt><dd className="font-medium">{template.targetMarks}</dd></div>
-                    <div><dt className="text-muted-foreground">Header</dt><dd className="font-medium">{template.preferredHeaderTemplateName ?? "None"}</dd></div>
-                    <div><dt className="text-muted-foreground">Created</dt><dd className="font-medium">{template.createdAt.slice(0, 10)}</dd></div>
                     <div><dt className="text-muted-foreground">Updated</dt><dd className="font-medium">{template.updatedAt.slice(0, 10)}</dd></div>
                   </dl>
                   <div className="flex flex-wrap gap-2">
                     {status === "active" ? (
                       <>
-                        <Link href={`/workspace/paper-builder?template=${encodeURIComponent(template.id)}`} aria-disabled={Boolean(template.staleReason)} className={cn(buttonVariants({ size: "sm" }), template.staleReason && "pointer-events-none opacity-50")}>Apply</Link>
+                        <Link href={`/workspace/paper-builder?template=${encodeURIComponent(template.id)}`} aria-disabled={Boolean(template.staleReason)} className={cn(buttonVariants({ size: "sm" }), template.staleReason && "pointer-events-none opacity-50")}>Use setup</Link>
                         <Button type="button" size="sm" variant="outline" disabled={Boolean(template.staleReason)} onClick={() => { setEditingId(template.id); setDraft(draftFromTemplate(template)); window.scrollTo({ top: 0, behavior: "smooth" }); }}><Pencil className="size-4" /> Edit</Button>
                         <Button type="button" size="sm" variant="outline" disabled={changingId === template.id || Boolean(template.staleReason)} onClick={() => duplicate(template.id)}><Copy className="size-4" /> Duplicate</Button>
                         <Button type="button" size="sm" variant="outline" disabled={changingId === template.id} onClick={() => archive(template)}><Archive className="size-4" /> Archive</Button>
@@ -343,8 +345,8 @@ export default function TemplatesManagerClient({
                       <Button type="button" size="sm" variant="outline" disabled={changingId === template.id || Boolean(template.staleReason)} onClick={() => restore(template)}><RotateCcw className="size-4" /> Restore</Button>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </article>
             ))}
           </div>
         )}

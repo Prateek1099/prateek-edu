@@ -68,9 +68,10 @@ export default async function TeacherBlueprintBuilderPage({
     return (
       <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
         <header className="paper-builder-screen-only max-w-4xl">
+          <p className="text-sm font-semibold text-primary">Papers · Create</p>
           <h1 className="text-3xl font-bold tracking-tight">Chapter-wise Paper</h1>
           <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-            Build a paper from topic-wise marks and question distribution.
+            Plan marks chapter by chapter before generating questions.
           </p>
         </header>
         {navigation}
@@ -84,15 +85,12 @@ export default async function TeacherBlueprintBuilderPage({
   return (
     <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
+        <p className="text-sm font-semibold text-primary">Papers · Create</p>
         <h1 className="text-3xl font-bold tracking-tight">Chapter-wise Paper</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Set exact marks and question types for each chapter, then build the complete paper.
+          Plan marks chapter by chapter, check availability, then choose the questions.
         </p>
       </header>
-
-      <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        You can use every supported question type from the Vexa library. Questions added by your workspace remain MCQ-only for now.
-      </div>
 
       {navigation}
 
@@ -133,7 +131,7 @@ export default async function TeacherBlueprintBuilderPage({
       />
 
       <p className="paper-builder-screen-only text-xs leading-5 text-muted-foreground">
-        Saved chapter patterns keep only your reusable chapter and marks setup. Saving a finished paper is separate, and neither action assigns work to students.
+        Saving a chapter pattern reuses the marks plan. Saving a paper keeps the actual questions you chose.
       </p>
     </div>
   );

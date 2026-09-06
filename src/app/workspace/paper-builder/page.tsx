@@ -1,7 +1,6 @@
 import SimplePaperBuilderClient from "@/components/paper-builder/SimplePaperBuilderClient";
 import {
-  PaperBuilderModeNav,
-  WORKSPACE_PAPER_BUILDER_NAV_ITEMS,
+  TeacherPapersEntry,
 } from "@/components/paper-builder/PaperBuilderModeNav";
 import { prisma } from "@/lib/prisma";
 import { requireActiveWorkspace } from "@/lib/require-role";
@@ -65,27 +64,24 @@ export default async function TeacherPaperBuilderPage({
       );
     } catch (error) {
       initialPaperTemplateError =
-        error instanceof Error ? error.message : "Could not apply the requested paper template.";
+        error instanceof Error ? error.message : "Could not use the requested paper setup.";
     }
   }
 
   if (scopes.length === 0) {
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">Quick Paper</h1>
+          <p className="text-sm font-semibold text-primary">Teacher workspace</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">Papers</h1>
           <p className="mt-2 text-muted-foreground">
-            Build printable mixed-format papers from the Question Bank available to your workspace.
+            Create a quick test or plan one chapter by chapter.
           </p>
         </header>
+        <TeacherPapersEntry />
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-200">
           Your academic access has not been configured yet. Please contact the administrator.
         </div>
-        <PaperBuilderModeNav
-          mode="simple"
-          items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
-          ariaLabel="Teacher Paper Builder navigation"
-        />
       </div>
     );
   }
@@ -141,22 +137,22 @@ export default async function TeacherPaperBuilderPage({
   return (
     <div className="paper-builder-page mx-auto max-w-7xl space-y-8">
       <header className="paper-builder-screen-only max-w-4xl">
-        <h1 className="text-3xl font-bold tracking-tight">Quick Paper</h1>
+        <p className="text-sm font-semibold text-primary">Teacher workspace</p>
+        <h1 className="mt-1 text-3xl font-bold tracking-tight">Papers</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground sm:text-base">
-          Create a mixed-format test quickly from the questions available to your workspace.
-          Preview, print, download, or save a copy when the paper is ready.
+          Choose the paper-making approach that fits today’s assessment.
         </p>
       </header>
 
-      <div className="paper-builder-screen-only rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-        Saving is optional. Saved papers stay private to your workspace and are not assigned to students automatically.
-      </div>
+      <TeacherPapersEntry />
 
-      <PaperBuilderModeNav
-        mode="simple"
-        items={WORKSPACE_PAPER_BUILDER_NAV_ITEMS}
-        ariaLabel="Teacher Paper Builder navigation"
-      />
+      <section id="quick-paper-builder" className="paper-builder-screen-only scroll-mt-6 border-t pt-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-primary">Create</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-tight">Quick Paper</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          Choose topics and marks. Vexa can help fill the questions. Saving the finished paper is optional.
+        </p>
+      </section>
 
       <SimplePaperBuilderClient
         headerTemplates={headerTemplates.map((template) => ({
@@ -232,8 +228,8 @@ export default async function TeacherPaperBuilderPage({
         allowedQuestionTypes={TEACHER_GLOBAL_PAPER_QUESTION_TYPES}
         initialSubjectId={subjects.length === 1 ? subjects[0].id : ""}
         defaultInstitutionName={workspace?.name || "VEXA"}
-        academicScopeDescription="Choose an assigned subject and one or more topics. Global Vexa questions can use all supported types; workspace-owned questions remain MCQ-only."
-        previewDescription="Validated against your active academic scope and current workspace Question Bank. Save an immutable copy only when the paper is final."
+        academicScopeDescription="Choose one of your assigned subjects and the topics you want to assess."
+        previewDescription="Your checked paper is ready to preview, print, download, or save."
         teacherFriendlyLabels
         savePaper={{
           action: saveTeacherGeneratedPaper,

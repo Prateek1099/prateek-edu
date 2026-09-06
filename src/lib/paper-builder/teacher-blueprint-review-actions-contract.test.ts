@@ -118,12 +118,12 @@ test("teacher UI enables review tools without importing admin actions", () => {
   assert.match(teacherClient, /replacement: true/);
   assert.match(teacherClient, /rowRegeneration: true/);
   assert.match(teacherClient, /chapterRegeneration: true/);
-  assert.match(teacherClient, /replacementButtonLabel: "Replace Question"/);
-  assert.match(teacherClient, /chapterRegenerationLabel: "Regenerate Topic"/);
+  assert.match(teacherClient, /replacementButtonLabel: "Choose different question"/);
+  assert.match(teacherClient, /chapterRegenerationLabel: "Choose different questions for this chapter"/);
   assert.match(teacherClient, /confirmRegeneration: true/);
   assert.doesNotMatch(teacherClient, /@\/app\/admin|\/admin\/paper-builder/);
-  assert.match(sharedClient, /Paper modified and not saved/);
-  assert.match(sharedClient, /Regeneration may fail if enough unique questions are not available/);
+  assert.match(sharedClient, /Questions changed\. Preview the updated paper before saving it/);
+  assert.match(sharedClient, /This section may not have enough different questions to choose again/);
 });
 
 test("admin capabilities remain unchanged", () => {

@@ -162,6 +162,7 @@ export type BlueprintBuilderCapabilities = {
 };
 
 export type BlueprintBuilderConfig = {
+  teacherFacing?: boolean;
   capabilities: BlueprintBuilderCapabilities;
   routes: {
     templateManagementHref: string | null;
@@ -265,6 +266,7 @@ export default function BlueprintBuilderClient({
     validateSelection: validateSelectionAction,
   } = actions;
   const { capabilities, copy, routes } = config;
+  const teacherFacing = config.teacherFacing === true;
   const templateHeaderBehavior = config.templateHeaderBehavior ?? "snapshot";
   const reviewTools = config.reviewTools ?? {};
   const initialTemplateSubject = initialBlueprintTemplate
@@ -440,7 +442,13 @@ export default function BlueprintBuilderClient({
   };
 
   const saveBlueprintTemplate = async () => {
-    if (!createTemplateAction) return toast.error("Blueprint templates are not available in this builder.");
+    if (!createTemplateAction) {
+      return toast.error(
+        teacherFacing
+          ? "Saved chapter patterns are not available here."
+          : "Blueprint templates are not available in this builder.",
+      );
+    }
     setSavingBlueprintTemplate(true);
     try {
       const result = await createTemplateAction({
@@ -464,9 +472,17 @@ export default function BlueprintBuilderClient({
       setSaveTemplateOpen(false);
       setTemplateName("");
       setTemplateDescription("");
-      toast.success("Blueprint template saved. Generated questions were not stored.");
+      toast.success(
+        teacherFacing
+          ? "Chapter pattern saved. Questions were not saved with it."
+          : "Blueprint template saved. Generated questions were not stored.",
+      );
     } catch {
-      toast.error("Could not save the blueprint template. Please try again.");
+      toast.error(
+        teacherFacing
+          ? "Could not save the chapter pattern. Please try again."
+          : "Could not save the blueprint template. Please try again.",
+      );
     } finally {
       setSavingBlueprintTemplate(false);
     }
@@ -474,12 +490,22 @@ export default function BlueprintBuilderClient({
 
   const updateLoadedBlueprintTemplate = async () => {
     if (!updateTemplateAction || !loadedBlueprintTemplateId) {
-      return toast.error("Apply a blueprint template before updating it.");
+      return toast.error(
+        teacherFacing
+          ? "Use a saved chapter pattern before updating it."
+          : "Apply a blueprint template before updating it.",
+      );
     }
     const loaded = savedBlueprintTemplates.find(
       (template) => template.id === loadedBlueprintTemplateId,
     );
-    if (!loaded) return toast.error("The loaded blueprint template is no longer available.");
+    if (!loaded) {
+      return toast.error(
+        teacherFacing
+          ? "The saved chapter pattern is no longer available."
+          : "The loaded blueprint template is no longer available.",
+      );
+    }
 
     setSavingBlueprintTemplate(true);
     try {
@@ -508,22 +534,44 @@ export default function BlueprintBuilderClient({
       setLastSavedPaperId(null);
       toast.success(result.message);
     } catch {
-      toast.error("Could not update the blueprint template. Please try again.");
+      toast.error(
+        teacherFacing
+          ? "Could not update the chapter pattern. Please try again."
+          : "Could not update the blueprint template. Please try again.",
+      );
     } finally {
       setSavingBlueprintTemplate(false);
     }
   };
 
   const applySavedBlueprintTemplate = async () => {
-    if (!applyTemplateAction) return toast.error("Blueprint templates are not available in this builder.");
-    if (!selectedBlueprintTemplateId) return toast.error("Choose a saved blueprint template first.");
+    if (!applyTemplateAction) {
+      return toast.error(
+        teacherFacing
+          ? "Saved chapter patterns are not available here."
+          : "Blueprint templates are not available in this builder.",
+      );
+    }
+    if (!selectedBlueprintTemplateId) {
+      return toast.error(
+        teacherFacing
+          ? "Choose a saved chapter pattern first."
+          : "Choose a saved blueprint template first.",
+      );
+    }
     setApplyingBlueprintTemplate(true);
     try {
       const result = await applyTemplateAction(selectedBlueprintTemplateId);
       if (!result.success) return toast.error(result.error);
       const template = result.template;
       const subject = subjects.find((item) => item.id === template.subjectId);
-      if (!subject) return toast.error("The template subject is not available in this builder.");
+      if (!subject) {
+        return toast.error(
+          teacherFacing
+            ? "The chapter pattern subject is not available here."
+            : "The template subject is not available in this builder.",
+        );
+      }
       const nextChapters = applyBlueprintTemplateSnapshot(template, newId);
 
       setBoardId(template.boardId);
@@ -545,10 +593,18 @@ export default function BlueprintBuilderClient({
       setLoadedBlueprintTemplateId(template.id);
       setLastSavedPaperId(null);
       setStep(3);
-      toast.success(`Applied “${template.name}”. Check availability before generating.`);
+      toast.success(
+        teacherFacing
+          ? `Using “${template.name}”. Check question availability next.`
+          : `Applied “${template.name}”. Check availability before generating.`,
+      );
       template.applyWarnings?.forEach((warning) => toast.warning(warning));
     } catch {
-      toast.error("Could not apply the blueprint template. Please try again.");
+      toast.error(
+        teacherFacing
+          ? "Could not use the chapter pattern. Please try again."
+          : "Could not apply the blueprint template. Please try again.",
+      );
     } finally {
       setApplyingBlueprintTemplate(false);
     }
@@ -773,10 +829,20 @@ export default function BlueprintBuilderClient({
   };
 
   const regenerateRow = async (rowId: string) => {
-    if (!regenerateRowAction) return toast.error("Row regeneration is not available in this builder.");
+    if (!regenerateRowAction) {
+      return toast.error(
+        teacherFacing
+          ? "Choosing different questions is not available here."
+          : "Row regeneration is not available in this builder.",
+      );
+    }
     if (
       reviewTools.confirmRegeneration &&
-      !window.confirm("Regenerating this row will replace the current questions in this row. Continue?")
+      !window.confirm(
+        teacherFacing
+          ? "This will replace the current questions in this section. Continue?"
+          : "Regenerating this row will replace the current questions in this row. Continue?",
+      )
     ) return;
     setRegeneratingRowId(rowId);
     try {
@@ -793,17 +859,31 @@ export default function BlueprintBuilderClient({
       setValidatedPaper(null);
       setRowErrors((current) => current.filter((item) => item.rowId !== rowId));
       setReviewModified(true);
-      toast.success("Blueprint row regenerated. Other rows were preserved.");
+      toast.success(
+        teacherFacing
+          ? "Different questions chosen for this section. Other sections were preserved."
+          : "Blueprint row regenerated. Other rows were preserved.",
+      );
     } finally {
       setRegeneratingRowId(null);
     }
   };
 
   const regenerateChapter = async (chapterId: string, chapterRowIds: string[]) => {
-    if (!regenerateChapterAction) return toast.error("Chapter regeneration is not available in this builder.");
+    if (!regenerateChapterAction) {
+      return toast.error(
+        teacherFacing
+          ? "Choosing different questions for this chapter is not available here."
+          : "Chapter regeneration is not available in this builder.",
+      );
+    }
     if (
       reviewTools.confirmRegeneration &&
-      !window.confirm("Regenerating this topic will replace every current question in this topic. Continue?")
+      !window.confirm(
+        teacherFacing
+          ? "This will replace every current question in this chapter. Continue?"
+          : "Regenerating this topic will replace every current question in this topic. Continue?",
+      )
     ) return;
     setRegeneratingChapterId(chapterId);
     try {
@@ -877,7 +957,13 @@ export default function BlueprintBuilderClient({
   };
 
   const printPaper = (mode: PrintMode) => {
-    if (!orderedPaper) return toast.error("Validate the current blueprint before printing.");
+    if (!orderedPaper) {
+      return toast.error(
+        teacherFacing
+          ? "Preview the current paper before printing."
+          : "Validate the current blueprint before printing.",
+      );
+    }
     document.documentElement.dataset.paperPrintMode = mode;
     const cleanup = () => {
       delete document.documentElement.dataset.paperPrintMode;
@@ -888,7 +974,13 @@ export default function BlueprintBuilderClient({
   };
 
   const downloadDocx = async (mode: DocxMode) => {
-    if (!orderedPaper) return toast.error("Validate the current blueprint before downloading DOCX.");
+    if (!orderedPaper) {
+      return toast.error(
+        teacherFacing
+          ? "Preview the current paper before downloading DOCX."
+          : "Validate the current blueprint before downloading DOCX.",
+      );
+    }
     setDownloadingDocx(mode);
     try {
       const { downloadPaperDocx } = await import("@/lib/paper-builder/docx");
@@ -954,6 +1046,7 @@ export default function BlueprintBuilderClient({
             </div>
           ))}
           <SavedBlueprintTemplateControls
+            teacherFacing={teacherFacing}
             templates={visibleBlueprintTemplates}
             selectedTemplateId={selectedBlueprintTemplateId}
             canSave={Boolean(boardId && qualificationId && subjectId && chapters.length > 0 && totalMarks > 0)}
@@ -970,12 +1063,13 @@ export default function BlueprintBuilderClient({
         </>
       )}
 
-      <WizardProgress step={step} />
+      <WizardProgress step={step} teacherFacing={teacherFacing} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
         <div className="min-w-0">
           {step >= 5 && generatedRows.length > 0 && (
             <FinalPaperOrderControls
+              teacherFacing={teacherFacing}
               mode={finalOrderMode}
               complete={selectionsComplete}
               onModeChange={changeFinalOrderMode}
@@ -985,6 +1079,7 @@ export default function BlueprintBuilderClient({
 
           {step === 1 && (
             <PaperDetailsStep
+              teacherFacing={teacherFacing}
               details={details}
               targetMarksText={targetMarksText}
               templates={headerTemplates}
@@ -1014,15 +1109,16 @@ export default function BlueprintBuilderClient({
           )}
 
           {step === 3 && (
-            <MatrixStep chapters={chapters} onAddRow={addRow} onRemoveRow={removeRow} onUpdateRow={updateRow} />
+            <MatrixStep teacherFacing={teacherFacing} chapters={chapters} onAddRow={addRow} onRemoveRow={removeRow} onUpdateRow={updateRow} />
           )}
 
           {step === 4 && (
-            <AvailabilityStep chapters={chapters} availabilityByRow={availabilityByRow} errorsByRow={errorsByRow} onRefresh={reviewAvailability} reviewing={reviewing} />
+            <AvailabilityStep teacherFacing={teacherFacing} chapters={chapters} availabilityByRow={availabilityByRow} errorsByRow={errorsByRow} onRefresh={reviewAvailability} reviewing={reviewing} />
           )}
 
           {step === 5 && (
             <GeneratedReviewStep
+              teacherFacing={teacherFacing}
               chapters={chapters}
               rows={generatedRows}
               requestedCount={requestedCount}
@@ -1050,6 +1146,7 @@ export default function BlueprintBuilderClient({
 
           {step === 6 && orderedPaper && (
             <PreviewStep
+              teacherFacing={teacherFacing}
               paper={orderedPaper}
               previewTab={previewTab}
               downloadingDocx={downloadingDocx}
@@ -1066,6 +1163,7 @@ export default function BlueprintBuilderClient({
         </div>
 
         <BlueprintSummary
+          teacherFacing={teacherFacing}
           chapters={chapters}
           targetMarks={targetMarks}
           availability={availability}
@@ -1077,6 +1175,7 @@ export default function BlueprintBuilderClient({
 
       {capabilities.replacement && (
         <CandidatePickerDialog
+          teacherFacing={teacherFacing}
           context={candidateContext}
           candidates={candidateQuestions}
           search={candidateSearch}
@@ -1090,6 +1189,7 @@ export default function BlueprintBuilderClient({
 
       {capabilities.templates && (
         <SaveBlueprintTemplateDialog
+          teacherFacing={teacherFacing}
           open={saveTemplateOpen}
           name={templateName}
           description={templateDescription}
@@ -1111,6 +1211,7 @@ export default function BlueprintBuilderClient({
 
       {capabilities.archive && (
         <SaveGeneratedPaperDialog
+          teacherFacing={teacherFacing}
           open={savePaperOpen}
           name={savedPaperName}
           description={savedPaperDescription}
@@ -1137,17 +1238,17 @@ export default function BlueprintBuilderClient({
         )}
         {step === 3 && (
           <Button type="button" disabled={!stepReady[3] || reviewing} onClick={reviewAvailability}>
-            <FileCheck2 className="size-4" /> {reviewing ? "Checking…" : "Review availability"}
+            <FileCheck2 className="size-4" /> {reviewing ? "Checking…" : teacherFacing ? "Check availability" : "Review availability"}
           </Button>
         )}
         {step === 4 && (
           <Button type="button" disabled={!stepReady[4] || generating} onClick={generate}>
-            <Shuffle className="size-4" /> {generating ? "Generating…" : "Generate complete paper"}
+            <Shuffle className="size-4" /> {generating ? "Choosing…" : teacherFacing ? "Choose questions" : "Generate complete paper"}
           </Button>
         )}
         {step === 5 && (
           <Button type="button" disabled={!selectionsComplete || validating} onClick={validateReview}>
-            <Eye className="size-4" /> {validating ? "Validating…" : "Validate and preview"}
+            <Eye className="size-4" /> {validating ? "Checking…" : teacherFacing ? "Preview paper" : "Validate and preview"}
           </Button>
         )}
       </div>
@@ -1156,6 +1257,7 @@ export default function BlueprintBuilderClient({
 }
 
 function SavedBlueprintTemplateControls({
+  teacherFacing,
   templates,
   selectedTemplateId,
   canSave,
@@ -1169,6 +1271,7 @@ function SavedBlueprintTemplateControls({
   onSave,
   onUpdate,
 }: {
+  teacherFacing: boolean;
   templates: BlueprintTemplateSummary[];
   selectedTemplateId: string;
   canSave: boolean;
@@ -1186,23 +1289,38 @@ function SavedBlueprintTemplateControls({
   const loaded = templates.find((template) => template.id === loadedTemplateId);
   return (
     <section className="paper-builder-screen-only rounded-2xl border bg-card p-4" aria-labelledby="saved-blueprints-heading">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <BookTemplate className="size-4 text-primary" aria-hidden="true" />
-            <h2 id="saved-blueprints-heading" className="text-sm font-semibold">Saved blueprint templates</h2>
+            <h2 id="saved-blueprints-heading" className="text-sm font-semibold">{teacherFacing ? "Use a saved chapter pattern" : "Saved blueprint templates"}</h2>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Reuse chapter and section patterns. Generated questions are never saved with a template.
+            {teacherFacing ? "Reuse a chapter-wise marks plan. You will choose fresh questions after applying it." : "Reuse chapter and section patterns. Generated questions are never saved with a template."}
           </p>
           {loaded && (
-            <p className="mt-2 text-xs font-semibold text-primary">Using template: {loaded.name}</p>
+            <p className="mt-2 text-xs font-semibold text-primary">
+              {teacherFacing ? "Using chapter pattern" : "Using template"}: {loaded.name}
+            </p>
           )}
         </div>
-        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(16rem,1fr)_auto_auto_auto] lg:w-auto">
+        <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-[minmax(16rem,1fr)_auto_auto_auto]">
           <Select value={selectedTemplateId} onValueChange={(value) => onTemplateChange(value || "")}>
-            <SelectTrigger className="w-full sm:min-w-72" aria-label="Saved blueprint template">
-              <SelectValue placeholder={templates.length ? "Choose saved blueprint" : "No saved blueprints yet"}>
+            <SelectTrigger
+              className="w-full"
+              aria-label={teacherFacing ? "Saved chapter pattern" : "Saved blueprint template"}
+            >
+              <SelectValue
+                placeholder={
+                  teacherFacing
+                    ? templates.length
+                      ? "Choose saved chapter pattern"
+                      : "No saved chapter patterns yet"
+                    : templates.length
+                      ? "Choose saved blueprint"
+                      : "No saved blueprints yet"
+                }
+              >
                 {selected ? `${selected.name} · ${selected.totalMarks} marks` : undefined}
               </SelectValue>
             </SelectTrigger>
@@ -1216,14 +1334,14 @@ function SavedBlueprintTemplateControls({
           </Select>
           <Button type="button" variant="outline" disabled={!selectedTemplateId || applying} onClick={onApply}>
             <BookTemplate className={cn("size-4", applying && "animate-pulse")} />
-            {applying ? "Applying…" : "Apply"}
+            {applying ? "Applying…" : teacherFacing ? "Use pattern" : "Apply"}
           </Button>
           <Button type="button" disabled={!canSave || applying} onClick={onSave}>
-            <Save className="size-4" /> Save as Blueprint Template
+            <Save className="size-4" /> {teacherFacing ? "Save chapter pattern" : "Save as Blueprint Template"}
           </Button>
           {loaded && (
             <Button type="button" variant="outline" disabled={!canSave || applying || updating} onClick={onUpdate}>
-              <Save className="size-4" /> {updating ? "Updating…" : "Update template"}
+              <Save className="size-4" /> {updating ? "Updating…" : teacherFacing ? "Update pattern" : "Update template"}
             </Button>
           )}
           {templateManagementHref && (
@@ -1238,6 +1356,7 @@ function SavedBlueprintTemplateControls({
 }
 
 function SaveBlueprintTemplateDialog({
+  teacherFacing,
   open,
   name,
   description,
@@ -1255,6 +1374,7 @@ function SaveBlueprintTemplateDialog({
   onPreferredHeaderTemplateChange,
   onSave,
 }: {
+  teacherFacing: boolean;
   open: boolean;
   name: string;
   description: string;
@@ -1276,13 +1396,15 @@ function SaveBlueprintTemplateDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Save blueprint template</DialogTitle>
+          <DialogTitle>{teacherFacing ? "Save chapter pattern" : "Save blueprint template"}</DialogTitle>
           <DialogDescription>
-            Save this {chapterCount}-chapter, {totalMarks}-mark pattern for reuse. Selected questions, availability, and generated output are not stored.
+            {teacherFacing
+              ? `Reuse this ${chapterCount}-chapter, ${totalMarks}-mark plan in another paper. The questions are chosen separately each time.`
+              : `Save this ${chapterCount}-chapter, ${totalMarks}-mark pattern for reuse. Selected questions, availability, and generated output are not stored.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <Field label="Template name">
+          <Field label={teacherFacing ? "Pattern name" : "Template name"}>
             <Input
               value={name}
               maxLength={200}
@@ -1296,7 +1418,7 @@ function SaveBlueprintTemplateDialog({
               value={description}
               maxLength={1000}
               rows={3}
-              placeholder="When or how this blueprint should be used"
+              placeholder={teacherFacing ? "When or how this chapter pattern should be used" : "When or how this blueprint should be used"}
               onChange={(event) => onDescriptionChange(event.target.value)}
             />
           </Field>
@@ -1315,7 +1437,9 @@ function SaveBlueprintTemplateDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs leading-5 text-muted-foreground">
-                Stores only the active teacher header-template reference. If it later becomes unavailable, the blueprint still applies without it.
+                {teacherFacing
+                  ? "Uses this saved header when the chapter pattern is applied. If the header is later unavailable, the pattern still works without it."
+                  : "Stores only the active teacher header-template reference. If it later becomes unavailable, the blueprint still applies without it."}
               </p>
             </Field>
           ) : (
@@ -1335,7 +1459,7 @@ function SaveBlueprintTemplateDialog({
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="button" disabled={!name.trim() || saving} onClick={onSave}>
-              <Save className="size-4" /> {saving ? "Saving…" : "Save blueprint template"}
+              <Save className="size-4" /> {saving ? "Saving…" : teacherFacing ? "Save chapter pattern" : "Save blueprint template"}
             </Button>
           </div>
         </div>
@@ -1345,6 +1469,7 @@ function SaveBlueprintTemplateDialog({
 }
 
 function SaveGeneratedPaperDialog({
+  teacherFacing,
   open,
   name,
   description,
@@ -1358,6 +1483,7 @@ function SaveGeneratedPaperDialog({
   onDescriptionChange,
   onSave,
 }: {
+  teacherFacing: boolean;
   open: boolean;
   name: string;
   description: string;
@@ -1376,21 +1502,21 @@ function SaveGeneratedPaperDialog({
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!saving) onOpenChange(nextOpen); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Save Generated Paper</DialogTitle>
-          <DialogDescription>Save the exact validated questions, final order, answers, header, and archive-owned image copies. This snapshot will not change when Question Bank records change.</DialogDescription>
+          <DialogTitle>{teacherFacing ? "Save paper" : "Save Generated Paper"}</DialogTitle>
+          <DialogDescription>{teacherFacing ? "Keep this finished paper with its current questions, answers and order so you can reopen it later." : "Save the exact validated questions, final order, answers, header, and archive-owned image copies. This snapshot will not change when Question Bank records change."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="grid gap-2 rounded-xl border bg-muted/30 p-3 text-sm sm:grid-cols-2">
             <DialogSummary label="Scope" value={paper ? `${paper.boardTitle} · ${paper.qualificationTitle} · ${paper.subjectName}` : "Not validated"} />
             <DialogSummary label="Paper" value={`${count} questions · ${paper?.totalMarks ?? 0} marks`} />
             <DialogSummary label="Final order" value={FINAL_PAPER_ORDER_LABELS[finalOrderMode]} />
-            <DialogSummary label="Source" value={sourceTemplateName ?? "Manual blueprint"} />
+            <DialogSummary label="Source" value={sourceTemplateName ?? (teacherFacing ? "New chapter-wise paper" : "Manual blueprint")} />
           </div>
           <Field label="Saved paper name"><Input value={name} maxLength={200} autoFocus placeholder="e.g. Class 12 IP Friday Test" onChange={(event) => onNameChange(event.target.value)} /></Field>
           <Field label="Description (optional)"><Textarea value={description} maxLength={3000} rows={3} placeholder="Internal note about this exact paper" onChange={(event) => onDescriptionChange(event.target.value)} /></Field>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="outline" disabled={saving} onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="button" disabled={!name.trim() || !paper || saving} onClick={onSave}><Save className="size-4" /> {saving ? "Saving exact paper…" : `Save to ${archiveLabel}`}</Button>
+            <Button type="button" disabled={!name.trim() || !paper || saving} onClick={onSave}><Save className="size-4" /> {saving ? "Saving paper…" : `Save to ${archiveLabel}`}</Button>
           </div>
         </div>
       </DialogContent>
@@ -1402,10 +1528,12 @@ function DialogSummary({ label, value }: { label: string; value: string }) {
   return <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 break-words">{value}</p></div>;
 }
 
-function WizardProgress({ step }: { step: number }) {
-  const labels = ["Header", "Academics", "Matrix", "Availability", "Review", "Output"];
+function WizardProgress({ step, teacherFacing }: { step: number; teacherFacing: boolean }) {
+  const labels = teacherFacing
+    ? ["Paper details", "Subject", "Marks plan", "Availability", "Questions", "Paper ready"]
+    : ["Header", "Academics", "Matrix", "Availability", "Review", "Output"];
   return (
-    <ol className="paper-builder-screen-only grid grid-cols-3 gap-2 rounded-2xl border bg-card p-3 lg:grid-cols-6" aria-label="Blueprint Builder progress">
+    <ol className="paper-builder-screen-only grid grid-cols-2 gap-2 rounded-2xl border bg-card p-3 sm:grid-cols-3 lg:grid-cols-6" aria-label={teacherFacing ? "Chapter-wise Paper progress" : "Blueprint Builder progress"}>
       {labels.map((label, index) => {
         const number = index + 1;
         const active = number === step;
@@ -1422,6 +1550,7 @@ function WizardProgress({ step }: { step: number }) {
 }
 
 function PaperDetailsStep({
+  teacherFacing,
   details,
   targetMarksText,
   templates,
@@ -1431,6 +1560,7 @@ function PaperDetailsStep({
   onDetailsChange,
   onTargetMarksChange,
 }: {
+  teacherFacing: boolean;
   details: PaperDetails;
   targetMarksText: string;
   templates: PaperHeaderTemplate[];
@@ -1445,8 +1575,8 @@ function PaperDetailsStep({
       <CardHeader><StepHeading number="1" title="Paper details" description="Apply a reusable header, then adjust only what this paper needs." /></CardHeader>
       <CardContent className="space-y-6">
         <div className="grid gap-3 rounded-2xl border bg-muted/20 p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <Field label="Header template"><Select value={selectedTemplateId} onValueChange={(value) => onTemplateChange(value || "")}><SelectTrigger className="w-full"><SelectValue placeholder="Choose a saved template">{templates.find((template) => template.id === selectedTemplateId)?.name}</SelectValue></SelectTrigger><SelectContent>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent></Select></Field>
-          <Button type="button" variant="outline" disabled={!selectedTemplateId} onClick={onApplyTemplate}>Apply template</Button>
+          <Field label={teacherFacing ? "Use saved header" : "Header template"}><Select value={selectedTemplateId} onValueChange={(value) => onTemplateChange(value || "")}><SelectTrigger className="w-full"><SelectValue placeholder="Choose a saved template">{templates.find((template) => template.id === selectedTemplateId)?.name}</SelectValue></SelectTrigger><SelectContent>{templates.map((template) => <SelectItem key={template.id} value={template.id}>{template.name}</SelectItem>)}</SelectContent></Select></Field>
+          <Button type="button" variant="outline" disabled={!selectedTemplateId} onClick={onApplyTemplate}>{teacherFacing ? "Use header" : "Apply template"}</Button>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Institution"><Input value={details.institutionName} maxLength={200} onChange={(event) => onDetailsChange("institutionName", event.target.value)} /></Field>
@@ -1507,7 +1637,8 @@ function AcademicStep({ boards, qualifications, subjects, topics, boardId, quali
   );
 }
 
-function MatrixStep({ chapters, onAddRow, onRemoveRow, onUpdateRow }: {
+function MatrixStep({ teacherFacing, chapters, onAddRow, onRemoveRow, onUpdateRow }: {
+  teacherFacing: boolean;
   chapters: BlueprintChapterDraft[];
   onAddRow: (chapterId: string) => void;
   onRemoveRow: (chapterId: string, rowId: string) => void;
@@ -1515,7 +1646,7 @@ function MatrixStep({ chapters, onAddRow, onRemoveRow, onUpdateRow }: {
 }) {
   return (
     <Card>
-      <CardHeader><StepHeading number="3" title="Blueprint matrix" description="Allocate question type, count, marks, and difficulty separately for every chapter." /></CardHeader>
+      <CardHeader><StepHeading number="3" title={teacherFacing ? "Chapter marks pattern" : "Blueprint matrix"} description={teacherFacing ? "For each chapter, choose the question type, number of questions, marks each and difficulty." : "Allocate question type, count, marks, and difficulty separately for every chapter."} /></CardHeader>
       <CardContent className="space-y-5">
         {chapters.map((chapter) => (
           <section key={chapter.id} className="rounded-2xl border bg-muted/10 p-4 sm:p-5">
@@ -1533,21 +1664,22 @@ function MatrixStep({ chapters, onAddRow, onRemoveRow, onUpdateRow }: {
                     <Field label="Questions"><Input type="number" min={1} max={100} value={row.questionCount} onChange={(event) => onUpdateRow(chapter.id, row.id, { questionCount: Number(event.target.value) })} /></Field>
                     <Field label="Marks each"><Input type="number" min={1} max={100} value={row.marksPerQuestion} onChange={(event) => onUpdateRow(chapter.id, row.id, { marksPerQuestion: Number(event.target.value) })} /></Field>
                     <Field label="Difficulty"><Select value={row.difficulty} onValueChange={(value) => onUpdateRow(chapter.id, row.id, { difficulty: (value || "any") as BlueprintRowDraft["difficulty"] })}><SelectTrigger className="w-full"><SelectValue /></SelectTrigger><SelectContent>{PAPER_DIFFICULTIES.map((difficulty) => <SelectItem key={difficulty} value={difficulty} className="capitalize">{difficulty === "any" ? "Mixed" : difficulty}</SelectItem>)}</SelectContent></Select></Field>
-                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove row ${index + 1}`} disabled={chapter.rows.length === 1} onClick={() => onRemoveRow(chapter.id, row.id)}><Trash2 className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove ${teacherFacing ? "section" : "row"} ${index + 1}`} disabled={chapter.rows.length === 1} onClick={() => onRemoveRow(chapter.id, row.id)}><Trash2 className="size-4" /></Button>
                   </div>
-                  <p className="mt-3 text-sm text-muted-foreground">Row marks: {row.questionCount * row.marksPerQuestion}</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{teacherFacing ? "Total marks" : "Row marks"}: {row.questionCount * row.marksPerQuestion}</p>
                 </div>
               ))}
             </div>
           </section>
         ))}
-        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4"><p className="font-semibold">Calculated paper total: {calculateBlueprintPaperMarks(chapters)} marks</p><p className="mt-1 text-sm text-muted-foreground">The server recalculates this total before generation and export.</p></div>
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-4"><p className="font-semibold">Calculated paper total: {calculateBlueprintPaperMarks(chapters)} marks</p><p className="mt-1 text-sm text-muted-foreground">{teacherFacing ? "This total is checked again before questions are chosen and the paper is exported." : "The server recalculates this total before generation and export."}</p></div>
       </CardContent>
     </Card>
   );
 }
 
-function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh, reviewing }: {
+function AvailabilityStep({ teacherFacing, chapters, availabilityByRow, errorsByRow, onRefresh, reviewing }: {
+  teacherFacing: boolean;
   chapters: BlueprintChapterDraft[];
   availabilityByRow: Map<string, BlueprintAvailability>;
   errorsByRow: Map<string, string>;
@@ -1556,7 +1688,7 @@ function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh,
 }) {
   return (
     <Card>
-      <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="4" title="Availability review" description="Counts use exact chapter, type, marks, difficulty, and type-completeness rules." /><Button type="button" variant="outline" onClick={onRefresh} disabled={reviewing}><RefreshCw className="size-4" /> {reviewing ? "Checking…" : "Refresh counts"}</Button></div></CardHeader>
+      <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="4" title={teacherFacing ? "Check question availability" : "Availability review"} description={teacherFacing ? "Make sure each chapter and question type has enough matching questions." : "Counts use exact chapter, type, marks, difficulty, and type-completeness rules."} /><Button type="button" variant="outline" onClick={onRefresh} disabled={reviewing}><RefreshCw className="size-4" /> {reviewing ? "Checking…" : teacherFacing ? "Check again" : "Refresh counts"}</Button></div></CardHeader>
       <CardContent className="space-y-5">
         {chapters.map((chapter) => (
           <section key={chapter.id} className="rounded-2xl border p-4">
@@ -1569,9 +1701,9 @@ function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh,
                   <div key={row.id} className="rounded-xl bg-muted/25 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div><p className="text-sm font-semibold">{row.sectionLabel} · {BANK_QUESTION_TYPE_LABELS[row.questionType]}</p><p className="mt-1 text-xs text-muted-foreground">Need {row.questionCount} × {row.marksPerQuestion} mark{row.marksPerQuestion === 1 ? "" : "s"} · {row.difficulty === "any" ? "Mixed difficulty" : row.difficulty}</p></div>
-                      {item && <Badge variant={item.status === "insufficient" ? "destructive" : item.status === "low_reserve" ? "outline" : "secondary"}>{item.status === "ready" ? "Ready" : item.status === "low_reserve" ? "Low reserve" : "Insufficient"}</Badge>}
+                      {item && <Badge variant={item.status === "insufficient" ? "destructive" : item.status === "low_reserve" ? "outline" : "secondary"}>{item.status === "ready" ? "Ready" : item.status === "low_reserve" ? (teacherFacing ? "Limited alternatives" : "Low reserve") : "Insufficient"}</Badge>}
                     </div>
-                    {item && <p className="mt-2 text-sm">{item.uniqueTextCount} unique usable · {item.matchingCount} matching records · {item.requiredCount} required</p>}
+                    {item && <p className="mt-2 text-sm">{teacherFacing ? `${item.uniqueTextCount} different questions available · ${item.requiredCount} needed` : `${item.uniqueTextCount} unique usable · ${item.matchingCount} matching records · ${item.requiredCount} required`}</p>}
                     {item?.warnings.map((warning) => <p key={warning} className="mt-1 text-xs text-amber-700 dark:text-amber-300">{warning}</p>)}
                     {item?.errors.map((error) => <p key={error} className="mt-1 text-xs text-destructive">{error}</p>)}
                     {generatedError && <p className="mt-1 text-xs text-destructive">{generatedError}</p>}
@@ -1586,14 +1718,15 @@ function AvailabilityStep({ chapters, availabilityByRow, errorsByRow, onRefresh,
   );
 }
 
-function FinalPaperOrderControls({ mode, complete, onModeChange, onReshuffle }: {
+function FinalPaperOrderControls({ teacherFacing, mode, complete, onModeChange, onReshuffle }: {
+  teacherFacing: boolean;
   mode: FinalPaperOrderMode;
   complete: boolean;
   onModeChange: (mode: FinalPaperOrderMode) => void;
   onReshuffle: () => void;
 }) {
   const descriptions: Record<FinalPaperOrderMode, string> = {
-    chapter_wise: "Keep the current chapter and row sequence in the final paper.",
+    chapter_wise: teacherFacing ? "Keep the current chapter and section sequence in the final paper." : "Keep the current chapter and row sequence in the final paper.",
     shuffle_within_sections: "Keep section/type groups, but mix chapters inside each section.",
     fully_shuffled: "Mix every question into one numbered final-paper sequence.",
   };
@@ -1629,14 +1762,15 @@ function FinalPaperOrderControls({ mode, complete, onModeChange, onReshuffle }: 
       </div>
       {!complete && mode !== "chapter_wise" && (
         <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
-          Complete every blueprint row before reshuffling or exporting.
+          {teacherFacing ? "Complete every section before reshuffling or exporting." : "Complete every blueprint row before reshuffling or exporting."}
         </p>
       )}
     </section>
   );
 }
 
-function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, errorsByRow, warningsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, questionRemovalEnabled, rowRegenerationEnabled, chapterRegenerationEnabled, replacementButtonLabel, chapterRegenerationLabel, modified }: {
+function GeneratedReviewStep({ teacherFacing, chapters, rows, requestedCount, selectedCount, errorsByRow, warningsByRow, onMove, onRemove, onSelectQuestion, onRegenerateRow, onRegenerateChapter, onRegenerate, generating, regeneratingRowId, regeneratingChapterId, replacementEnabled, questionRemovalEnabled, rowRegenerationEnabled, chapterRegenerationEnabled, replacementButtonLabel, chapterRegenerationLabel, modified }: {
+  teacherFacing: boolean;
   chapters: BlueprintChapterDraft[];
   rows: BlueprintGeneratedRow[];
   requestedCount: number;
@@ -1663,12 +1797,12 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
   const rowsById = new Map(rows.map((row) => [row.id, row]));
   return (
     <Card>
-      <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="5" title="Generated paper review" description="Questions are grouped by their exact blueprint chapter and row. Reordering stays within a row." /><Button type="button" variant="outline" onClick={onRegenerate} disabled={generating}><Shuffle className="size-4" /> {generating ? "Regenerating…" : "Regenerate whole paper"}</Button></div></CardHeader>
+      <CardHeader><div className="flex flex-wrap items-start justify-between gap-4"><StepHeading number="5" title={teacherFacing ? "Review questions" : "Generated paper review"} description={teacherFacing ? "Review the questions chapter by chapter. You can replace or reorder them before previewing." : "Questions are grouped by their exact blueprint chapter and row. Reordering stays within a row."} /><Button type="button" variant="outline" onClick={onRegenerate} disabled={generating}><Shuffle className="size-4" /> {generating ? (teacherFacing ? "Choosing…" : "Regenerating…") : teacherFacing ? "Choose all questions again" : "Regenerate whole paper"}</Button></div></CardHeader>
       <CardContent className="space-y-5">
         <StatusBanner good={selectedCount === requestedCount} message={`${selectedCount} of ${requestedCount} requested questions selected`} />
         {modified && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
-            Paper modified and not saved. Validate the updated paper before previewing or saving it.
+            {teacherFacing ? "Questions changed. Preview the updated paper before saving it." : "Paper modified and not saved. Validate the updated paper before previewing or saving it."}
           </div>
         )}
         {chapters.map((chapter) => {
@@ -1684,7 +1818,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
               </div>
               {chapterRegenerationEnabled && (
                 <Button type="button" variant="outline" size="sm" disabled={chapterBusy || regeneratingRowId !== null} onClick={() => onRegenerateChapter(chapter.id, chapter.rows.map((row) => row.id))}>
-                  <RefreshCw className={cn("size-4", chapterBusy && "animate-spin")} /> {chapterBusy ? "Regenerating…" : chapterRegenerationLabel}
+                  <RefreshCw className={cn("size-4", chapterBusy && "animate-spin")} /> {chapterBusy ? (teacherFacing ? "Choosing…" : "Regenerating…") : chapterRegenerationLabel}
                 </Button>
               )}
             </div>
@@ -1703,7 +1837,7 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                     </div>
                     {rowRegenerationEnabled && (
                       <Button type="button" variant="outline" size="sm" disabled={rowBusy || regeneratingChapterId !== null} onClick={() => onRegenerateRow(row.id)}>
-                        <RefreshCw className={cn("size-4", rowBusy && "animate-spin")} /> {rowBusy ? "Regenerating…" : "Regenerate row"}
+                        <RefreshCw className={cn("size-4", rowBusy && "animate-spin")} /> {rowBusy ? (teacherFacing ? "Choosing…" : "Regenerating…") : teacherFacing ? "Choose different questions" : "Regenerate row"}
                       </Button>
                     )}
                   </div>
@@ -1711,13 +1845,13 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
                   {rowWarnings.length > 0 && (
                     <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
                       {rowWarnings.map((warning) => <p key={warning}>{warning}</p>)}
-                      <p>Regeneration may fail if enough unique questions are not available.</p>
+                      <p>{teacherFacing ? "This section may not have enough different questions to choose again." : "Regeneration may fail if enough unique questions are not available."}</p>
                     </div>
                   )}
                   {!complete && (
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-                      <p className="text-sm text-amber-900 dark:text-amber-100">This row needs {row.questionCount - row.questions.length} more question{row.questionCount - row.questions.length === 1 ? "" : "s"}. Preview and export remain blocked.</p>
-                      {replacementEnabled && <Button type="button" size="sm" onClick={() => onSelectQuestion(row)}><Plus className="size-4" /> Add replacement</Button>}
+                      <p className="text-sm text-amber-900 dark:text-amber-100">This {teacherFacing ? "section" : "row"} needs {row.questionCount - row.questions.length} more question{row.questionCount - row.questions.length === 1 ? "" : "s"}. Preview and export remain blocked.</p>
+                      {replacementEnabled && <Button type="button" size="sm" onClick={() => onSelectQuestion(row)}><Plus className="size-4" /> {teacherFacing ? "Choose a question" : "Add replacement"}</Button>}
                     </div>
                   )}
                   <div className="mt-3 space-y-2">
@@ -1744,7 +1878,8 @@ function GeneratedReviewStep({ chapters, rows, requestedCount, selectedCount, er
   );
 }
 
-function CandidatePickerDialog({ context, candidates, search, loading, selectingCandidateId, onSearch, onClose, onSelect }: {
+function CandidatePickerDialog({ teacherFacing, context, candidates, search, loading, selectingCandidateId, onSearch, onClose, onSelect }: {
+  teacherFacing: boolean;
   context: CandidateContext | null;
   candidates: PaperBuilderQuestion[];
   search: string;
@@ -1765,25 +1900,25 @@ function CandidatePickerDialog({ context, candidates, search, loading, selecting
     <Dialog open={Boolean(context)} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-h-[92vh] overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader className="border-b px-5 pb-4 pt-5 pr-12">
-          <DialogTitle>{context?.replaceQuestionId ? "Replace question" : "Add replacement"}</DialogTitle>
-          <DialogDescription>{context ? `${context.topicName} · ${context.sectionLabel}. Every candidate is revalidated against this exact row.` : "Choose a valid candidate."}</DialogDescription>
+          <DialogTitle>{context?.replaceQuestionId ? (teacherFacing ? "Choose a different question" : "Replace question") : teacherFacing ? "Choose a question" : "Add replacement"}</DialogTitle>
+          <DialogDescription>{context ? (teacherFacing ? `${context.topicName} · ${context.sectionLabel}. Only matching questions are shown.` : `${context.topicName} · ${context.sectionLabel}. Every candidate is revalidated against this exact row.`) : teacherFacing ? "Choose a matching question." : "Choose a valid candidate."}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 overflow-y-auto px-5 pb-5">
-          <Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search question text or source…" aria-label="Search replacement candidates" />
+          <Input value={search} onChange={(event) => onSearch(event.target.value)} placeholder="Search question text or source…" aria-label={teacherFacing ? "Search other matching questions" : "Search replacement candidates"} />
           {loading ? (
-            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">Loading server-validated candidates…</div>
+            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{teacherFacing ? "Loading other matching questions…" : "Loading server-validated candidates…"}</div>
           ) : filtered.length === 0 ? (
-            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{candidates.length === 0 ? "No unused valid candidates are available for this exact row." : "No candidates match your search."}</div>
+            <div className="rounded-xl border border-dashed px-4 py-10 text-center text-sm text-muted-foreground">{candidates.length === 0 ? (teacherFacing ? "No other matching questions are available for this section." : "No unused valid candidates are available for this exact row.") : teacherFacing ? "No questions match your search." : "No candidates match your search."}</div>
           ) : (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">{filtered.length} valid candidate{filtered.length === 1 ? "" : "s"}</p>
+              <p className="text-xs font-medium text-muted-foreground">{filtered.length} {teacherFacing ? "matching question" : "valid candidate"}{filtered.length === 1 ? "" : "s"}</p>
               {filtered.map((question) => (
                 <article key={question.id} className="rounded-xl border bg-muted/10 p-4">
                   <QuestionSummary question={question} />
                   <CandidateAnswerReview question={question} />
                   <div className="mt-4 flex justify-end">
                     <Button type="button" size="sm" disabled={selectingCandidateId !== null} onClick={() => onSelect(question.id)}>
-                      {selectingCandidateId === question.id ? "Selecting…" : context?.replaceQuestionId ? "Use this replacement" : "Add this question"}
+                      {selectingCandidateId === question.id ? "Selecting…" : context?.replaceQuestionId ? (teacherFacing ? "Use this question" : "Use this replacement") : "Add this question"}
                     </Button>
                   </div>
                 </article>
@@ -1809,7 +1944,8 @@ function CandidateAnswerReview({ question }: { question: PaperBuilderQuestion })
   );
 }
 
-function PreviewStep({ paper, previewTab, downloadingDocx, savedPaperId, archiveEnabled, archiveLabel, archivePaperHref, onPreviewTab, onPrint, onDownload, onSave }: {
+function PreviewStep({ teacherFacing, paper, previewTab, downloadingDocx, savedPaperId, archiveEnabled, archiveLabel, archivePaperHref, onPreviewTab, onPrint, onDownload, onSave }: {
+  teacherFacing: boolean;
   paper: ValidatedPaper;
   previewTab: PreviewTab;
   downloadingDocx: DocxMode | null;
@@ -1825,8 +1961,8 @@ function PreviewStep({ paper, previewTab, downloadingDocx, savedPaperId, archive
   return (
     <section id="blueprint-paper-preview" className="space-y-5">
       <div className="paper-builder-screen-only flex flex-col gap-4 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div><h2 className="text-xl font-semibold">Blueprint paper output</h2><p className="mt-1 text-sm text-muted-foreground">Server-validated. Save the exact final paper when it is ready.</p></div>
-        <div className="flex flex-wrap gap-2"><Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => onPreviewTab("questions")}><Eye className="size-4" /> Student paper</Button><Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => onPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button>{archiveEnabled && <Button type="button" onClick={onSave}><Save className="size-4" /> Save Generated Paper</Button>}{savedPaperId && archivePaperHref && <Link href={archivePaperHref(savedPaperId)} className={buttonVariants({ variant: "outline" })}>Open in {archiveLabel}</Link>}</div>
+        <div><h2 className="text-xl font-semibold">{teacherFacing ? "Paper ready" : "Blueprint paper output"}</h2><p className="mt-1 text-sm text-muted-foreground">{teacherFacing ? "Preview the paper and answer key, then print, download or save when you are ready." : "Server-validated. Save the exact final paper when it is ready."}</p></div>
+        <div className="flex flex-wrap gap-2"><Button type="button" variant={previewTab === "questions" ? "default" : "outline"} onClick={() => onPreviewTab("questions")}><Eye className="size-4" /> {teacherFacing ? "Preview paper" : "Student paper"}</Button><Button type="button" variant={previewTab === "answers" ? "default" : "outline"} onClick={() => onPreviewTab("answers")}><CheckCircle2 className="size-4" /> Answer key</Button>{archiveEnabled && <Button type="button" onClick={onSave}><Save className="size-4" /> {teacherFacing ? "Save paper" : "Save Generated Paper"}</Button>}{savedPaperId && archivePaperHref && <Link href={archivePaperHref(savedPaperId)} className={buttonVariants({ variant: "outline" })}>Open in {archiveLabel}</Link>}</div>
       </div>
       <div className="paper-builder-screen-only flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => onPrint("questions")}><Printer className="size-4" /> Print question paper</Button><Button type="button" variant="outline" onClick={() => onPrint("answers")}><Printer className="size-4" /> Print answer key</Button><Button type="button" onClick={() => onPrint("both")}><Printer className="size-4" /> Print both</Button></div>
       <div className="paper-builder-screen-only flex flex-wrap gap-2"><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("questions")}><FileDown className="size-4" /> {downloadingDocx === "questions" ? "Generating…" : "Download Question Paper DOCX"}</Button><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("answers")}><FileDown className="size-4" /> {downloadingDocx === "answers" ? "Generating…" : "Download Answer Key DOCX"}</Button><Button type="button" variant="outline" disabled={downloadingDocx !== null} onClick={() => onDownload("both")}><FileDown className="size-4" /> {downloadingDocx === "both" ? "Generating…" : "Download Both DOCX"}</Button></div>
@@ -1836,14 +1972,14 @@ function PreviewStep({ paper, previewTab, downloadingDocx, savedPaperId, archive
   );
 }
 
-function BlueprintSummary({ chapters, targetMarks, availability, selectedCount, requestedCount, description }: { chapters: BlueprintChapterDraft[]; targetMarks: number | null; availability: BlueprintAvailability[]; selectedCount: number; requestedCount: number; description: string }) {
+function BlueprintSummary({ teacherFacing, chapters, targetMarks, availability, selectedCount, requestedCount, description }: { teacherFacing: boolean; chapters: BlueprintChapterDraft[]; targetMarks: number | null; availability: BlueprintAvailability[]; selectedCount: number; requestedCount: number; description: string }) {
   const total = calculateBlueprintPaperMarks(chapters);
   const insufficient = availability.filter((item) => item.status === "insufficient").length;
   return (
     <aside className="paper-builder-screen-only space-y-4 rounded-2xl border bg-card p-4 xl:sticky xl:top-6">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Blueprint summary</p><p className="mt-2 text-2xl font-bold">{total} marks</p>{targetMarks !== null && <p className={cn("mt-1 text-sm", targetMarks === total ? "text-emerald-600" : "text-destructive")}>Target: {targetMarks} marks</p>}</div>
-      <div className="space-y-2 text-sm"><SummaryRow label="Chapters" value={chapters.length} /><SummaryRow label="Rows" value={chapters.flatMap((chapter) => chapter.rows).length} /><SummaryRow label="Questions" value={requestedCount} />{selectedCount > 0 && <SummaryRow label="Selected" value={selectedCount} />}</div>
-      {availability.length > 0 && <StatusBanner good={insufficient === 0} message={insufficient === 0 ? "All rows have sufficient availability" : `${insufficient} row${insufficient === 1 ? "" : "s"} need attention`} />}
+      <div><p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{teacherFacing ? "Paper summary" : "Blueprint summary"}</p><p className="mt-2 text-2xl font-bold">{total} marks</p>{targetMarks !== null && <p className={cn("mt-1 text-sm", targetMarks === total ? "text-emerald-600" : "text-destructive")}>Target: {targetMarks} marks</p>}</div>
+      <div className="space-y-2 text-sm"><SummaryRow label="Chapters" value={chapters.length} /><SummaryRow label={teacherFacing ? "Sections" : "Rows"} value={chapters.flatMap((chapter) => chapter.rows).length} /><SummaryRow label="Questions" value={requestedCount} />{selectedCount > 0 && <SummaryRow label="Selected" value={selectedCount} />}</div>
+      {availability.length > 0 && <StatusBanner good={insufficient === 0} message={insufficient === 0 ? (teacherFacing ? "Every section has enough questions" : "All rows have sufficient availability") : `${insufficient} ${teacherFacing ? "section" : "row"}${insufficient === 1 ? "" : "s"} need attention`} />}
       <p className="text-xs leading-5 text-muted-foreground">{description}</p>
     </aside>
   );

@@ -32,7 +32,7 @@ test("normal application typography resolves to Geist Sans", () => {
   assert.doesNotMatch(globalStyles, /--font-sans: var\(--font-sans\);/);
 });
 
-test("teacher navigation is grouped by workflow and keeps existing routes", () => {
+test("teacher navigation is grouped by workflow and Papers has one clear entry", () => {
   for (const section of ["Teach", "Create", "Papers", "Settings"]) {
     assert.match(workspaceSidebar, new RegExp(`label: "${section}"`));
   }
@@ -44,11 +44,6 @@ test("teacher navigation is grouped by workflow and keeps existing routes", () =
     "/workspace/content",
     "/workspace/question-bank",
     "/workspace/paper-builder",
-    "/workspace/paper-builder/blueprint",
-    "/workspace/paper-builder/templates",
-    "/workspace/paper-builder/blueprint/templates",
-    "/workspace/paper-builder/header-templates",
-    "/workspace/paper-builder/archive",
     "/workspace/settings",
   ]) {
     assert.match(workspaceSidebar, new RegExp(route.replaceAll("/", "\\/")));
@@ -56,6 +51,8 @@ test("teacher navigation is grouped by workflow and keeps existing routes", () =
   assert.match(workspaceSidebar, /label: "Home"/);
   assert.match(workspaceSidebar, /label: "All students"/);
   assert.match(workspaceSidebar, /label: "Practice sets"/);
+  assert.match(workspaceSidebar, /href: "\/workspace\/paper-builder", label: "Papers"/);
+  assert.equal((workspaceSidebar.match(/\/workspace\/paper-builder/g) ?? []).length, 1);
   assert.match(workspaceSidebar, /z-50[\s\S]*lg:hidden/);
 });
 
@@ -70,7 +67,9 @@ test("teacher paper navigation uses friendly labels while admin labels remain in
   ]) {
     assert.match(paperModeNav, new RegExp(`label: "${label}"`));
   }
-  assert.match(paperModeNav, /Use Quick Paper for fast tests\./);
+  assert.match(paperModeNav, /What kind of paper do you want to create\?/);
+  assert.match(paperModeNav, /Reuse &amp; manage/);
+  assert.match(paperModeNav, /<details className="group border-t pt-3 sm:hidden">/);
   assert.match(paperModeNav, /label: "Simple Builder"/);
   assert.match(paperModeNav, /label: "Blueprint Builder"/);
   assert.match(adminSidebar, /\sDashboard\s*<\/Link>/);

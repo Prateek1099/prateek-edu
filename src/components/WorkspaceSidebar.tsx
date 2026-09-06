@@ -12,7 +12,6 @@ import {
   UserCircle,
   Database,
   FileStack,
-  Archive,
   Zap,
   Menu,
   X,
@@ -47,12 +46,7 @@ const navSections: NavSection[] = [
   {
     label: "Papers",
     items: [
-      { href: "/workspace/paper-builder", label: "Quick Paper", icon: FileStack, match: "exact" },
-      { href: "/workspace/paper-builder/blueprint", label: "Chapter-wise Paper", icon: FileStack, match: "exact" },
-      { href: "/workspace/paper-builder/templates", label: "Saved paper setups", icon: FileStack, match: "prefix" },
-      { href: "/workspace/paper-builder/blueprint/templates", label: "Saved chapter patterns", icon: FileStack, match: "prefix" },
-      { href: "/workspace/paper-builder/header-templates", label: "Paper headers", icon: FileStack, match: "prefix" },
-      { href: "/workspace/paper-builder/archive", label: "Saved papers", icon: Archive, match: "prefix" },
+      { href: "/workspace/paper-builder", label: "Papers", icon: FileStack, match: "prefix" },
     ],
   },
   {
