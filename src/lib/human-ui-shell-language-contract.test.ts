@@ -16,9 +16,9 @@ const classesClient = read("src/app/workspace/classes/WorkspaceClassesClient.tsx
 const classDetail = read("src/app/workspace/classes/[id]/ClassDetailClient.tsx");
 const adminSidebar = read("src/components/AdminSidebar.tsx");
 
-test("public chrome is omitted for admin and workspace route trees", () => {
+test("public chrome is omitted for admin, teacher, and student workspace route trees", () => {
   assert.match(rootLayout, /<AppChrome publicHeader=\{<Navbar \/>\} publicFooter=\{<Footer \/>\}>/);
-  assert.match(appChrome, /\["\/admin", "\/workspace"\]/);
+  assert.match(appChrome, /\["\/admin", "\/workspace", "\/dashboard"\]/);
   assert.match(appChrome, /pathname === prefix \|\| pathname\.startsWith\(`\$\{prefix\}\/`\)/);
   assert.match(appChrome, /if \(usesAuthenticatedShell\(pathname\)\)/);
   assert.match(appChrome, /\{publicHeader\}/);

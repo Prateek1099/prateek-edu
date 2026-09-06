@@ -86,8 +86,8 @@ test("Mistake Book labels answers clearly and preserves old-attempt behavior", (
   assert.match(mistakeClient, /Your answer/);
   assert.match(mistakeClient, /Correct answer/);
   assert.match(mistakeClient, /Explanation/);
-  assert.match(mistakeClient, /Detailed answer review was not captured for this older attempt/);
-  assert.match(mistakeClient, /Retry Challenge/);
+  assert.match(mistakeClient, /Answer details are limited for this earlier attempt/);
+  assert.match(mistakeClient, /Practice again/);
   assert.match(mistakeClient, /snapshotCaptured/);
 });
 

@@ -1,53 +1,111 @@
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  School,
+  Trophy,
+  Users,
+} from "lucide-react";
+import { getServerSession } from "next-auth";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { AiInsightCard } from "./AiInsightCard";
+import { StudentAssignmentRow } from "@/components/student/StudentAssignmentRow";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
-import { BookOpen, Clock, Trophy, Target, ArrowRight, CheckCircle2, AlertCircle, AlertTriangle, FileText, Sparkles, CalendarDays, Users, School } from "lucide-react";
-import Link from "next/link";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { AiInsightCard } from "./AiInsightCard";
-import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
-import { getStudentWorkspaceClasses } from "@/lib/student-workspace-classes";
-import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
 import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
+import {
+  getStudentWorkDisplayState,
+  orderStudentWork,
+} from "@/lib/student-work-presentation";
+import { getStudentWorkspaceAssignments } from "@/lib/workspace-assignment-service";
+import type { StudentAssignedWork } from "@/lib/workspace-assignment-service";
+import { getStudentWorkspaceClasses } from "@/lib/student-workspace-classes";
+import { cn } from "@/lib/utils";
+import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
+
+function getAssignmentPresentation(assignment: StudentAssignedWork, returnTo: string) {
+  const challenge = assignment.challenge;
+  const board = challenge.subject.boardName;
+  const qualification = challenge.subject.qualificationName;
+  const isDocument = challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET";
+  const worksheetHref = withStudentReturnTo(
+    `/resources/${board}/${qualification}/${challenge.subject.slug}/worksheet/${challenge.id}`,
+    returnTo,
+    assignment.source === "DURABLE" ? assignment.id : undefined,
+  );
+  const practiceHref = withStudentReturnTo(
+    assignment.attemptSummary
+      ? `/resources/${board}/${qualification}/${challenge.subject.slug}/challenge/${challenge.id}/results/${assignment.attemptSummary.latestAttemptId}`
+      : `/resources/${board}/${qualification}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`,
+    returnTo,
+  );
+
+  return {
+    href: isDocument ? worksheetHref : practiceHref,
+    actionLabel: isDocument
+      ? "Open worksheet"
+      : assignment.attemptSummary ? "Review answers" : "Start practice",
+    typeLabel: isDocument ? "Worksheet" : "Practice set",
+    detail: isDocument
+      ? challenge.type === "PDF_WORKSHEET" ? "PDF worksheet" : "View and complete"
+      : `${challenge.questionCount} questions`,
+    note: isDocument
+      ? assignment.source === "DURABLE"
+        ? "This worksheet is not scored. Mark it as done after you finish."
+        : "Completion is not tracked for this earlier assignment."
+      : null,
+    scoreText: assignment.attemptSummary
+      ? `Latest ${Math.round(assignment.attemptSummary.latestPercentage)}% · Best ${Math.round(assignment.attemptSummary.bestPercentage)}%`
+      : null,
+  };
+}
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-
-  if (!session || !session.user) {
-    redirect("/login");
-  }
+  if (!session?.user) redirect("/login");
 
   const role = (session.user as { role?: string }).role;
   if (role === "SUPER_ADMIN") redirect("/admin");
   if (role === "TEACHER") redirect("/workspace");
 
   const userId = (session.user as { id?: string }).id;
-  if (!userId) {
-    console.error("Dashboard error: session missing userId");
-    redirect("/login");
-  }
+  if (!userId) redirect("/login");
 
-  // 1. Fetch Overview Data
-  const todayStart = new Date();
+  const now = new Date();
+  const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  const todayEnd = new Date();
+  const todayEnd = new Date(now);
   todayEnd.setHours(23, 59, 59, 999);
 
-  const [enrollments, topicProgress, recentChallenges, challengeAgg, mistakeStats, topMistakeTopics, revisionPlan, worksheetAssignments, myClasses] = await Promise.all([
-    prisma.enrollment.count({ where: { userId, paymentStatus: "completed" } }),
+  const [
+    topicProgress,
+    recentChallenges,
+    challengeAgg,
+    mistakeStats,
+    topMistakeTopics,
+    revisionPlan,
+    assignments,
+    myClasses,
+  ] = await Promise.all([
     prisma.userTopicProgress.findMany({
       where: { userId },
       select: {
         id: true,
         completed: true,
-        topic: { select: { topicName: true, subjectId: true, subject: { select: { id: true, name: true } } } }
+        topic: {
+          select: {
+            topicName: true,
+            subjectId: true,
+            subject: { select: { id: true, name: true } },
+          },
+        },
       },
-      orderBy: { id: "desc" }
+      orderBy: { id: "desc" },
     }),
     prisma.challengeAttempt.findMany({
       where: { userId },
@@ -55,10 +113,10 @@ export default async function DashboardPage() {
         id: true,
         percentage: true,
         completedAt: true,
-        challenge: { select: { title: true, subject: { select: { name: true } } } }
+        challenge: { select: { title: true, subject: { select: { name: true } } } },
       },
       orderBy: { completedAt: "desc" },
-      take: 5,
+      take: 4,
     }),
     prisma.challengeAttempt.aggregate({
       where: { userId },
@@ -69,7 +127,7 @@ export default async function DashboardPage() {
     prisma.mistakeEntry.groupBy({
       by: ["status"],
       where: { userId },
-      _count: { id: true }
+      _count: { id: true },
     }),
     prisma.mistakeEntry.groupBy({
       by: ["topicTag"],
@@ -91,49 +149,55 @@ export default async function DashboardPage() {
         },
       },
     }),
-    getStudentWorkspaceAssignments(userId, 3),
-    getStudentWorkspaceClasses(userId),
+    getStudentWorkspaceAssignments(userId),
+    getStudentWorkspaceClasses(userId, now),
   ]);
 
-  const mistakeNeedsRevision = mistakeStats.find(s => s.status === "needs_revision")?._count.id || 0;
-  const mistakeRevised = mistakeStats.find(s => s.status === "revised")?._count.id || 0;
+  const mistakeNeedsRevision = mistakeStats.find((item) => item.status === "needs_revision")?._count.id || 0;
+  const mistakeRevised = mistakeStats.find((item) => item.status === "revised")?._count.id || 0;
   const mistakeTotal = mistakeNeedsRevision + mistakeRevised;
 
-  // Revision plan stats
-  const planTotalTasks = revisionPlan ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id, type: { not: "PAST_PAPER" } } }) : 0;
+  const planTotalTasks = revisionPlan
+    ? await prisma.revisionTask.count({ where: { revisionPlanId: revisionPlan.id, type: { not: "PAST_PAPER" } } })
+    : 0;
   const planCompletedTasks = revisionPlan?._count?.tasks || 0;
-  const planCompletionPct = planTotalTasks > 0 ? Math.round((planCompletedTasks / planTotalTasks) * 100) : 0;
-  const daysUntilExam = revisionPlan ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+  const planCompletionPct = planTotalTasks > 0
+    ? Math.round((planCompletedTasks / planTotalTasks) * 100)
+    : 0;
+  const daysUntilExam = revisionPlan
+    ? Math.max(0, Math.ceil((new Date(revisionPlan.examDate).getTime() - todayStart.getTime()) / 86_400_000))
+    : 0;
 
-  // 2. Process Subject Progress accurately
-  const subjectIds = Array.from(new Set(topicProgress.map(tp => tp.topic.subjectId)));
-  const totalTopicsPerSubject = await prisma.topic.groupBy({
-    by: ['subjectId'],
-    where: { subjectId: { in: subjectIds } },
-    _count: { id: true }
-  });
-
-  const subjectMap = new Map<string, { name: string, completed: number, total: number }>();
-
-  topicProgress.forEach(tp => {
-    const sub = tp.topic.subject;
-    if (!subjectMap.has(sub.id)) {
-      const totalCount = totalTopicsPerSubject.find(t => t.subjectId === sub.id)?._count.id || 0;
-      subjectMap.set(sub.id, { name: sub.name, completed: 0, total: totalCount });
+  const subjectIds = Array.from(new Set(topicProgress.map((progress) => progress.topic.subjectId)));
+  const totalTopicsPerSubject = subjectIds.length
+    ? await prisma.topic.groupBy({
+        by: ["subjectId"],
+        where: { subjectId: { in: subjectIds } },
+        _count: { id: true },
+      })
+    : [];
+  const subjectMap = new Map<string, { name: string; completed: number; total: number }>();
+  for (const progress of topicProgress) {
+    const subject = progress.topic.subject;
+    if (!subjectMap.has(subject.id)) {
+      const total = totalTopicsPerSubject.find((item) => item.subjectId === subject.id)?._count.id || 0;
+      subjectMap.set(subject.id, { name: subject.name, completed: 0, total });
     }
-    const current = subjectMap.get(sub.id)!;
-    if (tp.completed) {
-      current.completed += 1;
-    }
-  });
+    if (progress.completed) subjectMap.get(subject.id)!.completed += 1;
+  }
   const subjectProgressList = Array.from(subjectMap.values());
 
-  // 3. Process Strengths & Weaknesses heuristics
-  const strongTopics = topicProgress.filter(tp => tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
-  const weakTopics = topicProgress.filter(tp => !tp.completed).map(tp => tp.topic.topicName).slice(0, 4);
+  const orderedAssignments = orderStudentWork(assignments, now);
+  const workToDo = orderedAssignments
+    .filter((assignment) => getStudentWorkDisplayState(assignment, now) !== "COMPLETED")
+    .slice(0, 5);
+  const recentlyCompleted = orderedAssignments
+    .filter((assignment) => getStudentWorkDisplayState(assignment, now) === "COMPLETED")
+    .slice(0, 3);
 
-  // 4. Generate Context & Lists for AI & Reflections
-  const mistakeTopicsList = topMistakeTopics.map((t) => `${t.topicTag} (${t._sum.mistakeCount}×)`).join(", ");
+  const strongTopics = topicProgress.filter((progress) => progress.completed).map((progress) => progress.topic.topicName).slice(0, 4);
+  const weakTopics = topicProgress.filter((progress) => !progress.completed).map((progress) => progress.topic.topicName).slice(0, 4);
+  const mistakeTopicsList = topMistakeTopics.map((topic) => `${topic.topicTag} (${topic._sum.mistakeCount}×)`).join(", ");
   const contextData = `
 Strong Topics: ${strongTopics.join(", ") || "None yet"}
 Needs Revision: ${weakTopics.join(", ") || "None yet"}
@@ -141,449 +205,102 @@ Mistake Book: ${mistakeTotal} total, ${mistakeNeedsRevision} needs revision, ${m
 Most Repeated Mistakes: ${mistakeTopicsList || "None yet"}
 Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}% average
   `.trim();
+
   return (
-    <div className="container px-4 md:px-8 py-6 md:py-8 max-w-7xl mx-auto space-y-8">
-
-      {/* ── 1. WELCOME HEADER ── */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <main className="container mx-auto max-w-6xl space-y-9 px-4 py-7 sm:py-9 md:px-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-            Welcome back, {session.user.name || "Student"} 👋
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm md:text-base">
-            Track your progress, revisit mistakes, and stay on top of your study plan.
-          </p>
+          <p className="text-sm font-semibold text-primary">Student home</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Welcome back, {session.user.name || "Student"}</h1>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">Start with your class work, then continue learning at your own pace.</p>
         </div>
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            href="/dashboard/join"
-            className={cn(
-              buttonVariants({ size: "sm", variant: "outline" }),
-              "shadow-sm rounded-xl h-9"
-            )}
-          >
-            <Users className="w-4 h-4 mr-1.5" /> Join Class
+        <div className="flex flex-col gap-2 min-[390px]:flex-row">
+          <Link href="/dashboard/join" className={cn(buttonVariants({ size: "sm", variant: "outline" }), "min-h-10 rounded-xl")}>
+            <Users className="size-4" /> Join class
           </Link>
-          <Link
-            href="/dashboard/ask-teacher"
-            className={cn(buttonVariants({ size: "sm" }), "shadow-sm rounded-xl h-9 font-medium")}
-          >
-            Ask Teacher
-          </Link>
+          <Link href="/dashboard/ask-teacher" className={cn(buttonVariants({ size: "sm" }), "min-h-10 rounded-xl")}>Ask teacher</Link>
         </div>
-      </div>
+      </header>
 
-      {/* ── 2. CONTINUE LEARNING ── */}
-      <section>
-        {revisionPlan ? (
-          <Card className="shadow-md border border-primary/20 rounded-2xl bg-card overflow-hidden">
-            <CardContent className="p-5 md:p-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                    <CalendarDays className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg font-bold leading-tight">Continue Learning</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                      {revisionPlan.qualification.toUpperCase()} · {daysUntilExam} day{daysUntilExam !== 1 ? "s" : ""} until exam
-                    </p>
-                  </div>
-                </div>
-                <Link
-                  href="/dashboard/revision-planner"
-                  className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0 rounded-xl gap-1 font-medium")}
-                >
-                  <span>Open Planner</span>
-                  <ArrowRight className="size-3.5" />
-                </Link>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-muted-foreground font-medium">Plan completion</span>
-                  <span className="font-bold text-primary">{planCompletionPct}%</span>
-                </div>
-                <Progress value={planCompletionPct} className="h-2" />
-              </div>
-
-              {revisionPlan.tasks.length > 0 ? (
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Today&apos;s Tasks</p>
-                  <div className="space-y-2">
-                    {revisionPlan.tasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-2.5 text-sm p-2 rounded-lg bg-muted/30 border border-border/50">
-                        {task.status === "COMPLETED" ? (
-                          <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
-                        ) : (
-                          <div className="size-4 rounded-full border-2 border-muted-foreground/40 shrink-0" />
-                        )}
-                        <span className={task.status === "COMPLETED" ? "line-through text-muted-foreground flex-1" : "font-medium flex-1"}>
-                          {task.title}
-                        </span>
-                        {task.priority === "HIGH" && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-destructive/10 text-destructive shrink-0">HIGH</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No tasks scheduled for today. Check your planner for upcoming review tasks.</p>
-              )}
-            </CardContent>
-          </Card>
+      <section aria-labelledby="today-work-heading">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="today-work-heading" className="text-xl font-semibold tracking-tight">Today&apos;s work</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Overdue and due work comes first. Items without a due date are labelled clearly.</p>
+          </div>
+          {assignments.length > 0 ? <Link href="/dashboard/worksheets" className="inline-flex min-h-10 items-center text-sm font-semibold text-primary hover:underline">All assigned work <ArrowRight className="ml-1 size-4" /></Link> : null}
+        </div>
+        {workToDo.length > 0 ? (
+          <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+            {workToDo.map((assignment) => {
+              const state = getStudentWorkDisplayState(assignment, now);
+              const presentation = getAssignmentPresentation(assignment, "/dashboard");
+              return <StudentAssignmentRow key={assignment.id} title={assignment.challenge.title} typeLabel={presentation.typeLabel} context={`${assignment.className} · ${assignment.challenge.subject.name}`} state={state} dueText={assignment.dueDate ? `Due ${formatAssignmentDueDate(assignment.dueDate)}` : `Assigned ${assignment.assignedAt.toLocaleDateString()}`} detail={presentation.detail} note={presentation.note} actionHref={presentation.href} actionLabel={presentation.actionLabel} />;
+            })}
+          </div>
         ) : (
-          <Card className="shadow-sm border border-border/80 hover:border-primary/40 transition-colors rounded-2xl bg-card">
-            <CardContent className="p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="size-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <CalendarDays className="size-5 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold">What should you study today?</h2>
-                  <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
-                    Set up your Revision Planner to get personalized daily study tasks based on your syllabus.
-                  </p>
-                </div>
-              </div>
-              <Link
-                href="/dashboard/revision-planner"
-                className={cn(buttonVariants({ size: "sm" }), "shadow-sm shrink-0 rounded-xl font-semibold")}
-              >
-                Set Up Planner
-              </Link>
-            </CardContent>
-          </Card>
+          <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-10 text-center">
+            <CheckCircle2 className="mx-auto size-9 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="mt-3 font-semibold">You&apos;re all caught up.</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Nothing is waiting for you right now.</p>
+            <Link href="/dashboard/classes" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 rounded-xl")}>Open my classes</Link>
+          </div>
         )}
       </section>
 
-      {/* ── 3. THREE COMPACT METRICS ── */}
-      <section className="grid grid-cols-3 gap-3 md:gap-5">
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-            <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
-              <Target className="size-3.5 shrink-0" />
-            </div>
-            <span className="text-xs font-semibold uppercase tracking-wider truncate">Courses</span>
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{enrollments}</p>
+      <section aria-labelledby="my-classes-heading">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div><h2 id="my-classes-heading" className="text-xl font-semibold tracking-tight">My classes</h2><p className="mt-1 text-sm text-muted-foreground">Open a class to see work from that teacher.</p></div>
+          {myClasses.length > 0 ? <Link href="/dashboard/classes" className="inline-flex min-h-10 shrink-0 items-center text-sm font-semibold text-primary hover:underline">All classes <ArrowRight className="ml-1 size-4" /></Link> : null}
         </div>
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-            <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-500">
-              <Target className="size-3.5 shrink-0" />
-            </div>
-            <span className="text-xs font-semibold uppercase tracking-wider truncate">Accuracy</span>
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</p>
-        </div>
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
-            <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-500">
-              <CheckCircle2 className="size-3.5 shrink-0" />
-            </div>
-            <span className="text-xs font-semibold uppercase tracking-wider truncate">Topics Done</span>
-          </div>
-          <p className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">{topicProgress.filter((t) => t.completed).length}</p>
-        </div>
-      </section>
-
-      {/* ── 4 & 5. MY SUBJECTS + RECOMMENDED / AI ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 items-start">
-        {/* 4. My Subjects — wider column */}
-        <section className="lg:col-span-3">
-          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-primary" /> My Subjects
-          </h2>
-          {subjectProgressList.length > 0 ? (
-            <div className="space-y-4 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-sm">
-              {subjectProgressList.map((sp, i) => {
-                const percentage = sp.total > 0 ? Math.round((sp.completed / sp.total) * 100) : 0;
-                return (
-                  <div key={i} className="space-y-2">
-                    <div className="flex justify-between text-sm items-center">
-                      <span className="font-semibold">{sp.name}</span>
-                      <span className="text-muted-foreground text-xs font-medium">{sp.completed}/{sp.total} topics · <span className="text-foreground font-semibold">{percentage}%</span></span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <Card className="rounded-2xl border border-border/80 bg-card">
-              <CardContent className="p-8 flex flex-col items-center text-center gap-2">
-                <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-1">
-                  <BookOpen className="size-6 text-primary" />
-                </div>
-                <h3 className="text-base font-bold text-foreground">No subject progress yet</h3>
-                <p className="text-xs text-muted-foreground max-w-sm">Complete a practice challenge or review notes to start tracking your subject completion.</p>
-              </CardContent>
-            </Card>
-          )}
-        </section>
-
-        {/* 5. Recommended Next + AI Insight — narrower column, stacks on mobile */}
-        <section className="lg:col-span-2 space-y-5">
-          {/* Recommended Revision */}
-          {topMistakeTopics.length > 0 && (
-            <div>
-              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-primary" /> Recommended Next
-              </h2>
-              <Card className="border border-primary/20 rounded-2xl bg-card shadow-sm">
-                <CardContent className="p-5">
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {topMistakeTopics.slice(0, 3).map((t, index) => (
-                      <Badge key={t.topicTag ?? index} variant="outline" className="text-xs border-primary/30 text-primary bg-primary/5">
-                        {t.topicTag ?? "Uncategorised"}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mb-3 leading-relaxed">These topics have the most repeated mistakes in your recent practice.</p>
-                  <Link href="/dashboard/mistakes" className="text-xs text-primary font-semibold hover:underline inline-flex items-center gap-1">
-                    Open Mistake Book <ArrowRight className="size-3" />
-                  </Link>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* AI Insight */}
-          <AiInsightCard contextData={contextData} />
-        </section>
-      </div>
-
-      {/* ── 6. MY CLASSES ── */}
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="flex items-center gap-2 text-lg font-bold">
-            <School className="size-4 text-primary" /> My Classes
-          </h2>
-          {myClasses.length > 0 ? (
-            <Link href="/dashboard/classes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-xs font-semibold text-primary")}>
-              View All <ArrowRight className="ml-1 size-3.5" />
-            </Link>
-          ) : null}
-        </div>
-        {myClasses.length === 0 ? (
-          <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20">
-            <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
-              <div>
-                <h3 className="font-bold">You have not joined a class yet</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Use the class code shared by your teacher to join your class workspace.</p>
-              </div>
-              <Link href="/dashboard/join" className={cn(buttonVariants({ variant: "outline" }), "w-full shrink-0 rounded-xl sm:w-auto")}>Join Class</Link>
-            </CardContent>
-          </Card>
-        ) : (
+        {myClasses.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {myClasses.slice(0, 3).map((studentClass) => (
-              <Card key={studentClass.id} className="rounded-2xl border-border/80 bg-card shadow-sm">
-                <CardContent className="p-5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-primary">{studentClass.subject?.name || "Class workspace"}</p>
-                  <h3 className="mt-1 line-clamp-1 font-bold">{studentClass.name}</h3>
-                  <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{studentClass.workspace.name} · {studentClass.academicYear}</p>
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-lg bg-primary/10 px-2 py-1 font-semibold text-primary">{studentClass.assignmentCounts.pending} pending</span>
-                    <span className="rounded-lg bg-emerald-500/10 px-2 py-1 font-semibold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed} done</span>
-                    {studentClass.assignmentCounts.overdue > 0 ? <span className="rounded-lg bg-destructive/10 px-2 py-1 font-semibold text-destructive">{studentClass.assignmentCounts.overdue} overdue</span> : null}
-                  </div>
-                  <Link href={`/dashboard/classes/${studentClass.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 w-full rounded-xl")}>Open Class</Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ── 7. ASSIGNED WORK ── */}
-      {worksheetAssignments.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-primary" /> Assigned Work
-            </h2>
-            <Link href="/dashboard/worksheets" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs font-semibold")}>
-              View All <ArrowRight className="size-3.5 ml-1" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {worksheetAssignments.map((assignment) => {
-              const ws = assignment.challenge;
-              const isCompleted = assignment.status === "COMPLETED";
-              const isOverdue = assignment.dueDate && new Date() > new Date(assignment.dueDate) && !isCompleted;
-              const board = ws.subject.boardName;
-              const qual = ws.subject.qualificationName;
-              const isDocumentWorksheet = ws.type === "WORKSHEET" || ws.type === "PDF_WORKSHEET";
-              const contentType = ws.type === "QUICK_PRACTICE"
-                ? "Quick Practice"
-                : ws.type === "PDF_WORKSHEET"
-                  ? "PDF Worksheet"
-                  : "Worksheet";
-              const worksheetLink = withStudentReturnTo(
-                `/resources/${board}/${qual}/${ws.subject.slug}/worksheet/${ws.id}`,
-                "/dashboard",
-                assignment.source === "DURABLE" ? assignment.id : undefined,
-              );
-              const attemptLink = withStudentReturnTo(
-                `/resources/${board}/${qual}/${ws.subject.slug}/challenge/${ws.id}/attempt`,
-                "/dashboard",
-              );
-              const assignmentLink = isDocumentWorksheet ? worksheetLink : attemptLink;
+            {myClasses.slice(0, 3).map((studentClass) => {
+              const teacherName = studentClass.workspace.owner.name || studentClass.workspace.owner.email || "Teacher";
               return (
-                <Link
-                  key={assignment.id}
-                  href={isCompleted && !isDocumentWorksheet ? "#" : assignmentLink}
-                  className="block group focus-visible:outline-none"
-                >
-                  <Card className={cn("h-full border transition-all duration-200 hover:shadow-md rounded-2xl bg-card", isOverdue ? "border-destructive/40" : "border-border/80 hover:border-primary/40")}>
-                    <CardContent className="p-5 flex flex-col h-full justify-between">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          {isCompleted ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                              <CheckCircle2 className="size-3" /> Done
-                            </span>
-                          ) : isOverdue ? (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20">
-                              <AlertCircle className="size-3" /> Overdue
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                              <FileText className="size-3" /> Pending
-                            </span>
-                          )}
-                          {assignment.dueDate && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Clock className="size-3 text-muted-foreground" /> {formatAssignmentDueDate(assignment.dueDate)}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-semibold text-sm group-hover:text-primary transition-colors line-clamp-2 leading-snug">{ws.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {contentType} · {ws.subject.name} · {assignment.className} · {assignment.workspaceName}
-                        </p>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground border-t border-border/60 pt-3">
-                        <span className="font-medium">{ws.type === "PDF_WORKSHEET" ? "PDF assignment" : `${ws.questionCount} questions`}</span>
-                        {isDocumentWorksheet ? (
-                          <span className="text-primary font-semibold group-hover:underline">View worksheet →</span>
-                        ) : (
-                          !isCompleted && <span className="text-primary font-semibold group-hover:underline">Start challenge →</span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+                <Card key={studentClass.id} className="rounded-2xl border-border/80 bg-card shadow-sm">
+                  <CardContent className="flex h-full flex-col p-5">
+                    <p className="text-sm font-medium text-primary">{studentClass.subject?.name || "Class workspace"}</p>
+                    <h3 className="mt-1 text-lg font-semibold">{studentClass.name}</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{teacherName} · {studentClass.academicYear}</p>
+                    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/70 pt-3 text-xs"><span><strong>{studentClass.assignmentCounts.pending}</strong> to do</span>{studentClass.assignmentCounts.overdue > 0 ? <span className="font-semibold text-destructive">{studentClass.assignmentCounts.overdue} overdue</span> : null}<span className="text-muted-foreground">{studentClass.assignmentCounts.completed} completed</span></div>
+                    <Link href={`/dashboard/classes/${studentClass.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 min-h-10 w-full rounded-xl")}>Open class</Link>
+                  </CardContent>
+                </Card>
               );
             })}
           </div>
-        </section>
-      )}
-
-      {/* ── 8. RECENT ACTIVITY (secondary) ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-primary" /> Recent Activity
-          </h2>
-          {mistakeTotal > 0 && (
-            <Link href="/dashboard/mistakes" className={cn(buttonVariants({ size: "sm", variant: "ghost" }), "text-primary text-xs font-semibold")}>
-              Mistake Book <ArrowRight className="size-3.5 ml-1" />
-            </Link>
-          )}
-        </div>
-
-        {/* Challenge Performance + Mistakes — compact inline strip */}
-        {(challengeAgg._count > 0 || mistakeTotal > 0) && (
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm mb-4 px-1">
-            {challengeAgg._count > 0 && (
-              <>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Challenges:</span>
-                  <span className="font-semibold">{challengeAgg._count}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Avg:</span>
-                  <span className="font-semibold">{challengeAgg._avg?.percentage ? Math.round(challengeAgg._avg.percentage) : 0}%</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Best:</span>
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{challengeAgg._max?.percentage ? Math.round(challengeAgg._max.percentage) : 0}%</span>
-                </div>
-              </>
-            )}
-            {mistakeTotal > 0 && (
-              <>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Mistakes:</span>
-                  <span className="font-semibold">{mistakeTotal}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Needs revision:</span>
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">{mistakeNeedsRevision}</span>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Recent Challenges list */}
-        {recentChallenges.length > 0 ? (
-          <Card className="overflow-hidden rounded-2xl border border-border/80 bg-card">
-            <div className="divide-y divide-border/60">
-              {recentChallenges.map((ca) => (
-                <div key={ca.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
-                  <div className="min-w-0">
-                    <h4 className="font-semibold text-sm truncate">{ca.challenge.title}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{ca.challenge.subject.name} · {new Date(ca.completedAt).toLocaleDateString()}</p>
-                  </div>
-                  <Badge variant="outline" className={cn(
-                    "shrink-0 ml-3 font-bold px-2.5 py-0.5 rounded-full",
-                    ca.percentage >= 75 ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                    ca.percentage >= 50 ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                    "border-destructive/30 bg-destructive/10 text-destructive"
-                  )}>
-                    {Math.round(ca.percentage)}%
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </Card>
         ) : (
-          <Card className="rounded-2xl border border-border/80 bg-card">
-            <CardContent className="p-8 flex flex-col items-center text-center gap-2">
-              <div className="size-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-1">
-                <Trophy className="size-6 text-primary" />
-              </div>
-              <h3 className="text-base font-bold text-foreground">No challenges attempted yet</h3>
-              <p className="text-xs text-muted-foreground max-w-sm">Complete a practice challenge or quiz in any subject to see your results tracked here.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Most Repeated Mistakes — compact */}
-        {topMistakeTopics.length > 0 && (
-          <div className="mt-4 rounded-2xl border border-border/80 bg-card p-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-              <AlertTriangle className="size-3.5 text-amber-500" /> Most Repeated Mistakes
-            </h3>
-            <div className="space-y-2">
-              {topMistakeTopics.map((t, i) => (
-                <div key={t.topicTag ?? i} className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{t.topicTag ?? "Uncategorised"}</span>
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">
-                    {t._sum.mistakeCount}×
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-10 text-center"><School className="mx-auto size-9 text-muted-foreground" /><h3 className="mt-3 font-semibold">You haven&apos;t joined a class yet.</h3><p className="mt-1 text-sm text-muted-foreground">Use a class code from your teacher to get started.</p><Link href="/dashboard/join" className={cn(buttonVariants({ size: "sm" }), "mt-4 rounded-xl")}>Join class</Link></div>
         )}
       </section>
 
-    </div>
+      <div className="grid gap-6 lg:grid-cols-5">
+        <section className="lg:col-span-3" aria-labelledby="continue-learning-heading">
+          <h2 id="continue-learning-heading" className="text-lg font-semibold">Continue learning</h2>
+          <div className="mt-3 rounded-2xl border border-border/80 bg-card p-5 shadow-sm sm:p-6">
+            {revisionPlan ? (
+              <><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><p className="font-semibold">Revision plan</p><p className="mt-1 text-sm text-muted-foreground">{revisionPlan.qualification.toUpperCase()} · {daysUntilExam} day{daysUntilExam === 1 ? "" : "s"} until exam</p></div><Link href="/dashboard/revision-planner" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-h-10 rounded-xl")}>Open planner</Link></div><div className="mt-4"><div className="mb-1.5 flex justify-between text-xs"><span className="text-muted-foreground">Plan completion</span><span className="font-semibold">{planCompletionPct}%</span></div><Progress value={planCompletionPct} className="h-2" /></div>{revisionPlan.tasks.length > 0 ? <div className="mt-4 divide-y divide-border/60 border-t border-border/60">{revisionPlan.tasks.map((task) => <div key={task.id} className="flex items-center gap-3 py-3 text-sm">{task.status === "COMPLETED" ? <CheckCircle2 className="size-4 text-emerald-600" /> : <span className="size-4 rounded-full border border-muted-foreground/50" />}<span className={cn("flex-1", task.status === "COMPLETED" && "text-muted-foreground line-through")}>{task.title}</span></div>)}</div> : <p className="mt-4 text-sm text-muted-foreground">No revision tasks are scheduled for today.</p>}</>
+            ) : (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Plan your revision</p><p className="mt-1 text-sm text-muted-foreground">Create a study plan when you are ready to organise exam revision.</p></div><Link href="/dashboard/revision-planner" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-h-10 rounded-xl")}>Set up planner</Link></div>
+            )}
+          </div>
+        </section>
+        <section className="lg:col-span-2" aria-labelledby="revision-heading"><h2 id="revision-heading" className="text-lg font-semibold">Mistakes and revision</h2><div className="mt-3 rounded-2xl border border-border/80 bg-card p-5 shadow-sm"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">{mistakeNeedsRevision} to review</p><p className="mt-1 text-sm text-muted-foreground">{mistakeRevised} marked revised</p></div><BookOpen className="size-5 text-primary" /></div><Link href="/dashboard/mistakes" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 min-h-10 w-full rounded-xl")}>Open Mistake Book</Link></div></section>
+      </div>
+
+      {recentlyCompleted.length > 0 ? (
+        <section aria-labelledby="completed-heading"><h2 id="completed-heading" className="text-lg font-semibold">Recently completed</h2><p className="mt-1 text-sm text-muted-foreground">Completed class work stays available for review.</p><div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">{recentlyCompleted.map((assignment) => { const presentation = getAssignmentPresentation(assignment, "/dashboard"); return <StudentAssignmentRow key={assignment.id} title={assignment.challenge.title} typeLabel={presentation.typeLabel} context={`${assignment.className} · ${assignment.challenge.subject.name}`} state="COMPLETED" dueText={`Assigned ${assignment.assignedAt.toLocaleDateString()}`} detail={presentation.detail} scoreText={presentation.scoreText} actionHref={presentation.href} actionLabel={presentation.actionLabel} />; })}</div></section>
+      ) : null}
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <section className="lg:col-span-3" aria-labelledby="progress-heading"><h2 id="progress-heading" className="text-lg font-semibold">Learning progress</h2>{subjectProgressList.length > 0 ? <div className="mt-3 space-y-4 rounded-2xl border border-border/80 bg-card p-5 shadow-sm">{subjectProgressList.map((subject) => { const percentage = subject.total > 0 ? Math.round((subject.completed / subject.total) * 100) : 0; return <div key={subject.name}><div className="mb-1.5 flex justify-between gap-3 text-sm"><span className="font-medium">{subject.name}</span><span className="text-xs text-muted-foreground">{subject.completed}/{subject.total} topics</span></div><Progress value={percentage} className="h-2" /></div>; })}</div> : <div className="mt-3 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">Your subject progress will appear after you start learning.</div>}</section>
+        <section className="lg:col-span-2"><AiInsightCard contextData={contextData} /></section>
+      </div>
+
+      <section aria-labelledby="recent-heading"><div className="flex items-center justify-between gap-4"><h2 id="recent-heading" className="text-lg font-semibold">Recent practice</h2>{mistakeTotal > 0 ? <Link href="/dashboard/mistakes" className="text-sm font-semibold text-primary hover:underline">Review mistakes</Link> : null}</div>{recentChallenges.length > 0 ? <div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">{recentChallenges.map((attempt) => <div key={attempt.id} className="flex items-center justify-between gap-4 px-4 py-3 sm:px-5"><div className="min-w-0"><p className="truncate text-sm font-medium">{attempt.challenge.title}</p><p className="mt-0.5 text-xs text-muted-foreground">{attempt.challenge.subject.name} · {attempt.completedAt.toLocaleDateString()}</p></div><span className="shrink-0 text-sm font-semibold">{Math.round(attempt.percentage)}%</span></div>)}</div> : <div className="mt-3 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-sm text-muted-foreground">Completed practice sets will appear here.</div>}</section>
+
+      <section className="border-t border-border/70 pt-7" aria-labelledby="explore-heading"><div><h2 id="explore-heading" className="text-lg font-semibold">Explore more learning</h2><p className="mt-1 text-sm text-muted-foreground">Browse Vexa when your assigned work is under control.</p></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Link href="/resources" className="flex min-h-16 items-center justify-between rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="inline-flex items-center gap-2"><BookOpen className="size-4 text-primary" /> Learning resources</span><ArrowRight className="size-4 text-muted-foreground" /></Link><Link href="/courses" className="flex min-h-16 items-center justify-between rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm font-semibold transition-colors hover:border-primary/40 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><span className="inline-flex items-center gap-2"><Trophy className="size-4 text-primary" /> Courses</span><ArrowRight className="size-4 text-muted-foreground" /></Link></div></section>
+    </main>
   );
 }

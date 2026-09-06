@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ChevronLeft, School, UserRound } from "lucide-react";
+import { ArrowRight, BookOpen, CalendarDays, ChevronLeft, School, UserRound } from "lucide-react";
 import { getServerSession } from "next-auth";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -24,7 +24,7 @@ export default async function StudentClassesPage() {
         href="/dashboard"
         className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
-        <ChevronLeft className="size-4" /> Back to Dashboard
+        <ChevronLeft className="size-4" /> Student home
       </Link>
 
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -33,7 +33,7 @@ export default async function StudentClassesPage() {
             <School className="size-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">My Classes</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">My classes</h1>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Open your active classes and see work shared by each teacher.
             </p>
@@ -47,11 +47,11 @@ export default async function StudentClassesPage() {
       {classes.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-14 text-center">
           <School className="mx-auto mb-3 size-10 text-muted-foreground/60" />
-          <h2 className="text-lg font-bold">You have not joined a class yet</h2>
+          <h2 className="text-lg font-semibold">You haven&apos;t joined a class yet.</h2>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
             Ask your teacher for a class code, then join to see class-specific assignments here.
           </p>
-          <Link href="/dashboard/join" className={cn(buttonVariants(), "mt-5 rounded-xl")}>Join Class</Link>
+          <Link href="/dashboard/join" className={cn(buttonVariants(), "mt-5 rounded-xl")}>Join class</Link>
         </section>
       ) : (
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -60,13 +60,13 @@ export default async function StudentClassesPage() {
               || studentClass.workspace.owner.email
               || "Teacher";
             return (
-              <Card key={studentClass.id} className="rounded-2xl border-border/80 bg-card shadow-sm">
+              <Card key={studentClass.id} className="rounded-2xl border-border/80 bg-card shadow-sm transition-colors hover:border-primary/40">
                 <CardContent className="flex h-full flex-col p-5">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wider text-primary">
                       {studentClass.subject?.name || "Class workspace"}
                     </p>
-                    <h2 className="mt-1 line-clamp-2 text-lg font-bold tracking-tight">{studentClass.name}</h2>
+                    <h2 className="mt-1 line-clamp-2 text-lg font-semibold tracking-tight">{studentClass.name}</h2>
                     <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
                       <p className="flex items-center gap-2"><School className="size-3.5 shrink-0" /> {studentClass.workspace.name}</p>
                       <p className="flex items-center gap-2"><UserRound className="size-3.5 shrink-0" /> {teacherName}</p>
@@ -75,13 +75,13 @@ export default async function StudentClassesPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/70 pt-4 text-center">
-                    <div><p className="text-lg font-bold text-primary">{studentClass.assignmentCounts.pending}</p><p className="text-[10px] font-semibold uppercase text-muted-foreground">Pending</p></div>
-                    <div><p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed}</p><p className="text-[10px] font-semibold uppercase text-muted-foreground">Done</p></div>
-                    <div><p className="text-lg font-bold text-destructive">{studentClass.assignmentCounts.overdue}</p><p className="text-[10px] font-semibold uppercase text-muted-foreground">Overdue</p></div>
+                  <div className="mt-5 flex flex-wrap gap-x-4 gap-y-1 border-t border-border/70 pt-3 text-xs">
+                    <span><strong className="text-primary">{studentClass.assignmentCounts.pending}</strong> to do</span>
+                    <span className="text-muted-foreground"><strong className="text-foreground">{studentClass.assignmentCounts.completed}</strong> completed</span>
+                    {studentClass.assignmentCounts.overdue > 0 ? <span className="font-semibold text-destructive">{studentClass.assignmentCounts.overdue} overdue</span> : null}
                   </div>
 
-                  <Link href={`/dashboard/classes/${studentClass.id}`} className={cn(buttonVariants(), "mt-4 w-full rounded-xl")}>Open Class</Link>
+                  <Link href={`/dashboard/classes/${studentClass.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 min-h-10 w-full justify-between rounded-xl px-4")}>Open class <ArrowRight className="size-4" /></Link>
                 </CardContent>
               </Card>
             );

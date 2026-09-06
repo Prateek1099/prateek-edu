@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, BookOpen, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 import MistakeBookClient from "./MistakeBookClient";
 import { readOptionSnapshot } from "@/lib/assignment-attempt-answer-snapshot-rules";
 
@@ -183,17 +183,11 @@ export default async function MistakeBookPage() {
   const revised = mistakeItems.filter((mistake) => mistake.status === "revised").length;
 
   return (
-    <div className="relative container px-4 md:px-8 py-8 max-w-5xl mx-auto space-y-8 min-h-[calc(100vh-140px)]">
-      {/* Ambient background glow */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 mx-auto h-72 max-w-4xl overflow-hidden blur-3xl opacity-20 bg-gradient-to-b from-indigo-500/25 via-purple-600/15 to-transparent"
-      />
-
+    <main className="container mx-auto min-h-[calc(100vh-140px)] max-w-5xl space-y-7 px-4 py-7 sm:py-9 md:px-8">
       <div>
         <Link href="/dashboard" className="inline-flex items-center justify-center rounded-xl text-sm font-semibold transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3 -ml-3 text-muted-foreground gap-1.5">
           <ArrowLeft className="size-4" />
-          <span>Back to Dashboard</span>
+          <span>Student home</span>
         </Link>
       </div>
 
@@ -202,47 +196,27 @@ export default async function MistakeBookPage() {
           <BookOpen className="size-6" />
         </div>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">My Mistake Book</h1>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-            Review questions you missed, reinforce core concepts, and turn weak spots into strengths.
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Mistake Book</h1>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Review questions you missed and mark them revised when the idea feels clear.
           </p>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-        <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
-          <CardContent className="p-5 sm:p-6 text-center">
-            <p className="text-3xl sm:text-4xl font-extrabold tracking-tight">{total}</p>
-            <p className="text-xs sm:text-sm font-semibold text-muted-foreground mt-1 uppercase tracking-wider">Total Mistakes</p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-amber-500/30 bg-amber-500/5 shadow-sm">
-          <CardContent className="p-5 sm:p-6 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <AlertTriangle className="size-6 text-amber-500" />
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-amber-600 dark:text-amber-400">{needsRevision}</p>
-            </div>
-            <p className="text-xs sm:text-sm font-semibold text-amber-700/80 dark:text-amber-300/80 mt-1 uppercase tracking-wider">Needs Revision</p>
-          </CardContent>
-        </Card>
-        <Card className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 shadow-sm">
-          <CardContent className="p-5 sm:p-6 text-center">
-            <div className="flex items-center justify-center gap-2">
-              <CheckCircle2 className="size-6 text-emerald-500" />
-              <p className="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-600 dark:text-emerald-400">{revised}</p>
-            </div>
-            <p className="text-xs sm:text-sm font-semibold text-emerald-700/80 dark:text-emerald-300/80 mt-1 uppercase tracking-wider">Revised</p>
-          </CardContent>
-        </Card>
-      </div>
+      {total > 0 ? (
+        <section aria-label="Mistake Book summary" className="flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border border-border/80 bg-card px-4 py-3 text-sm shadow-sm sm:px-5">
+          <span><strong>{needsRevision}</strong> needs review</span>
+          <span className="text-muted-foreground"><strong className="text-foreground">{revised}</strong> revised</span>
+          <span className="text-muted-foreground"><strong className="text-foreground">{total}</strong> total</span>
+        </section>
+      ) : null}
 
       {/* Most Repeated */}
       {topMistakes.length > 0 && (
         <Card className="rounded-2xl border border-border/80 bg-card shadow-sm">
           <CardContent className="p-5 sm:p-6">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">
-              Most Repeated Topics to Revise
+            <h2 className="mb-4 text-sm font-semibold">
+              Topics to revisit
             </h2>
             <div className="space-y-2.5">
               {topMistakes.map((t, i) => (
@@ -261,10 +235,9 @@ export default async function MistakeBookPage() {
         </Card>
       )}
 
-      {/* Mistake List */}
       <MistakeBookClient
         mistakes={mistakeItems}
       />
-    </div>
+    </main>
   );
 }

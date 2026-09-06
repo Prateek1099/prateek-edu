@@ -22,7 +22,7 @@ export function WorksheetCompletionControl({
   if (completed) {
     return (
       <div className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-4" /> Marked Done
+        <CheckCircle2 className="size-4" /> Marked done
       </div>
     );
   }
@@ -48,7 +48,7 @@ export function WorksheetCompletionControl({
       }}
     >
       <CheckCircle2 className="mr-2 size-4" />
-      {pending ? "Saving..." : "Mark as Done"}
+      {pending ? "Saving..." : "Mark as done"}
     </Button>
   );
 }

@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { getAttemptTracking } from "@/lib/workspace-assignment-tracking-rules";
 
 type AssignmentDb = Prisma.TransactionClient | typeof prisma;
 
@@ -40,6 +41,12 @@ export type StudentAssignedWork = {
   dueDate: Date | null;
   className: string;
   workspaceName: string;
+  attemptSummary: {
+    latestAttemptId: string;
+    latestPercentage: number;
+    bestPercentage: number;
+    attemptCount: number;
+  } | null;
   challenge: {
     id: string;
     title: string;
@@ -140,22 +147,37 @@ export async function getStudentWorkspaceAssignments(
             in: Array.from(new Set(quickPracticeRecipients.map((recipient) => recipient.batch.challenge.id))),
           },
         },
-        select: { challengeId: true, completedAt: true },
+        select: {
+          id: true,
+          challengeId: true,
+          score: true,
+          totalQuestions: true,
+          percentage: true,
+          answers: true,
+          completedAt: true,
+        },
       })
     : [];
+  const quickAttemptsByChallenge = new Map<string, typeof quickPracticeAttempts>();
+  for (const attempt of quickPracticeAttempts) {
+    const grouped = quickAttemptsByChallenge.get(attempt.challengeId) ?? [];
+    grouped.push(attempt);
+    quickAttemptsByChallenge.set(attempt.challengeId, grouped);
+  }
 
   const durable: StudentAssignedWork[] = recipients.map((recipient) => {
     const challenge = recipient.batch.challenge;
+    const attemptTracking = getAttemptTracking(
+      quickAttemptsByChallenge.get(challenge.id) ?? [],
+      recipient.assignedAt,
+    );
+    const latestAttempt = attemptTracking.latestAttempt;
     return {
       id: recipient.id,
       source: "DURABLE",
       status:
         challenge.type === "QUICK_PRACTICE"
-        && quickPracticeAttempts.some(
-          (attempt) =>
-            attempt.challengeId === challenge.id
-            && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
-        )
+        && attemptTracking.attemptCount > 0
           ? "COMPLETED"
           : challenge.type === "QUICK_PRACTICE"
             ? "NOT_STARTED"
@@ -164,6 +186,14 @@ export async function getStudentWorkspaceAssignments(
       dueDate: recipient.batch.dueDate,
       className: recipient.batch.class.name,
       workspaceName: recipient.batch.workspace.name,
+      attemptSummary: latestAttempt
+        ? {
+            latestAttemptId: latestAttempt.id,
+            latestPercentage: latestAttempt.percentage,
+            bestPercentage: attemptTracking.bestPercentage ?? latestAttempt.percentage,
+            attemptCount: attemptTracking.attemptCount,
+          }
+        : null,
       challenge: {
         id: challenge.id,
         title: challenge.title,
@@ -194,6 +224,7 @@ export async function getStudentWorkspaceAssignments(
       // Legacy rows never recorded an originating class, so do not guess one.
       className: "Legacy workspace assignment",
       workspaceName: membership.workspaceName,
+      attemptSummary: null,
       challenge: {
         id: challenge.id,
         title: challenge.title,

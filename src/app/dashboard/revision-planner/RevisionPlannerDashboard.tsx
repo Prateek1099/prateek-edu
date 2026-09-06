@@ -340,7 +340,7 @@ function TaskCard({
   );
 }
 
-// ─── AI Study Advice Card ────────────────────────────────────────────────────
+// ─── Study Advice Card ───────────────────────────────────────────────────────
 
 function AiStudyAdviceCard({ plan, tasks }: { plan: RevisionPlannerDashboardProps["plan"]; tasks: TaskItem[] }) {
   const [advice, setAdvice] = useState<string | null>(null);
@@ -408,7 +408,7 @@ High priority pending: ${topPriority || "None"}
       </div>
       <CardHeader className="pb-2 relative z-10">
         <CardTitle className="text-lg flex items-center gap-2 text-primary">
-          <Sparkles className="w-5 h-5" /> AI Study Advice
+          <Sparkles className="w-5 h-5" /> Study advice
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Get personalised recommendations based on your revision progress.
@@ -1000,7 +1000,7 @@ export function RevisionPlannerDashboard({
 
         {/* Right Column — AI + Info */}
         <div className="space-y-6">
-          {/* AI Study Advice */}
+          {/* Study advice */}
           <AiStudyAdviceCard plan={plan} tasks={tasks} />
 
           {/* Plan Summary Card */}

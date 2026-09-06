@@ -5,6 +5,7 @@ import {
   getStudentClassAssignmentState,
   summarizeStudentClassAssignments,
 } from "@/lib/student-workspace-class-rules";
+import { getAttemptTracking } from "@/lib/workspace-assignment-tracking-rules";
 
 const activeMembershipWhere = (studentId: string) => ({
   studentId,
@@ -83,9 +84,23 @@ export async function getStudentWorkspaceClasses(userId: string, now = new Date(
             in: Array.from(new Set(recipients.map((recipient) => recipient.batch.challenge.id))),
           },
         },
-        select: { challengeId: true, completedAt: true },
+        select: {
+          id: true,
+          challengeId: true,
+          score: true,
+          totalQuestions: true,
+          percentage: true,
+          answers: true,
+          completedAt: true,
+        },
       })
     : [];
+  const quickAttemptsByChallenge = new Map<string, typeof quickAttempts>();
+  for (const attempt of quickAttempts) {
+    const grouped = quickAttemptsByChallenge.get(attempt.challengeId) ?? [];
+    grouped.push(attempt);
+    quickAttemptsByChallenge.set(attempt.challengeId, grouped);
+  }
 
   const recipientsByClass = new Map<
     string,
@@ -102,11 +117,10 @@ export async function getStudentWorkspaceClasses(userId: string, now = new Date(
     }
     const assignments = recipientsByClass.get(recipient.batch.classId) ?? [];
     const hasCompletedAttempt = recipient.batch.challenge.type === "QUICK_PRACTICE"
-      && quickAttempts.some(
-        (attempt) =>
-          attempt.challengeId === recipient.batch.challenge.id
-          && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
-      );
+      && getAttemptTracking(
+        quickAttemptsByChallenge.get(recipient.batch.challenge.id) ?? [],
+        recipient.assignedAt,
+      ).attemptCount > 0;
     assignments.push({
       status: recipient.batch.challenge.type === "QUICK_PRACTICE"
         ? hasCompletedAttempt ? "COMPLETED" : "NOT_STARTED"
@@ -183,18 +197,33 @@ export async function getStudentWorkspaceClass(
   const quickAttempts = quickPracticeChallengeIds.length
     ? await prisma.challengeAttempt.findMany({
         where: { userId, challengeId: { in: quickPracticeChallengeIds } },
-        select: { challengeId: true, completedAt: true },
+        select: {
+          id: true,
+          challengeId: true,
+          score: true,
+          totalQuestions: true,
+          percentage: true,
+          answers: true,
+          completedAt: true,
+        },
       })
     : [];
+  const quickAttemptsByChallenge = new Map<string, typeof quickAttempts>();
+  for (const attempt of quickAttempts) {
+    const grouped = quickAttemptsByChallenge.get(attempt.challengeId) ?? [];
+    grouped.push(attempt);
+    quickAttemptsByChallenge.set(attempt.challengeId, grouped);
+  }
 
   const assignments = recipients.map((recipient) => {
     const challenge = recipient.batch.challenge;
+    const attemptTracking = getAttemptTracking(
+      quickAttemptsByChallenge.get(challenge.id) ?? [],
+      recipient.assignedAt,
+    );
+    const latestAttempt = attemptTracking.latestAttempt;
     const trackedStatus = challenge.type === "QUICK_PRACTICE"
-      ? quickAttempts.some(
-          (attempt) =>
-            attempt.challengeId === challenge.id
-            && attempt.completedAt.getTime() >= recipient.assignedAt.getTime(),
-        )
+      ? attemptTracking.attemptCount > 0
         ? "COMPLETED"
         : "NOT_STARTED"
       : recipient.status;
@@ -206,6 +235,14 @@ export async function getStudentWorkspaceClass(
         { status: trackedStatus, dueDate: recipient.batch.dueDate },
         now,
       ),
+      attemptSummary: latestAttempt
+        ? {
+            latestAttemptId: latestAttempt.id,
+            latestPercentage: latestAttempt.percentage,
+            bestPercentage: attemptTracking.bestPercentage ?? latestAttempt.percentage,
+            attemptCount: attemptTracking.attemptCount,
+          }
+        : null,
       challenge: {
         id: challenge.id,
         title: challenge.title,

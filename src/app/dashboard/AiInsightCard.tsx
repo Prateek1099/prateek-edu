@@ -38,9 +38,9 @@ export function AiInsightCard({ contextData }: { contextData: string }) {
           <div className="size-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
             <Sparkles className="size-4 text-primary" />
           </div>
-          <span>AI Study Insight</span>
+          <span>Study suggestion</span>
         </CardTitle>
-        <CardDescription className="text-xs text-muted-foreground">Personalised recommendations based on your revision history.</CardDescription>
+        <CardDescription className="text-xs text-muted-foreground">Get a personalised suggestion based on your learning activity.</CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
         {!insight && !loading && (
@@ -50,13 +50,13 @@ export function AiInsightCard({ contextData }: { contextData: string }) {
             className="rounded-xl shadow-sm gap-1.5 font-medium"
           >
             <Sparkles className="size-3.5" />
-            <span>Generate Insight</span>
+            <span>Get suggestion</span>
           </Button>
         )}
 
         {loading && (
           <div className="flex items-center gap-2.5 text-xs text-muted-foreground py-2 font-medium">
-            <Loader2 className="size-4 animate-spin text-primary" /> Analysing your revision strengths and weaknesses…
+            <Loader2 className="size-4 animate-spin text-primary" /> Looking at your recent learning activity…
           </div>
         )}
 

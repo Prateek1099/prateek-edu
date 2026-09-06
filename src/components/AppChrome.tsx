@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-const AUTHENTICATED_SHELL_PREFIXES = ["/admin", "/workspace"] as const;
+const AUTHENTICATED_SHELL_PREFIXES = ["/admin", "/workspace", "/dashboard"] as const;
 
 export function usesAuthenticatedShell(pathname: string) {
   return AUTHENTICATED_SHELL_PREFIXES.some(

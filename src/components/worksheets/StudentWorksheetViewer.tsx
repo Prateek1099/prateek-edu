@@ -157,8 +157,8 @@ export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel =
               <div>
                 <h2 className="font-semibold text-foreground">Solutions are available</h2>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                  Solution-release gating is not implemented yet. The answers are available
-                  immediately when a solution PDF is attached.
+                  Use the solutions after you finish the worksheet. They are available here
+                  because your teacher attached an answer document.
                 </p>
               </div>
               <a href={worksheet.pdfAnswerUrl!} target="_blank" rel="noopener noreferrer" className="shrink-0">
@@ -181,7 +181,7 @@ export default function StudentWorksheetViewer({ worksheet, backUrl, backLabel =
             </summary>
             <div className="border-t p-4 sm:p-6">
               <p className="mb-4 text-sm leading-6 text-muted-foreground">
-                Solutions are available immediately. Scheduled solution release is not implemented yet.
+                Use the answer key after you finish the worksheet.
               </p>
               <WorksheetSolutions worksheet={worksheet} />
             </div>

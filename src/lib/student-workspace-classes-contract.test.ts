@@ -36,12 +36,12 @@ test("class assignments require exact membership and hide revoked, cancelled, an
 });
 
 test("student pages expose class cards, exact class work, and honest document tracking", () => {
-  assert.match(classesPage, /My Classes/);
+  assert.match(classesPage, /My classes/);
   assert.match(classesPage, /assignmentCounts\.pending/);
   assert.match(classesPage, /assignmentCounts\.completed/);
   assert.match(classesPage, /assignmentCounts\.overdue/);
   assert.match(classDetailPage, /Only work assigned to you in this class appears here/);
-  assert.match(classDetailPage, /use Mark as Done when you finish/);
+  assert.match(classDetailPage, /not scored\. Mark it as done after you finish/);
   assert.match(studentDashboard, /href=\{`\/dashboard\/classes\/\$\{studentClass\.id\}`\}/);
 });
 
@@ -49,7 +49,7 @@ test("existing Join Class and consolidated Assigned Work flows remain available"
   assert.match(studentDashboard, /href="\/dashboard\/join"/);
   assert.match(joinAction, /Only student accounts can join a class/);
   assert.match(assignedWorkPage, /getStudentWorkspaceAssignments/);
-  assert.match(assignedWorkPage, /use Mark as Done when you finish/);
+  assert.match(assignedWorkPage, /not scored\. Mark it as done after you finish/);
 });
 
 test("teacher dashboard contains no named demo students or fabricated AI insight", () => {

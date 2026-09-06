@@ -86,8 +86,8 @@ test("student assignment listings enforce exact active membership and active pub
   assert.match(service, /students: \{ some: \{ studentId: userId, status: "ACTIVE" \} \}/);
   assert.match(service, /workspace: \{ status: "ACTIVE" \}/);
   assert.match(service, /challenge: \{ isPublished: true \}/);
-  assert.match(studentDashboard, /Assigned Work/);
-  assert.match(studentWork, /use Mark as Done when you finish/);
+  assert.match(studentDashboard, /All assigned work/);
+  assert.match(studentWork, /not scored\. Mark it as done after you finish/);
 });
 
 test("cancel and recipient revoke preserve assignment history", () => {

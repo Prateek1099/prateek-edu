@@ -64,7 +64,7 @@ function UserDropdown({ session }: { session: Session }) {
             onClick={() => setIsOpen(false)}
           >
             <BookOpen className="mr-2.5 size-4 text-primary" />
-            <span>Dashboard</span>
+            <span>{(session.user as { role?: string }).role === "STUDENT" ? "Student home" : "Dashboard"}</span>
           </Link>
 
           <Link
@@ -131,13 +131,12 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
-
   const routes = [
-    { label: status === 'authenticated' ? 'Dashboard' : 'Home', href: status === 'authenticated' ? '/dashboard' : '/' },
-    { label: 'Courses', href: '/courses' },
+    { label: status === "authenticated" ? "Dashboard" : "Home", href: status === "authenticated" ? "/dashboard" : "/" },
+    { label: "Courses", href: "/courses" },
   ];
 
-  if (preference) {
+  if (preference && !routes.some((route) => route.href === "/resources")) {
     routes.push({ label: 'Resources', href: '/resources' });
   }
 
@@ -196,7 +195,8 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
 
                 <div className="space-y-1">
                   {routes.map((route) => {
-                    const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
+                    const isActive = pathname === route.href
+                      || (route.href !== "/" && route.href !== "/dashboard" && pathname.startsWith(route.href));
                     return (
                       <Link
                         key={route.href}
@@ -254,7 +254,8 @@ export default function NavbarClient({ preference }: { preference: EcosystemPref
         {/* Desktop Nav */}
         <nav className="hidden items-center space-x-2 text-sm font-medium xl:flex">
           {routes.map((route) => {
-            const isActive = pathname === route.href || (route.href !== '/' && pathname.startsWith(route.href));
+            const isActive = pathname === route.href
+              || (route.href !== "/" && route.href !== "/dashboard" && pathname.startsWith(route.href));
             return (
               <Link
                 key={route.href}

@@ -17,7 +17,7 @@ const attemptPage = read("src/app/resources/[board]/[qualification]/[subject]/ch
 const resultsPage = read("src/app/resources/[board]/[qualification]/[subject]/challenge/[id]/results/[attemptId]/page.tsx");
 
 test("assigned classroom links carry safe student return context through viewers", () => {
-  assert.match(classDetail, /returnTo = `\/dashboard\/classes\/\$\{studentClass\.id\}`/);
+  assert.match(classDetail, /returnTo = `\/dashboard\/classes\/\$\{id\}`/);
   assert.match(assignedWork, /"\/dashboard\/worksheets"/);
   assert.match(dashboard, /withStudentReturnTo[\s\S]*?"\/dashboard"/);
   for (const source of [worksheetViewer, attemptPage, resultsPage]) {

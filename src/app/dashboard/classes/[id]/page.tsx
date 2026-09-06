@@ -1,9 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
-  CheckCircle2,
   ChevronLeft,
-  Clock,
   FileText,
   School,
   UserRound,
@@ -13,11 +11,13 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { authOptions } from "@/lib/auth";
+import { StudentAssignmentRow } from "@/components/student/StudentAssignmentRow";
 import { getStudentWorkspaceClass } from "@/lib/student-workspace-classes";
+import {
+  getStudentWorkDisplayState,
+  orderStudentWork,
+} from "@/lib/student-work-presentation";
 import { formatAssignmentDueDate } from "@/lib/workspace-assignment-rules";
-import { cn } from "@/lib/utils";
-import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
 
 export default async function StudentClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -34,8 +34,45 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
   const teacherName = studentClass.workspace.owner.name
     || studentClass.workspace.owner.email
     || "Teacher";
-  const allCompleted = studentClass.assignments.length > 0
-    && studentClass.assignments.every((assignment) => assignment.status === "COMPLETED");
+  const classAssignments = studentClass.assignments;
+  const orderedAssignments = orderStudentWork(classAssignments);
+  const toDo = orderedAssignments.filter((assignment) => assignment.status !== "COMPLETED");
+  const completed = orderedAssignments.filter((assignment) => assignment.status === "COMPLETED");
+
+  function renderAssignment(assignment: (typeof classAssignments)[number]) {
+    const challenge = assignment.challenge;
+    const isDocument = challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET";
+    const returnTo = `/dashboard/classes/${id}`;
+    const href = isDocument
+      ? withStudentReturnTo(
+          `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/worksheet/${challenge.id}`,
+          returnTo,
+          assignment.id,
+        )
+      : withStudentReturnTo(
+          assignment.attemptSummary
+            ? `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/results/${assignment.attemptSummary.latestAttemptId}`
+            : `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`,
+          returnTo,
+        );
+    const state = getStudentWorkDisplayState(assignment);
+
+    return (
+      <StudentAssignmentRow
+        key={assignment.id}
+        title={challenge.title}
+        typeLabel={isDocument ? "Worksheet" : "Practice set"}
+        context={challenge.subject.name}
+        state={state}
+        dueText={assignment.dueDate ? `Due ${formatAssignmentDueDate(assignment.dueDate)}` : `Assigned ${assignment.assignedAt.toLocaleDateString()}`}
+        detail={isDocument ? (challenge.type === "PDF_WORKSHEET" ? "PDF worksheet" : "View and complete") : `${challenge.questionCount} questions`}
+        scoreText={assignment.attemptSummary ? `Latest ${Math.round(assignment.attemptSummary.latestPercentage)}% · Best ${Math.round(assignment.attemptSummary.bestPercentage)}%` : null}
+        note={isDocument ? "This worksheet is not scored. Mark it as done after you finish." : null}
+        actionHref={href}
+        actionLabel={isDocument ? "Open worksheet" : assignment.attemptSummary ? "Review answers" : "Start practice"}
+      />
+    );
+  }
 
   return (
     <main className="container mx-auto min-h-[calc(100vh-140px)] max-w-5xl space-y-7 px-4 py-7 sm:py-9 md:px-8">
@@ -54,7 +91,7 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center sm:min-w-64">
-            <div className="rounded-xl bg-primary/5 px-2 py-2"><p className="font-bold text-primary">{studentClass.assignmentCounts.pending}</p><p className="text-[10px] uppercase text-muted-foreground">Pending</p></div>
+            <div className="rounded-xl bg-primary/5 px-2 py-2"><p className="font-bold text-primary">{studentClass.assignmentCounts.pending}</p><p className="text-[10px] uppercase text-muted-foreground">To do</p></div>
             <div className="rounded-xl bg-emerald-500/5 px-2 py-2"><p className="font-bold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed}</p><p className="text-[10px] uppercase text-muted-foreground">Done</p></div>
             <div className="rounded-xl bg-destructive/5 px-2 py-2"><p className="font-bold text-destructive">{studentClass.assignmentCounts.overdue}</p><p className="text-[10px] uppercase text-muted-foreground">Overdue</p></div>
           </div>
@@ -69,67 +106,38 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
 
       <section>
         <div className="mb-3">
-          <h2 className="text-lg font-bold">Assigned Work</h2>
+          <h2 className="text-lg font-semibold">Assigned work</h2>
           <p className="text-sm text-muted-foreground">Only work assigned to you in this class appears here.</p>
         </div>
 
         {studentClass.assignments.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-12 text-center">
             <FileText className="mx-auto mb-3 size-9 text-muted-foreground/60" />
-            <h3 className="font-bold">No assigned work for this class yet</h3>
+            <h3 className="font-semibold">No assigned work for this class yet.</h3>
             <p className="mt-1 text-sm text-muted-foreground">Your teacher&apos;s published assignments will appear here after they are assigned to you.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {allCompleted ? (
+          <div className="space-y-7">
+            {toDo.length > 0 ? (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">To do</h3>
+                <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+                  {toDo.map(renderAssignment)}
+                </div>
+              </div>
+            ) : (
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                You have completed all tracked work assigned in this class.
+                You&apos;re caught up with this class.
+              </div>
+            )}
+            {completed.length > 0 ? (
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Completed</h3>
+                <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">
+                  {completed.map(renderAssignment)}
+                </div>
               </div>
             ) : null}
-            {studentClass.assignments.map((assignment) => {
-              const challenge = assignment.challenge;
-              const isDocument = challenge.type === "WORKSHEET" || challenge.type === "PDF_WORKSHEET";
-              const returnTo = `/dashboard/classes/${studentClass.id}`;
-              const worksheetLink = withStudentReturnTo(
-                `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/worksheet/${challenge.id}`,
-                returnTo,
-                assignment.id,
-              );
-              const practiceLink = withStudentReturnTo(
-                `/resources/${challenge.subject.boardName}/${challenge.subject.qualificationName}/${challenge.subject.slug}/challenge/${challenge.id}/attempt`,
-                returnTo,
-              );
-              const stateClass = assignment.status === "COMPLETED"
-                ? "text-emerald-600 dark:text-emerald-400"
-                : assignment.status === "OVERDUE" ? "text-destructive" : "text-primary";
-              return (
-                <Card key={assignment.id} className="rounded-2xl border-border/80 bg-card shadow-sm">
-                  <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-bold">{challenge.title}</h3>
-                        <span className={cn("text-xs font-semibold", stateClass)}>
-                          {assignment.status === "COMPLETED" ? "Completed" : assignment.status === "OVERDUE" ? "Overdue" : "Pending"}
-                        </span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {challenge.type === "QUICK_PRACTICE" ? "Quick Practice" : challenge.type === "PDF_WORKSHEET" ? "PDF Worksheet" : "Worksheet"} · {challenge.subject.name}
-                      </p>
-                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1.5"><CalendarDays className="size-3.5" /> Assigned {assignment.assignedAt.toLocaleDateString()}</span>
-                        {assignment.dueDate ? <span className="flex items-center gap-1.5"><Clock className="size-3.5" /> Due {formatAssignmentDueDate(assignment.dueDate)}</span> : null}
-                        {!isDocument ? <span>{challenge.questionCount} questions · {challenge.difficulty}</span> : null}
-                      </div>
-                      {isDocument ? <p className="text-xs text-muted-foreground">Open the document and use Mark as Done when you finish.</p> : null}
-                    </div>
-                    <Link href={isDocument ? worksheetLink : practiceLink} className={cn(buttonVariants({ variant: assignment.status === "COMPLETED" ? "outline" : "default" }), "w-full shrink-0 rounded-xl sm:w-auto")}>
-                      {isDocument ? <FileText className="size-4" /> : assignment.status === "COMPLETED" ? <CheckCircle2 className="size-4" /> : <Clock className="size-4" />}
-                      {isDocument ? "View Worksheet" : assignment.status === "COMPLETED" ? "Review Practice" : "Start Practice"}
-                    </Link>
-                  </CardContent>
-                </Card>
-              );
-            })}
           </div>
         )}
       </section>
