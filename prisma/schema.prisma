@@ -147,6 +147,11 @@ model User {
   ownedWorkspace                Workspace?                     @relation("WorkspaceOwner")
   classEnrollments              ClassStudent[]
 
+  assessmentsCreated Assessment[]
+  assessmentAssignments AssessmentAssignment[]
+  assessmentRecipients AssessmentRecipient[]
+  assessmentEvents AssessmentEvent[]
+
   @@index([workspaceId])
   @@index([planId])
   @@map("users")
@@ -246,6 +251,8 @@ model Subject {
   workspaceAcademicScopes WorkspaceAcademicScope[]
   workspacePaperTemplates WorkspacePaperTemplate[]
   workspaceBlueprintTemplates WorkspaceBlueprintTemplate[]
+
+  assessments Assessment[]
 
   @@unique([qualificationId, slug])
   @@map("subjects")
@@ -417,7 +424,7 @@ model WorkspacePaperHeaderTemplate {
   blueprintTemplates WorkspaceBlueprintTemplate[]
 
   @@unique([workspaceId, nameKey])
-  @@index([workspaceId, archivedAt, updatedAt])
+  @@index([workspaceId, archivedAt, updatedAt], map: "workspace_paper_header_templates_workspace_id_archived_at_updat")
   @@index([createdById])
   @@map("workspace_paper_header_templates")
 }
@@ -445,8 +452,8 @@ model WorkspacePaperTemplate {
   rows                    WorkspacePaperTemplateRow[]
 
   @@unique([workspaceId, subjectId, nameKey])
-  @@index([workspaceId, archivedAt, updatedAt])
-  @@index([workspaceId, subjectId, archivedAt])
+  @@index([workspaceId, archivedAt, updatedAt], map: "workspace_paper_templates_workspace_id_archived_at_updated_at_i")
+  @@index([workspaceId, subjectId, archivedAt], map: "workspace_paper_templates_workspace_id_subject_id_archived_at_i")
   @@index([subjectId])
   @@index([preferredHeaderTemplateId])
   @@index([createdById])
@@ -507,9 +514,9 @@ model WorkspaceBlueprintTemplate {
   preferredHeaderTemplate WorkspacePaperHeaderTemplate? @relation(fields: [preferredHeaderTemplateId], references: [id], onDelete: SetNull)
   topics                  WorkspaceBlueprintTemplateTopic[]
 
-  @@unique([workspaceId, subjectId, nameKey])
-  @@index([workspaceId, archivedAt, updatedAt])
-  @@index([workspaceId, subjectId, archivedAt])
+  @@unique([workspaceId, subjectId, nameKey], map: "workspace_blueprint_templates_workspace_id_subject_id_name_key_")
+  @@index([workspaceId, archivedAt, updatedAt], map: "workspace_blueprint_templates_workspace_id_archived_at_updated_")
+  @@index([workspaceId, subjectId, archivedAt], map: "workspace_blueprint_templates_workspace_id_subject_id_archived_")
   @@index([createdById])
   @@index([subjectId])
   @@index([preferredHeaderTemplateId])
@@ -546,7 +553,7 @@ model WorkspaceBlueprintTemplateRow {
 
   templateTopic WorkspaceBlueprintTemplateTopic @relation(fields: [templateTopicId], references: [id], onDelete: Cascade)
 
-  @@unique([templateTopicId, sortOrder])
+  @@unique([templateTopicId, sortOrder], map: "workspace_blueprint_template_rows_template_topic_id_sort_order_")
   @@map("workspace_blueprint_template_rows")
 }
 
@@ -582,7 +589,7 @@ model PaperBlueprintTemplate {
   savedGeneratedPapers SavedGeneratedPaper[]
 
   @@unique([subjectId, name])
-  @@index([boardId, qualificationId, subjectId])
+  @@index([boardId, qualificationId, subjectId], map: "paper_blueprint_templates_board_id_qualification_id_subject_id_")
   @@index([createdById])
   @@map("paper_blueprint_templates")
 }
@@ -718,7 +725,7 @@ model SavedGeneratedPaperQuestion {
   topic                Topic?                     @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@unique([sectionId, sortOrder])
-  @@unique([savedPaperId, finalQuestionNumber])
+  @@unique([savedPaperId, finalQuestionNumber], map: "saved_generated_paper_questions_saved_paper_id_final_question_n")
   @@index([savedPaperId])
   @@index([originalBankQuestionId])
   @@index([topicId])
@@ -936,7 +943,7 @@ model AssignmentAttemptAnswerSnapshot {
   @@unique([attemptId, questionId])
   @@index([attemptId])
   @@index([studentId, createdAt])
-  @@index([studentId, questionId, isCorrect])
+  @@index([studentId, questionId, isCorrect], map: "assignment_attempt_answer_snapshots_student_id_question_id_is_c")
   @@map("assignment_attempt_answer_snapshots")
 }
 
@@ -1131,6 +1138,8 @@ model Workspace {
   paperTemplates       WorkspacePaperTemplate[]
   blueprintTemplates   WorkspaceBlueprintTemplate[]
 
+  assessments Assessment[]
+
   @@map("workspaces")
 }
 
@@ -1142,7 +1151,7 @@ model WorkspaceAcademicScope {
   status        WorkspaceAcademicScopeStatus @default(ACTIVE)
   deactivatedAt DateTime?                    @map("deactivated_at")
   createdAt     DateTime                     @default(now()) @map("created_at")
-  updatedAt     DateTime                     @updatedAt @map("updated_at")
+  updatedAt     DateTime                     @default(now()) @updatedAt @map("updated_at")
 
   workspace  Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   subject    Subject   @relation(fields: [subjectId], references: [id], onDelete: Restrict)
@@ -1173,6 +1182,8 @@ model Class {
   qualification     Qualification?             @relation(fields: [qualificationId], references: [id], onDelete: SetNull)
   students          ClassStudent[]
   assignmentBatches WorkspaceAssignmentBatch[]
+
+  assessmentAssignments AssessmentAssignment[]
 
   @@index([workspaceId])
   @@index([qualificationId])
@@ -1216,4 +1227,221 @@ model WorkspaceContent {
   @@index([subjectId])
   @@index([topicId])
   @@map("workspace_content")
+}
+
+enum AssessmentAttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  NEEDS_REVIEW
+  GRADED
+  RELEASED
+}
+
+enum AssessmentAudience {
+  CLASS
+  SELECTED_STUDENTS
+}
+
+enum AssessmentResponseState {
+  UNANSWERED
+  ANSWERED
+}
+
+enum AssessmentEventType {
+  ASSIGNED
+  CANCELLED
+  RECIPIENT_REVOKED
+  ATTEMPT_STARTED
+  ATTEMPT_SUBMITTED
+  GRADE_CHANGED
+  RESULT_RELEASED
+}
+
+// All assessment evidence uses RESTRICT. Provenance IDs are deliberately scalar:
+// source deletion must not delete or rewrite an immutable assessment snapshot.
+model Assessment {
+  id                 String              @id @default(cuid())
+  workspaceId        String              @map("workspace_id")
+  createdById        String              @map("created_by_id")
+  subjectId          String              @map("subject_id")
+  sourceSavedPaperId String              @map("source_saved_paper_id")
+  title              String
+  archivedAt         DateTime?           @map("archived_at")
+  createdAt          DateTime            @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("created_at")
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Restrict)
+  createdBy          User                @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  subject            Subject             @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  versions           AssessmentVersion[]
+
+  @@index([workspaceId, archivedAt, createdAt])
+  @@index([createdById])
+  @@index([subjectId])
+  @@map("assessments")
+}
+
+model AssessmentVersion {
+  id              String                 @id @default(cuid())
+  assessmentId    String                 @map("assessment_id")
+  versionNumber   Int                    @map("version_number")
+  title           String
+  // Explicit PaperDetails + readable academic context, never an arbitrary client object.
+  header          Json
+  totalMarks      Int                    @map("total_marks")
+  durationMinutes Int                    @map("duration_minutes")
+  publishedAt     DateTime?              @map("published_at")
+  createdAt       DateTime               @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("created_at")
+  assessment      Assessment             @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  sections        AssessmentSection[]
+  questions       AssessmentQuestion[]
+  assignments     AssessmentAssignment[]
+  attempts        AssessmentAttempt[]
+
+  @@unique([assessmentId, versionNumber])
+  @@map("assessment_versions")
+}
+
+model AssessmentSection {
+  id        String               @id @default(cuid())
+  versionId String               @map("version_id")
+  label     String
+  sortOrder Int                  @map("sort_order")
+  version   AssessmentVersion    @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  questions AssessmentQuestion[]
+
+  @@unique([versionId, sortOrder])
+  @@unique([id, versionId])
+  @@map("assessment_sections")
+}
+
+model AssessmentQuestion {
+  id                     String               @id @default(cuid())
+  versionId              String               @map("version_id")
+  sectionId              String               @map("section_id")
+  sourceQuestionId       String               @map("source_question_id")
+  originalBankQuestionId String?              @map("original_bank_question_id")
+  topicIdSnapshot        String?              @map("topic_id_snapshot")
+  topicName              String?              @map("topic_name")
+  questionNumber         Int                  @map("question_number")
+  questionType           BankQuestionType     @map("question_type")
+  questionText           String               @map("question_text") @db.Text
+  options                Json
+  marks                  Int
+  difficulty             String
+  correctAnswer          String?              @map("correct_answer") @db.Text
+  modelAnswer            String?              @map("model_answer") @db.Text
+  explanation            String?              @db.Text
+  version                AssessmentVersion    @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  section                AssessmentSection    @relation(fields: [sectionId], references: [id], onDelete: Restrict)
+  responses              AssessmentResponse[]
+
+  @@unique([versionId, questionNumber])
+  @@unique([id, versionId])
+  @@index([sectionId])
+  @@map("assessment_questions")
+}
+
+model AssessmentAssignment {
+  id              String                @id @default(cuid())
+  versionId       String                @map("version_id")
+  classId         String                @map("class_id")
+  assignedById    String                @map("assigned_by_id")
+  audience        AssessmentAudience
+  assignedAt      DateTime              @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("assigned_at")
+  opensAt         DateTime              @map("opens_at")
+  closesAt        DateTime              @map("closes_at")
+  durationMinutes Int                   @map("duration_minutes")
+  attemptLimit    Int                   @default(1) @map("attempt_limit")
+  // A0 supports manual release only. No auto-release action exists.
+  cancelledAt     DateTime?             @map("cancelled_at")
+  version         AssessmentVersion     @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  class           Class                 @relation(fields: [classId], references: [id], onDelete: Restrict)
+  assignedBy      User                  @relation(fields: [assignedById], references: [id], onDelete: Restrict)
+  recipients      AssessmentRecipient[]
+  attempts        AssessmentAttempt[]
+  events          AssessmentEvent[]
+
+  @@unique([id, versionId])
+  @@index([classId, cancelledAt, opensAt])
+  @@index([versionId])
+  @@index([assignedById])
+  @@map("assessment_assignments")
+}
+
+model AssessmentRecipient {
+  id           String               @id @default(cuid())
+  assignmentId String               @map("assignment_id")
+  studentId    String               @map("student_id")
+  assignedAt   DateTime             @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("assigned_at")
+  revokedAt    DateTime?            @map("revoked_at")
+  assignment   AssessmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  student      User                 @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  attempts     AssessmentAttempt[]
+
+  @@unique([assignmentId, studentId])
+  @@unique([id, assignmentId])
+  @@index([studentId, revokedAt])
+  @@map("assessment_recipients")
+}
+
+model AssessmentAttempt {
+  id            String                  @id @default(cuid())
+  recipientId   String                  @map("recipient_id")
+  assignmentId  String                  @map("assignment_id")
+  versionId     String                  @map("version_id")
+  attemptNumber Int                     @map("attempt_number")
+  status        AssessmentAttemptStatus @default(IN_PROGRESS)
+  startedAt     DateTime                @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("started_at")
+  expiresAt     DateTime                @map("expires_at")
+  submittedAt   DateTime?               @map("submitted_at")
+  gradedAt      DateTime?               @map("graded_at")
+  releasedAt    DateTime?               @map("released_at")
+  awardedMarks  Decimal?                @map("awarded_marks") @db.Decimal(12, 2)
+  recipient     AssessmentRecipient     @relation(fields: [recipientId], references: [id], onDelete: Restrict)
+  assignment    AssessmentAssignment    @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  version       AssessmentVersion       @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  responses     AssessmentResponse[]
+  events        AssessmentEvent[]
+
+  @@unique([recipientId, attemptNumber])
+  @@unique([id, versionId])
+  @@unique([id, assignmentId])
+  @@index([assignmentId, status])
+  @@index([versionId])
+  @@map("assessment_attempts")
+}
+
+model AssessmentResponse {
+  id         String                  @id @default(cuid())
+  attemptId  String                  @map("attempt_id")
+  versionId  String                  @map("version_id")
+  questionId String                  @map("question_id")
+  state      AssessmentResponseState @default(UNANSWERED)
+  // Discriminated JSON: choice/string, boolean/boolean, text/string; null = unanswered.
+  value      Json?
+  revision   Int                     @default(0)
+  savedAt    DateTime?               @map("saved_at")
+  updatedAt  DateTime                @updatedAt @map("updated_at")
+  attempt    AssessmentAttempt       @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  question   AssessmentQuestion      @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@unique([attemptId, questionId])
+  @@index([questionId])
+  @@map("assessment_responses")
+}
+
+model AssessmentEvent {
+  id           String               @id @default(cuid())
+  assignmentId String               @map("assignment_id")
+  attemptId    String?              @map("attempt_id")
+  actorId      String               @map("actor_id")
+  type         AssessmentEventType
+  createdAt    DateTime             @default(dbgenerated("(CURRENT_TIMESTAMP AT TIME ZONE 'UTC'::text)")) @map("created_at")
+  assignment   AssessmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict)
+  attempt      AssessmentAttempt?   @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  actor        User                 @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([assignmentId, createdAt])
+  @@index([attemptId, createdAt])
+  @@index([actorId])
+  @@map("assessment_events")
 }
