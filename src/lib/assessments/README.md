@@ -138,19 +138,48 @@ newer work. Attempt row locks serialize response edits and submission. Composite
 foreign keys enforce the exact question/version/attempt relationship.
 
 Submit freezes responses, records server submittedAt and one submission event.
-Repeating it returns the existing attempt summary. A0 supports only
-IN_PROGRESS → SUBMITTED; database triggers deliberately block accidental grading,
-release or reopening. Submission accepts no replacement answer payload.
+Repeating it returns the existing attempt summary. Submission accepts no
+replacement answer payload.
+
+Migration `20260908120000_enable_objective_assessment_lifecycle` prepares the
+database guard for Phase A by permitting only `IN_PROGRESS → SUBMITTED`,
+`SUBMITTED → GRADED`, and `GRADED → RELEASED`. It preserves immutable attempt
+identity/timing, finite ordered lifecycle timestamps, exact marks bounds, and blocks
+all regressions plus `NEEDS_REVIEW`. This migration adds no grading or release
+service: A0's authenticated engine still implements submission only.
+
+Every transition validates the complete applicable chronology from `startedAt`
+through its new timestamp. PostgreSQL `isfinite()` rejects infinities. One
+`clock_timestamp() AT TIME ZONE 'UTC'` sample per row operation bounds the latest
+timestamp; transaction-start `CURRENT_TIMESTAMP` would incorrectly reject later
+operations inside a long transaction. The sampled clock uses `TIMESTAMP(3)`,
+matching the columns' millisecond rounding so legitimate server-generated values
+are not falsely future-dated by a fraction of a millisecond. Equal timestamps are valid. Existing
+malformed histories fail closed on progression without repair or backfill.
+Submission may still finalize frozen evidence after `expiresAt`; no expiry cap
+is imposed on submission, delayed grading, or delayed release.
+
+Idempotency remains an application responsibility. A repeated request locks and
+reads the current attempt, returns an already-reached state without issuing a
+no-op UPDATE, and retries bounded serialization/deadlock conflicts. The database
+trigger deliberately rejects same-state UPDATEs rather than weakening lifecycle
+integrity for duplicate requests.
+
+Future Phase A services must write each state transition and its corresponding
+`AssessmentEvent` in the same transaction. Event-insert failure must roll back
+the transition; retries must reread state before creating an event. The lifecycle
+trigger intentionally does not impose event-insertion requirements.
 
 ## Marks and future grading
 
 `marksSummary` is marks-based: 1 awarded mark out of 5 = 20%, not one of two
 questions = 50%. Incomplete marking returns no final awarded total or percentage.
-`requireReleasable` requires GRADED and complete marks. There is no automatic
-objective scoring, subjective marking, provisional-result delivery or result
-release action in A0. A later reviewed grading migration/service must deliberately
-extend the lifecycle trigger and persist marking evidence before enabling release.
-Manual release is the only planned policy; no speculative policy enum is added.
+`requireReleasable` requires GRADED and complete marks. There is still no
+automatic objective scoring, subjective marking, provisional-result delivery or
+result-release action in this migration-only phase. The trigger now recognizes
+the reviewed Phase A transitions, but the future Phase A service must calculate
+and persist objective marks before enabling explicit teacher release. Manual
+release is the only planned policy; no speculative policy enum is added.
 
 ## Validation and limits
 

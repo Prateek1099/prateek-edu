@@ -13,6 +13,7 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 
 const REPAIR = '20260907120000_reconcile_baseline_schema';
 const A0 = '20260907130000_add_assessment_foundation';
+const OBJECTIVE_LIFECYCLE = '20260908120000_enable_objective_assessment_lifecycle';
 const input = process.env.BASELINE_RECONCILIATION_TEST_URL;
 const root = process.cwd();
 const migrations = path.join(root, 'prisma/migrations');
@@ -40,9 +41,10 @@ test('baseline reconciliation: clean replay, production shape and hostile drift'
   const created = [];
   const configs = fs.mkdtempSync(path.join(os.tmpdir(), 'vexa-reconcile-tests-'));
   const names = fs.readdirSync(migrations).filter(n => fs.existsSync(path.join(migrations, n, 'migration.sql'))).sort();
-  assert.equal(names.length, 21);
+  assert.equal(names.length, 22);
   assert.equal(names[19], REPAIR);
   assert.equal(names[20], A0);
+  assert.equal(names[21], OBJECTIVE_LIFECYCLE);
 
   function config(database, count) {
     const target = new URL(input); target.pathname = '/' + database;
@@ -102,13 +104,13 @@ test('baseline reconciliation: clean replay, production shape and hostile drift'
         assert.equal(createHash('sha256').update(fs.readFileSync(path.join(migrations, name, 'migration.sql'))).digest('hex'), createHash('sha256').update(original).digest('hex'));
       }
     });
-    await t.test('clean replay: 21 normal Prisma migrations and semantic schema equivalence', () => scenario('clean', async (pool, name) => {
+    await t.test('clean replay: 22 normal Prisma migrations and semantic schema equivalence', () => scenario('clean', async (pool, name) => {
       assert.equal((await pool.query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_name='courses' AND column_name='slug'")).rows[0].n, 0);
-      prisma(name, 21, ['migrate', 'deploy']);
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL')).rows[0].n, 21);
+      prisma(name, 22, ['migrate', 'deploy']);
+      assert.equal((await pool.query('SELECT count(*)::int AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL')).rows[0].n, 22);
       assert.equal((await pool.query("SELECT column_default FROM information_schema.columns WHERE table_name='workspace_academic_scopes' AND column_name='updated_at'")).rows[0].column_default, 'CURRENT_TIMESTAMP');
       assert.equal((await pool.query("SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'assessment%'")).rows[0].n, 9);
-      const diff = prisma(name, 21, ['migrate', 'diff', '--from-config-datasource', '--to-schema', path.join(root, 'prisma/schema.prisma'), '--script']);
+      const diff = prisma(name, 22, ['migrate', 'diff', '--from-config-datasource', '--to-schema', path.join(root, 'prisma/schema.prisma'), '--script']);
       // Prisma cannot represent these deliberate SQL-only cross-identity FKs.
       // Nothing else (column/default/index/ordinary FK) may differ.
       const allowed = [
@@ -124,7 +126,7 @@ test('baseline reconciliation: clean replay, production shape and hostile drift'
       for (const constraint of allowed) assert.ok(statements.some(s => s.endsWith(`DROP CONSTRAINT "${constraint}";`)), diff);
       for (const statement of statements) assert.match(statement, /^ALTER TABLE "assessment_[a-z_]+" DROP CONSTRAINT "assessment_[a-z_]+";$/);
       fs.writeFileSync(path.join(configs, 'final-semantic-diff.sql'), diff);
-      assert.match(prisma(name, 21, ['migrate', 'status']), /up to date/i);
+      assert.match(prisma(name, 22, ['migrate', 'status']), /up to date/i);
     }));
     await t.test('production-shaped normal migration preserves every Course value, index OID and table relfilenode; A0 follows', () => scenario('production', async (pool, name) => {
       await pool.query(productionColumns + 'CREATE UNIQUE INDEX courses_slug_key ON public.courses(slug);' + scopeFixture);
@@ -135,9 +137,9 @@ test('baseline reconciliation: clean replay, production shape and hostile drift'
       assert.deepEqual(await snapshot(pool), before);
       await pool.query(sql); // Guarded reconciliation is also safe to repeat.
       assert.deepEqual(await snapshot(pool), before);
-      prisma(name, 21, ['migrate', 'deploy']);
+      prisma(name, 22, ['migrate', 'deploy']);
       assert.deepEqual(await snapshot(pool), before);
-      assert.equal((await pool.query('SELECT count(*)::int AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL')).rows[0].n, 21);
+      assert.equal((await pool.query('SELECT count(*)::int AS n FROM _prisma_migrations WHERE finished_at IS NOT NULL')).rows[0].n, 22);
     }));
     await t.test('nullable slug fails closed', () => scenario('nullable', async pool => {
       await pool.query('ALTER TABLE courses ADD COLUMN slug TEXT');

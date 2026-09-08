@@ -15,7 +15,9 @@ test("real PostgreSQL upgrade preservation and migration failure safety",{skip:!
     assert.equal((await pool.query("SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'")).rows[0].n,0,"Use a new empty test database");
     const names=fs.readdirSync("prisma/migrations").filter(n=>fs.existsSync(path.join("prisma/migrations",n,"migration.sql"))).sort();
     const migrationName="20260907130000_add_assessment_foundation";
-    const baseline=names.filter(n=>n!==migrationName);
+    const lifecycleMigration="20260908120000_enable_objective_assessment_lifecycle";
+    const baseline=names.filter(n=>n!==migrationName && n!==lifecycleMigration);
+    assert.ok(names.includes(lifecycleMigration));
     assert.equal(baseline.length,20); // Original 19 plus baseline reconciliation; A0 remains isolated.
     for(const n of baseline) await pool.query(fs.readFileSync(path.join("prisma/migrations",n,"migration.sql"),"utf8"));
     await db.user.createMany({data:[{id:"teacher",role:"TEACHER",name:"Synthetic teacher"},{id:"student",role:"STUDENT",name:"Synthetic student"},{id:"admin",role:"SUPER_ADMIN"}]});
