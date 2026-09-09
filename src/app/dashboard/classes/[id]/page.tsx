@@ -12,6 +12,9 @@ import { notFound, redirect } from "next/navigation";
 
 import { authOptions } from "@/lib/auth";
 import { StudentAssignmentRow } from "@/components/student/StudentAssignmentRow";
+import { StudentAssessmentRow } from "@/components/student/StudentAssessmentRow";
+import { assessmentService } from "@/lib/assessments/service";
+import { assessmentWorkIsComplete, getAssessmentWorkState } from "@/lib/assessments/presentation";
 import { getStudentWorkspaceClass } from "@/lib/student-workspace-classes";
 import {
   getStudentWorkDisplayState,
@@ -30,6 +33,7 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
   const { id } = await params;
   const studentClass = await getStudentWorkspaceClass(user.id, id);
   if (!studentClass) notFound();
+  const onlineTests = await assessmentService.listStudentWork(id);
 
   const teacherName = studentClass.workspace.owner.name
     || studentClass.workspace.owner.email
@@ -38,6 +42,9 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
   const orderedAssignments = orderStudentWork(classAssignments);
   const toDo = orderedAssignments.filter((assignment) => assignment.status !== "COMPLETED");
   const completed = orderedAssignments.filter((assignment) => assignment.status === "COMPLETED");
+  const onlineToDo = onlineTests.items.filter((item) => !assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)));
+  const onlineCompleted = onlineTests.items.filter((item) => assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)));
+  const onlineOverdue = onlineToDo.filter((item) => getAssessmentWorkState(item, onlineTests.serverNow) === "CLOSED").length;
 
   function renderAssignment(assignment: (typeof classAssignments)[number]) {
     const challenge = assignment.challenge;
@@ -91,9 +98,9 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
             </div>
           </div>
           <div className="grid grid-cols-3 gap-2 text-center sm:min-w-64">
-            <div className="rounded-xl bg-primary/5 px-2 py-2"><p className="font-bold text-primary">{studentClass.assignmentCounts.pending}</p><p className="text-[10px] uppercase text-muted-foreground">To do</p></div>
-            <div className="rounded-xl bg-emerald-500/5 px-2 py-2"><p className="font-bold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed}</p><p className="text-[10px] uppercase text-muted-foreground">Done</p></div>
-            <div className="rounded-xl bg-destructive/5 px-2 py-2"><p className="font-bold text-destructive">{studentClass.assignmentCounts.overdue}</p><p className="text-[10px] uppercase text-muted-foreground">Overdue</p></div>
+            <div className="rounded-xl bg-primary/5 px-2 py-2"><p className="font-bold text-primary">{studentClass.assignmentCounts.pending + onlineToDo.length}</p><p className="text-[10px] uppercase text-muted-foreground">To do</p></div>
+            <div className="rounded-xl bg-emerald-500/5 px-2 py-2"><p className="font-bold text-emerald-600 dark:text-emerald-400">{studentClass.assignmentCounts.completed + onlineCompleted.length}</p><p className="text-[10px] uppercase text-muted-foreground">Done</p></div>
+            <div className="rounded-xl bg-destructive/5 px-2 py-2"><p className="font-bold text-destructive">{studentClass.assignmentCounts.overdue + onlineOverdue}</p><p className="text-[10px] uppercase text-muted-foreground">Overdue</p></div>
           </div>
         </div>
         <div className="mt-5 grid gap-2 border-t border-border/70 pt-4 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4">
@@ -110,7 +117,7 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
           <p className="text-sm text-muted-foreground">Only work assigned to you in this class appears here.</p>
         </div>
 
-        {studentClass.assignments.length === 0 ? (
+        {studentClass.assignments.length === 0 && onlineTests.items.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-12 text-center">
             <FileText className="mx-auto mb-3 size-9 text-muted-foreground/60" />
             <h3 className="font-semibold">No assigned work for this class yet.</h3>
@@ -118,11 +125,12 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
           </div>
         ) : (
           <div className="space-y-7">
-            {toDo.length > 0 ? (
+            {toDo.length > 0 || onlineToDo.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-sm font-semibold">To do</h3>
                 <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
                   {toDo.map(renderAssignment)}
+                  {onlineToDo.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}
                 </div>
               </div>
             ) : (
@@ -130,11 +138,12 @@ export default async function StudentClassDetailPage({ params }: { params: Promi
                 You&apos;re caught up with this class.
               </div>
             )}
-            {completed.length > 0 ? (
+            {completed.length > 0 || onlineCompleted.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-sm font-semibold">Completed</h3>
                 <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">
                   {completed.map(renderAssignment)}
+                  {onlineCompleted.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}
                 </div>
               </div>
             ) : null}

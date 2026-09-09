@@ -12,6 +12,9 @@ import { redirect } from "next/navigation";
 
 import { AiInsightCard } from "./AiInsightCard";
 import { StudentAssignmentRow } from "@/components/student/StudentAssignmentRow";
+import { StudentAssessmentRow } from "@/components/student/StudentAssessmentRow";
+import { assessmentService } from "@/lib/assessments/service";
+import { assessmentWorkIsComplete, getAssessmentWorkState } from "@/lib/assessments/presentation";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -90,6 +93,7 @@ export default async function DashboardPage() {
     topMistakeTopics,
     revisionPlan,
     assignments,
+    onlineTests,
     myClasses,
   ] = await Promise.all([
     prisma.userTopicProgress.findMany({
@@ -150,6 +154,7 @@ export default async function DashboardPage() {
       },
     }),
     getStudentWorkspaceAssignments(userId),
+    assessmentService.listStudentWork(),
     getStudentWorkspaceClasses(userId, now),
   ]);
 
@@ -188,12 +193,18 @@ export default async function DashboardPage() {
   const subjectProgressList = Array.from(subjectMap.values());
 
   const orderedAssignments = orderStudentWork(assignments, now);
+  const onlineWorkToDo = onlineTests.items
+    .filter((item) => !assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)))
+    .slice(0, 5);
   const workToDo = orderedAssignments
     .filter((assignment) => getStudentWorkDisplayState(assignment, now) !== "COMPLETED")
-    .slice(0, 5);
+    .slice(0, Math.max(0, 5 - onlineWorkToDo.length));
+  const onlineRecentlyCompleted = onlineTests.items
+    .filter((item) => assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)))
+    .slice(0, 3);
   const recentlyCompleted = orderedAssignments
     .filter((assignment) => getStudentWorkDisplayState(assignment, now) === "COMPLETED")
-    .slice(0, 3);
+    .slice(0, Math.max(0, 3 - onlineRecentlyCompleted.length));
 
   const strongTopics = topicProgress.filter((progress) => progress.completed).map((progress) => progress.topic.topicName).slice(0, 4);
   const weakTopics = topicProgress.filter((progress) => !progress.completed).map((progress) => progress.topic.topicName).slice(0, 4);
@@ -228,10 +239,11 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
             <h2 id="today-work-heading" className="text-xl font-semibold tracking-tight">Today&apos;s work</h2>
             <p className="mt-1 text-sm text-muted-foreground">Overdue and due work comes first. Items without a due date are labelled clearly.</p>
           </div>
-          {assignments.length > 0 ? <Link href="/dashboard/worksheets" className="inline-flex min-h-10 items-center text-sm font-semibold text-primary hover:underline">All assigned work <ArrowRight className="ml-1 size-4" /></Link> : null}
+          {assignments.length > 0 || onlineTests.items.length > 0 ? <Link href="/dashboard/worksheets" className="inline-flex min-h-10 items-center text-sm font-semibold text-primary hover:underline">All assigned work <ArrowRight className="ml-1 size-4" /></Link> : null}
         </div>
-        {workToDo.length > 0 ? (
+        {workToDo.length > 0 || onlineWorkToDo.length > 0 ? (
           <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+            {onlineWorkToDo.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}
             {workToDo.map((assignment) => {
               const state = getStudentWorkDisplayState(assignment, now);
               const presentation = getAssignmentPresentation(assignment, "/dashboard");
@@ -289,8 +301,8 @@ Challenge Performance: ${challengeAgg._count} taken, ${challengeAgg._avg?.percen
         <section className="lg:col-span-2" aria-labelledby="revision-heading"><h2 id="revision-heading" className="text-lg font-semibold">Mistakes and revision</h2><div className="mt-3 rounded-2xl border border-border/80 bg-card p-5 shadow-sm"><div className="flex items-start justify-between gap-4"><div><p className="font-semibold">{mistakeNeedsRevision} to review</p><p className="mt-1 text-sm text-muted-foreground">{mistakeRevised} marked revised</p></div><BookOpen className="size-5 text-primary" /></div><Link href="/dashboard/mistakes" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4 min-h-10 w-full rounded-xl")}>Open Mistake Book</Link></div></section>
       </div>
 
-      {recentlyCompleted.length > 0 ? (
-        <section aria-labelledby="completed-heading"><h2 id="completed-heading" className="text-lg font-semibold">Recently completed</h2><p className="mt-1 text-sm text-muted-foreground">Completed class work stays available for review.</p><div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">{recentlyCompleted.map((assignment) => { const presentation = getAssignmentPresentation(assignment, "/dashboard"); return <StudentAssignmentRow key={assignment.id} title={assignment.challenge.title} typeLabel={presentation.typeLabel} context={`${assignment.className} · ${assignment.challenge.subject.name}`} state="COMPLETED" dueText={`Assigned ${assignment.assignedAt.toLocaleDateString()}`} detail={presentation.detail} scoreText={presentation.scoreText} actionHref={presentation.href} actionLabel={presentation.actionLabel} />; })}</div></section>
+      {recentlyCompleted.length > 0 || onlineRecentlyCompleted.length > 0 ? (
+        <section aria-labelledby="completed-heading"><h2 id="completed-heading" className="text-lg font-semibold">Recently completed</h2><p className="mt-1 text-sm text-muted-foreground">Completed class work stays available for review.</p><div className="mt-3 divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">{onlineRecentlyCompleted.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}{recentlyCompleted.map((assignment) => { const presentation = getAssignmentPresentation(assignment, "/dashboard"); return <StudentAssignmentRow key={assignment.id} title={assignment.challenge.title} typeLabel={presentation.typeLabel} context={`${assignment.className} · ${assignment.challenge.subject.name}`} state="COMPLETED" dueText={`Assigned ${assignment.assignedAt.toLocaleDateString()}`} detail={presentation.detail} scoreText={presentation.scoreText} actionHref={presentation.href} actionLabel={presentation.actionLabel} />; })}</div></section>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-5">

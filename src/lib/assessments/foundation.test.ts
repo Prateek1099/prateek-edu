@@ -335,7 +335,7 @@ test("assessment A0 isolated migration and service contract", async t => {
       const started=await student.start(r.id,1);
       assert.equal(started.expiresAt,closesAt);
       await new Promise(resolve=>setTimeout(resolve,1550));
-      await assert.rejects(student.delivery(started.id),{code:"LOCKED"});
+      await assert.rejects(student.delivery(started.id),{code:"ATTEMPT_EXPIRED"});
       await assert.rejects(student.saveResponse(started.id,qs[0].id,0,{kind:"choice",value:"A"}),{code:"LOCKED"});
       await assert.rejects(db.assessmentResponse.updateMany({where:{attemptId:started.id},data:{revision:{increment:1}}}));
       assert.equal((await student.submit(started.id)).status,"SUBMITTED");

@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/require-role";
 import { createAssessmentEngine } from "./engine";
 
-// A0 has no HTTP routes or Server Actions. Future entry points must call this
-// authenticated service, not supply an actor to the internal engine factory.
+// Authenticated assessment routes and Server Actions call this service. They
+// never accept an actor identity from the browser; engine injection is test-only.
 export const assessmentService = createAssessmentEngine(prisma, async () => {
   const user = await requireAuth();
   return { id: user.id };

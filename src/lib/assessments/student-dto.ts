@@ -1,5 +1,5 @@
-import type { AssessmentQuestion, AssessmentVersion, AssessmentSection } from "@prisma/client";
-import { demand } from "./rules";
+import type { AssessmentAttempt, AssessmentQuestion, AssessmentResponse, AssessmentVersion, AssessmentSection } from "@prisma/client";
+import { demand, objectiveResponseIsCorrect, parseResponse } from "./rules";
 
 // A whitelist, not Omit<T>. Never return a raw paper/version or spread its fields.
 export function studentAssessmentDto(version: AssessmentVersion & {sections: Array<AssessmentSection & {questions: AssessmentQuestion[]}>}) {
@@ -26,3 +26,51 @@ export function studentAssessmentDto(version: AssessmentVersion & {sections: Arr
   return dto;
 }
 export type StudentAssessmentDto = ReturnType<typeof studentAssessmentDto>;
+
+type VersionWithQuestions = AssessmentVersion & {
+  sections: Array<AssessmentSection & {questions: AssessmentQuestion[]}>;
+};
+
+// A released-result whitelist. The unreleased branch deliberately has no marks,
+// paper, responses, answer keys, explanations, or marking configuration fields.
+export function studentResultDto(
+  version: VersionWithQuestions,
+  attempt: AssessmentAttempt,
+  responses: AssessmentResponse[],
+) {
+  const submittedAt=attempt.submittedAt?.toISOString()??null;
+  if(attempt.status!=="RELEASED") {
+    return {released:false as const,status:attempt.status,title:version.title,submittedAt};
+  }
+  demand(attempt.awardedMarks!==null&&attempt.releasedAt,"LOCKED","The released result is incomplete.");
+  const responseByQuestion=new Map(responses.map(response=>[response.questionId,response]));
+  const sourceByQuestion=new Map(
+    version.sections.flatMap(section=>section.questions).map(question=>[question.id,question]),
+  );
+  const base=studentAssessmentDto(version);
+  return {
+    released:true as const,
+    status:attempt.status,
+    title:version.title,
+    submittedAt,
+    releasedAt:attempt.releasedAt.toISOString(),
+    awardedMarks:Number(attempt.awardedMarks),
+    totalMarks:version.totalMarks,
+    percentage:Math.round(Number(attempt.awardedMarks)/version.totalMarks*10000)/100,
+    paper:{...base,sections:base.sections.map(section=>({
+      ...section,
+      questions:section.questions.map(question=>{
+        const source=sourceByQuestion.get(question.id)!;
+        const response=responseByQuestion.get(question.id);
+        const value=response?.state==="ANSWERED"?parseResponse(source.questionType,response.value):null;
+        const correctResponse=source.questionType==="TRUE_FALSE"
+          ? {kind:"boolean" as const,value:source.correctAnswer==="TRUE"}
+          : {kind:"choice" as const,value:source.correctAnswer as "A"|"B"|"C"|"D"};
+        return {...question,response:value,correctResponse,
+          correct:response?.state==="ANSWERED"&&objectiveResponseIsCorrect(source.questionType,source.correctAnswer,response.value),
+          explanation:source.explanation};
+      }),
+    }))},
+  };
+}
+export type StudentAssessmentResultDto = ReturnType<typeof studentResultDto>;

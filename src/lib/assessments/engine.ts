@@ -1,14 +1,17 @@
 import "server-only";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
-import { AssessmentError, assignmentPolicy, buildAssessmentSnapshot, demand, idInput, parseResponse, serverDeadline } from "./rules";
-import { studentAssessmentDto } from "./student-dto";
+import { AssessmentError, assertObjectiveAnswerKey, assignmentPolicy, buildAssessmentSnapshot, buildObjectiveAssessmentSnapshot, demand, idInput, objectiveResponseIsCorrect, parseResponse, serverDeadline } from "./rules";
+import { studentAssessmentDto, studentResultDto } from "./student-dto";
 
 type Tx = Prisma.TransactionClient;
 type Actor = { id:string };
 export type AssignAssessmentInput = {
   versionId:string; classId:string; audience:"CLASS"|"SELECTED_STUDENTS"; studentIds?:string[];
   opensAt:string; closesAt:string; durationMinutes:number; attemptLimit:number;
+};
+export type CreateAndAssignAssessmentInput = Omit<AssignAssessmentInput, "versionId"> & {
+  sourceSavedPaperId: string;
 };
 const recipientInclude = { assignment:{include:{class:true, version:{include:{assessment:true}}}} } as const;
 const versionInclude = {sections:{include:{questions:true}}} as const;
@@ -58,7 +61,7 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
     demand(r && r.studentId === actor.id && !r.revokedAt && !r.assignment.cancelledAt,
       "FORBIDDEN","This assessment assignment is not available.");
     const a=r.assignment; const assessment=a.version.assessment;
-    demand(a.class.status === "ACTIVE" && a.class.workspaceId === assessment.workspaceId &&
+    demand(!assessment.archivedAt && a.class.status === "ACTIVE" && a.class.workspaceId === assessment.workspaceId &&
       a.class.subjectId === assessment.subjectId && a.version.publishedAt,
       "FORBIDDEN","The assessment class is not available.");
     const membership=await tx.classStudent.findUnique({where:{classId_studentId:{classId:a.classId,studentId:actor.id}}});
@@ -81,7 +84,125 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
   const attemptSummary=(a:{id:string;attemptNumber:number;status:string;startedAt:Date;expiresAt:Date;submittedAt:Date|null}) =>
     ({id:a.id,attemptNumber:a.attemptNumber,status:a.status,startedAt:a.startedAt.toISOString(),expiresAt:a.expiresAt.toISOString(),submittedAt:a.submittedAt?.toISOString()??null});
 
+  async function objectiveScore(tx:Tx,attempt:{id:string;versionId:string}) {
+    const [questions,responses]=await Promise.all([
+      tx.assessmentQuestion.findMany({where:{versionId:attempt.versionId},orderBy:{questionNumber:"asc"}}),
+      tx.assessmentResponse.findMany({where:{attemptId:attempt.id}}),
+    ]);
+    demand(questions.length>0 && responses.length===questions.length,"INVALID_SOURCE","Assessment response evidence is incomplete.");
+    const byQuestion=new Map(responses.map(response=>[response.questionId,response]));
+    let awardedMarks=0;
+    for(const question of questions) {
+      assertObjectiveAnswerKey(question.questionType,question.correctAnswer);
+      const response=byQuestion.get(question.id);
+      demand(response,"INVALID_SOURCE","Assessment response evidence is incomplete.");
+      if(response.state==="ANSWERED" && objectiveResponseIsCorrect(question.questionType,question.correctAnswer,response.value)) {
+        awardedMarks+=question.marks;
+      }
+    }
+    return {awardedMarks,questions,responses};
+  }
+
+  async function submitObjectiveInTransaction(tx:Tx,actor:Actor,attemptId:string,requireExpired:boolean) {
+    let {attempt}=await ownAttempt(tx,actor,attemptId);
+    if(attempt.status==="RELEASED"||attempt.status==="GRADED") return attemptSummary(attempt);
+    demand(attempt.status==="IN_PROGRESS"||attempt.status==="SUBMITTED","LOCKED","This online test cannot be submitted.");
+    let verifiedExpiryClock:Date|null=null;
+    if(requireExpired) {
+      verifiedExpiryClock=await now(tx);
+      demand(attempt.status==="IN_PROGRESS"&&verifiedExpiryClock>=attempt.expiresAt,
+        "LOCKED","This online test has not expired. Please return to the test.");
+    }
+    if(attempt.status==="IN_PROGRESS") {
+      const submittedAt=verifiedExpiryClock??await now(tx);
+      attempt=await tx.assessmentAttempt.update({where:{id:attempt.id},data:{status:"SUBMITTED",submittedAt}});
+      await tx.assessmentEvent.create({data:{assignmentId:attempt.assignmentId,attemptId:attempt.id,actorId:actor.id,type:"ATTEMPT_SUBMITTED",createdAt:submittedAt}});
+    }
+    const score=await objectiveScore(tx,attempt);
+    const gradedAt=await now(tx);
+    const graded=await tx.assessmentAttempt.update({where:{id:attempt.id},data:{status:"GRADED",gradedAt,awardedMarks:score.awardedMarks}});
+    await tx.assessmentEvent.create({data:{assignmentId:attempt.assignmentId,attemptId:attempt.id,actorId:actor.id,type:"GRADE_CHANGED",createdAt:gradedAt}});
+    return attemptSummary(graded);
+  }
+
   return {
+    async createAndAssignFromSavedPaper(input:CreateAndAssignAssessmentInput) {
+      demand(input && typeof input==="object","INVALID_INPUT","Invalid online test assignment.");
+      idInput(input.sourceSavedPaperId);idInput(input.classId);
+      demand(["CLASS","SELECTED_STUDENTS"].includes(input.audience),"INVALID_INPUT","Choose a valid audience.");
+      const policy=assignmentPolicy(input);
+      const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const owner=await teacher(tx,actor);
+        const source=await tx.savedGeneratedPaper.findFirst({
+          where:{id:input.sourceSavedPaperId,workspaceId:owner.workspaceId,archivedAt:null},
+          include:{sections:{include:{questions:true}}},
+        });
+        demand(source?.subjectId,"NOT_FOUND","Choose an active saved paper from your workspace.");
+        await scope(tx,owner.workspaceId,source.subjectId);
+        const subject=await tx.subject.findUnique({where:{id:source.subjectId},include:{qualification:{include:{board:true}}}});
+        demand(subject && subject.status==="PUBLISHED" && subject.qualification.status==="PUBLISHED" && subject.qualification.board.status==="PUBLISHED" &&
+          subject.qualificationId===source.qualificationId && subject.qualification.boardId===source.boardId,
+          "INVALID_SOURCE","Saved academic scope is inconsistent or unpublished.");
+        const snapshot=buildObjectiveAssessmentSnapshot(source); // Validate the whole source before the first INSERT.
+        const classRow=await tx.class.findFirst({
+          where:{id:input.classId,workspaceId:owner.workspaceId,status:"ACTIVE",subjectId:source.subjectId},
+        });
+        demand(classRow,"FORBIDDEN","Choose an active class in this paper's subject and workspace.");
+        const members=await tx.classStudent.findMany({
+          where:{classId:classRow.id,status:"ACTIVE",student:{role:"STUDENT"}},
+          select:{studentId:true},
+        });
+        const ids=input.audience==="CLASS"?members.map(member=>member.studentId):input.studentIds;
+        demand(Array.isArray(ids)&&ids.length>0&&ids.length<=1000,"INVALID_INPUT","Select 1–1,000 active students.");
+        ids.forEach(idInput);
+        const memberIds=new Set(members.map(member=>member.studentId));
+        demand(new Set(ids).size===ids.length&&ids.every(id=>memberIds.has(id)),"FORBIDDEN","Recipients must be unique active students in this class.");
+        const clock=await now(tx);
+        demand(policy.closesAt>clock,"WINDOW_CLOSED","The online test closing time has passed.");
+
+        let assessment=await tx.assessment.findFirst({
+          where:{workspaceId:owner.workspaceId,sourceSavedPaperId:source.id,archivedAt:null},
+          orderBy:{createdAt:"asc"},
+        });
+        if(assessment) {
+          demand(assessment.createdById===owner.id&&assessment.subjectId===source.subjectId,"FORBIDDEN","The saved paper assessment ownership is inconsistent.");
+        } else {
+          assessment=await tx.assessment.create({data:{
+            workspaceId:owner.workspaceId,createdById:owner.id,subjectId:source.subjectId,
+            sourceSavedPaperId:source.id,title:source.paperTitle||source.name,
+          }});
+        }
+        const latestVersion=await tx.assessmentVersion.findFirst({
+          where:{assessmentId:assessment.id},orderBy:{versionNumber:"desc"},select:{versionNumber:true},
+        });
+        const version=await tx.assessmentVersion.create({data:{
+          assessmentId:assessment.id,versionNumber:(latestVersion?.versionNumber??0)+1,
+          title:assessment.title,header:snapshot.header,totalMarks:snapshot.totalMarks,
+          durationMinutes:snapshot.durationMinutes,
+        }});
+        for(const section of snapshot.sections) {
+          const createdSection=await tx.assessmentSection.create({
+            data:{versionId:version.id,label:section.label,sortOrder:section.sortOrder},
+          });
+          await tx.assessmentQuestion.createMany({data:section.questions.map(question=>({
+            ...question,options:question.options as Prisma.InputJsonValue,
+            versionId:version.id,sectionId:createdSection.id,
+          }))});
+        }
+        await tx.assessmentVersion.update({where:{id:version.id},data:{publishedAt:clock}});
+        const assignment=await tx.assessmentAssignment.create({data:{
+          versionId:version.id,classId:classRow.id,assignedById:owner.id,audience:input.audience,
+          ...policy,assignedAt:clock,
+        }});
+        await tx.assessmentRecipient.createMany({
+          data:ids.map(studentId=>({assignmentId:assignment.id,studentId,assignedAt:clock})),
+        });
+        await tx.assessmentEvent.create({data:{assignmentId:assignment.id,actorId:owner.id,type:"ASSIGNED",createdAt:clock}});
+        return {assessmentId:assessment.id,versionId:version.id,assignmentId:assignment.id,
+          recipientCount:ids.length,totalMarks:snapshot.totalMarks};
+      });
+    },
     async createFromSavedPaper(sourceSavedPaperId:string) {
       idInput(sourceSavedPaperId); const actor=await authenticatedActor();
       return transaction(async tx=>{
@@ -166,6 +287,75 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
         return {revoked:true};
       });
     },
+    async listStudentWork(classId?:string) {
+      if(classId!==undefined) idInput(classId);
+      const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const user=await tx.user.findUnique({where:{id:actor.id},select:{role:true}});
+        demand(user?.role==="STUDENT","FORBIDDEN","Only students can view assigned online tests.");
+        const clock=await now(tx);
+        const rows=await tx.assessmentRecipient.findMany({
+          where:{
+            studentId:actor.id,revokedAt:null,
+            assignment:{
+              cancelledAt:null,
+              ...(classId?{classId}:{}),
+              class:{status:"ACTIVE",workspace:{status:"ACTIVE"},students:{some:{studentId:actor.id,status:"ACTIVE"}}},
+              version:{publishedAt:{not:null},assessment:{archivedAt:null}},
+            },
+          },
+          include:{assignment:{include:{
+            class:{select:{id:true,name:true,workspaceId:true,subjectId:true}},
+            version:{include:{assessment:{include:{subject:{select:{id:true,name:true}}}},_count:{select:{questions:true}}}},
+          }},attempts:{orderBy:{attemptNumber:"desc"}}},
+          orderBy:{assignedAt:"desc"},
+        });
+        const scopePairs=Array.from(new Map(rows.map(row=>{
+          const assessment=row.assignment.version.assessment;
+          return [`${assessment.workspaceId}:${assessment.subjectId}`,{workspaceId:assessment.workspaceId,subjectId:assessment.subjectId}];
+        })).values());
+        const activeScopes=scopePairs.length?await tx.workspaceAcademicScope.findMany({
+          where:{status:"ACTIVE",OR:scopePairs,workspace:{status:"ACTIVE"},subject:{status:"PUBLISHED",qualification:{status:"PUBLISHED",board:{status:"PUBLISHED"}}}},
+          select:{workspaceId:true,subjectId:true},
+        }):[];
+        const scopeKeys=new Set(activeScopes.map(item=>`${item.workspaceId}:${item.subjectId}`));
+        return {serverNow:clock.toISOString(),items:rows.flatMap(row=>{
+          const assignment=row.assignment;const assessment=assignment.version.assessment;
+          if(assignment.class.workspaceId!==assessment.workspaceId||assignment.class.subjectId!==assessment.subjectId||
+            !scopeKeys.has(`${assessment.workspaceId}:${assessment.subjectId}`)) return [];
+          const latest=row.attempts[0]??null;
+          return [{
+            recipientId:row.id,assignmentId:assignment.id,classId:assignment.class.id,className:assignment.class.name,
+            subjectName:assessment.subject.name,title:assignment.version.title,totalMarks:assignment.version.totalMarks,
+            questionCount:assignment.version._count.questions,durationMinutes:assignment.durationMinutes,
+            opensAt:assignment.opensAt.toISOString(),closesAt:assignment.closesAt.toISOString(),assignedAt:assignment.assignedAt.toISOString(),
+            attemptLimit:assignment.attemptLimit,attemptsUsed:row.attempts.length,
+            latestAttempt:latest?{...attemptSummary(latest),releasedScore:latest.status==="RELEASED"&&latest.awardedMarks!==null?Number(latest.awardedMarks):null}:null,
+          }];
+        })};
+      });
+    },
+    async startOrResume(recipientId:string) {
+      idInput(recipientId);const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        await tx.$queryRaw`SELECT id FROM assessment_recipients WHERE id = ${recipientId} FOR UPDATE`;
+        const r=await recipient(tx,actor,recipientId);
+        const previous=await tx.assessmentAttempt.findMany({where:{recipientId},orderBy:{attemptNumber:"desc"}});
+        const open=previous.find(attempt=>attempt.status==="IN_PROGRESS");
+        if(open) return attemptSummary(open);
+        const latest=previous[0];
+        const attemptNumber=(latest?.attemptNumber??0)+1;
+        demand(attemptNumber<=r.assignment.attemptLimit,"ATTEMPT_LIMIT","The allowed attempt limit has been reached.");
+        const clock=await now(tx);
+        demand(clock>=r.assignment.opensAt&&clock<r.assignment.closesAt,"WINDOW_CLOSED","The online test is not open.");
+        const created=await tx.assessmentAttempt.create({data:{recipientId,assignmentId:r.assignmentId,versionId:r.assignment.versionId,
+          attemptNumber,startedAt:clock,expiresAt:serverDeadline(clock,r.assignment.durationMinutes,r.assignment.closesAt)}});
+        const questions=await tx.assessmentQuestion.findMany({where:{versionId:created.versionId},select:{id:true}});
+        await tx.assessmentResponse.createMany({data:questions.map(question=>({attemptId:created.id,versionId:created.versionId,questionId:question.id,value:Prisma.DbNull}))});
+        await tx.assessmentEvent.create({data:{assignmentId:created.assignmentId,attemptId:created.id,actorId:actor.id,type:"ATTEMPT_STARTED",createdAt:clock}});
+        return attemptSummary(created);
+      });
+    },
     async start(recipientId:string,attemptNumber:number) {
       idInput(recipientId);
       demand(Number.isInteger(attemptNumber)&&attemptNumber>=1&&attemptNumber<=10,"INVALID_INPUT","A valid attempt number is required.");
@@ -194,12 +384,13 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
       const actor=await authenticatedActor();
       return transaction(async tx=>{
         const {attempt}=await ownAttempt(tx,actor,attemptId);const clock=await now(tx);
-        demand(attempt.status==="IN_PROGRESS" && clock<attempt.expiresAt,"LOCKED","This attempt is closed.");
+        demand(attempt.status==="IN_PROGRESS","ATTEMPT_FINALIZED","This online test has already been submitted.");
+        demand(clock<attempt.expiresAt,"ATTEMPT_EXPIRED","This online test has expired.");
         const version=await tx.assessmentVersion.findUniqueOrThrow({where:{id:attempt.versionId},include:versionInclude});
         const responses=await tx.assessmentResponse.findMany({where:{attemptId:attempt.id}});
-        return {attempt:attemptSummary(attempt),paper:studentAssessmentDto(version),responses:responses.map(r=>({
-          questionId:r.questionId,state:r.state,revision:r.revision,value:parseResponse(
-            version.sections.flatMap(s=>s.questions).find(q=>q.id===r.questionId)!.questionType,r.value),
+        const questionTypeById=new Map(version.sections.flatMap(section=>section.questions).map(question=>[question.id,question.questionType]));
+        return {serverNow:clock.toISOString(),attempt:attemptSummary(attempt),paper:studentAssessmentDto(version),responses:responses.map(r=>({
+          questionId:r.questionId,state:r.state,revision:r.revision,value:parseResponse(questionTypeById.get(r.questionId)!,r.value),
         }))};
       });
     },
@@ -229,6 +420,77 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
         const updated=await tx.assessmentAttempt.update({where:{id:attempt.id},data:{status:"SUBMITTED",submittedAt:await now(tx)}});
         await tx.assessmentEvent.create({data:{assignmentId:attempt.assignmentId,attemptId:attempt.id,actorId:actor.id,type:"ATTEMPT_SUBMITTED"}});
         return attemptSummary(updated);
+      });
+    },
+    async submitObjective(attemptId:string) {
+      const actor=await authenticatedActor();
+      return transaction(tx=>submitObjectiveInTransaction(tx,actor,attemptId,false));
+    },
+    async finalizeExpiredObjective(attemptId:string) {
+      const actor=await authenticatedActor();
+      return transaction(tx=>submitObjectiveInTransaction(tx,actor,attemptId,true));
+    },
+    async studentResult(attemptId:string) {
+      const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const {attempt}=await ownAttempt(tx,actor,attemptId);
+        demand(attempt.status!=="IN_PROGRESS","LOCKED","Submit this online test before viewing its result.");
+        const version=await tx.assessmentVersion.findUniqueOrThrow({where:{id:attempt.versionId},include:versionInclude});
+        const responses=await tx.assessmentResponse.findMany({where:{attemptId:attempt.id}});
+        return studentResultDto(version,attempt,responses);
+      });
+    },
+    async teacherResults(assignmentId:string) {
+      idInput(assignmentId);const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const owner=await teacher(tx,actor);
+        const assignment=await tx.assessmentAssignment.findUnique({where:{id:assignmentId},include:{
+          class:{select:{id:true,name:true,workspaceId:true,subjectId:true}},
+          version:{include:{assessment:{include:{subject:{select:{id:true,name:true}}}},_count:{select:{questions:true}}}},
+          recipients:{where:{revokedAt:null},include:{student:{select:{id:true,name:true,email:true}},attempts:{orderBy:{attemptNumber:"desc"}}},orderBy:{assignedAt:"asc"}},
+        }});
+        demand(assignment&&assignment.assignedById===owner.id&&assignment.version.assessment.createdById===owner.id&&
+          assignment.version.assessment.workspaceId===owner.workspaceId&&assignment.class.workspaceId===owner.workspaceId&&
+          assignment.class.subjectId===assignment.version.assessment.subjectId,
+          "FORBIDDEN","Online test assignment not found in your workspace.");
+        await scope(tx,owner.workspaceId,assignment.version.assessment.subjectId);
+        const students=assignment.recipients.map(row=>{
+          const latest=row.attempts[0]??null;
+          return {recipientId:row.id,studentId:row.student.id,name:row.student.name,email:row.student.email,
+            status:latest?.status??"NOT_STARTED",attemptId:latest?.id??null,attemptNumber:latest?.attemptNumber??null,
+            awardedMarks:latest?.awardedMarks===null||latest?.awardedMarks===undefined?null:Number(latest.awardedMarks),
+            totalMarks:assignment.version.totalMarks,
+            percentage:latest?.awardedMarks===null||latest?.awardedMarks===undefined?null:Math.round(Number(latest.awardedMarks)/assignment.version.totalMarks*10000)/100,
+            submittedAt:latest?.submittedAt?.toISOString()??null};
+        });
+        const count=(status:string)=>students.filter(student=>student.status===status).length;
+        return {id:assignment.id,title:assignment.version.title,classId:assignment.class.id,className:assignment.class.name,
+          subjectName:assignment.version.assessment.subject.name,totalMarks:assignment.version.totalMarks,
+          questionCount:assignment.version._count.questions,audience:assignment.audience,opensAt:assignment.opensAt.toISOString(),
+          closesAt:assignment.closesAt.toISOString(),durationMinutes:assignment.durationMinutes,attemptLimit:assignment.attemptLimit,
+          cancelledAt:assignment.cancelledAt?.toISOString()??null,summary:{assigned:students.length,notStarted:count("NOT_STARTED"),
+            inProgress:count("IN_PROGRESS"),submitted:count("SUBMITTED"),graded:count("GRADED"),released:count("RELEASED")},students};
+      });
+    },
+    async release(assignmentId:string,attemptId:string) {
+      idInput(assignmentId);idInput(attemptId);const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const owner=await teacher(tx,actor);
+        await tx.$queryRaw`SELECT id FROM assessment_attempts WHERE id = ${attemptId} FOR UPDATE`;
+        const attempt=await tx.assessmentAttempt.findUnique({where:{id:attemptId},include:{assignment:{include:{class:true,version:{include:{assessment:true}}}}}});
+        demand(attempt&&attempt.assignmentId===assignmentId&&attempt.assignment.assignedById===owner.id&&attempt.assignment.version.assessment.createdById===owner.id&&
+          attempt.assignment.version.assessment.workspaceId===owner.workspaceId&&attempt.assignment.class.workspaceId===owner.workspaceId&&
+          attempt.assignment.class.subjectId===attempt.assignment.version.assessment.subjectId,
+          "FORBIDDEN","This result is not in your workspace.");
+        await scope(tx,owner.workspaceId,attempt.assignment.version.assessment.subjectId);
+        if(attempt.status==="RELEASED") return attemptSummary(attempt);
+        demand(attempt.status==="GRADED"&&attempt.awardedMarks!==null,"LOCKED","This result is not ready to release.");
+        const score=await objectiveScore(tx,attempt);
+        demand(Number(attempt.awardedMarks)===score.awardedMarks,"LOCKED","The objective grade no longer matches its immutable evidence.");
+        const releasedAt=await now(tx);
+        const released=await tx.assessmentAttempt.update({where:{id:attempt.id},data:{status:"RELEASED",releasedAt}});
+        await tx.assessmentEvent.create({data:{assignmentId:attempt.assignmentId,attemptId:attempt.id,actorId:owner.id,type:"RESULT_RELEASED",createdAt:releasedAt}});
+        return attemptSummary(released);
       });
     },
   };

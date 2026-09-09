@@ -1,7 +1,7 @@
 import type { BankQuestionType, Prisma } from "@prisma/client";
 import { validateBankQuestionInput } from "@/lib/bank-questions";
 
-export type AssessmentErrorCode = "FORBIDDEN" | "INVALID_SOURCE" | "MEDIA_UNSUPPORTED" | "INVALID_INPUT" | "WINDOW_CLOSED" | "ATTEMPT_LIMIT" | "LOCKED" | "STALE_RESPONSE" | "NOT_FOUND";
+export type AssessmentErrorCode = "FORBIDDEN" | "INVALID_SOURCE" | "MEDIA_UNSUPPORTED" | "INVALID_INPUT" | "WINDOW_CLOSED" | "ATTEMPT_LIMIT" | "ATTEMPT_EXPIRED" | "ATTEMPT_FINALIZED" | "LOCKED" | "STALE_RESPONSE" | "NOT_FOUND";
 export class AssessmentError extends Error {
   constructor(public code: AssessmentErrorCode, message: string) { super(message); this.name = "AssessmentError"; }
 }
@@ -9,11 +9,54 @@ export const IMAGE_FREE_ERROR = "This paper contains images and cannot yet be us
 export function demand(condition: unknown, code: AssessmentErrorCode, message: string): asserts condition {
   if (!condition) throw new AssessmentError(code, message);
 }
+
+export type RunnerDeliveryRecovery = "FINALIZE_EXPIRED" | "VIEW_RESULT" | "RETRY" | "THROW";
+export function runnerDeliveryRecovery(error: unknown): RunnerDeliveryRecovery {
+  if (!(error instanceof AssessmentError)) return "THROW";
+  if (error.code === "ATTEMPT_EXPIRED") return "FINALIZE_EXPIRED";
+  if (error.code === "ATTEMPT_FINALIZED") return "VIEW_RESULT";
+  if (error.code === "LOCKED") return "RETRY";
+  return "THROW";
+}
+
+export function safeAssessmentActionError(error: unknown, fallback: string, operation: string) {
+  if (error instanceof AssessmentError) return error.message;
+  console.error(`[assessment] ${operation} failed unexpectedly.`, error);
+  return fallback;
+}
 export function idInput(value: unknown): asserts value is string {
   demand(typeof value === "string" && value.length > 0 && value.length <= 200, "INVALID_INPUT", "A valid identifier is required.");
 }
 export type SavedSource = Prisma.SavedGeneratedPaperGetPayload<{ include: { sections: { include: { questions: true } } } }>;
 export type ResponseValue = { kind: "choice"; value: "A" | "B" | "C" | "D" } | { kind: "boolean"; value: boolean } | { kind: "text"; value: string };
+export const OBJECTIVE_ASSESSMENT_TYPES = ["MCQ", "TRUE_FALSE", "ASSERTION_REASON"] as const;
+export type ObjectiveAssessmentType = (typeof OBJECTIVE_ASSESSMENT_TYPES)[number];
+
+export function isObjectiveAssessmentType(type: BankQuestionType): type is ObjectiveAssessmentType {
+  return OBJECTIVE_ASSESSMENT_TYPES.includes(type as ObjectiveAssessmentType);
+}
+
+export function objectiveTypeLabel(type: BankQuestionType) {
+  const labels: Record<BankQuestionType, string> = {
+    MCQ: "MCQ",
+    TRUE_FALSE: "True/False",
+    FILL_BLANK: "Fill in the Blank",
+    ASSERTION_REASON: "Assertion & Reasoning",
+    VERY_SHORT_ANSWER: "Very Short Answer",
+    SHORT_ANSWER: "Short Answer",
+    LONG_ANSWER: "Long Answer",
+  };
+  return labels[type];
+}
+
+export function assertObjectiveAnswerKey(type: BankQuestionType, correctAnswer: string | null) {
+  demand(isObjectiveAssessmentType(type), "INVALID_SOURCE", "Unsupported objective grading type.");
+  if (type === "TRUE_FALSE") {
+    demand(["TRUE", "FALSE"].includes(correctAnswer ?? ""), "INVALID_SOURCE", "Invalid True/False answer key.");
+  } else {
+    demand(["A", "B", "C", "D"].includes(correctAnswer ?? ""), "INVALID_SOURCE", "Invalid objective answer key.");
+  }
+}
 
 // Current snapshot has only question.imageUrl, imageAlt and imageCaption.
 // There are NO separate option/stimulus/section/answer-image fields. Reject
@@ -74,6 +117,38 @@ export function buildAssessmentSnapshot(source: SavedSource) {
         correctAnswer:q.correctAnswer, modelAnswer:q.modelAnswer, explanation:q.explanation,
       })) })),
   };
+}
+
+export function buildObjectiveAssessmentSnapshot(source: SavedSource) {
+  const unsupported = Array.from(new Set(
+    source.sections.flatMap(section => section.questions)
+      .filter(question => !isObjectiveAssessmentType(question.questionType))
+      .map(question => objectiveTypeLabel(question.questionType)),
+  ));
+  demand(
+    unsupported.length === 0,
+    "INVALID_SOURCE",
+    `This paper cannot be assigned online because it contains unsupported question type${unsupported.length === 1 ? "" : "s"}: ${unsupported.join(", ")}. Phase A supports MCQ, True/False, and Assertion & Reasoning only.`,
+  );
+  const snapshot = buildAssessmentSnapshot(source);
+  for (const question of snapshot.sections.flatMap(section => section.questions)) {
+    assertObjectiveAnswerKey(question.questionType, question.correctAnswer);
+  }
+  return snapshot;
+}
+
+export function objectiveResponseIsCorrect(
+  type: BankQuestionType,
+  correctAnswer: string | null,
+  value: unknown,
+) {
+  assertObjectiveAnswerKey(type, correctAnswer);
+  const parsed = parseResponse(type, value);
+  if (!parsed) return false;
+  if (type === "TRUE_FALSE") {
+    return parsed.kind === "boolean" && parsed.value === (correctAnswer === "TRUE");
+  }
+  return parsed.kind === "choice" && parsed.value === correctAnswer;
 }
 export function parseResponse(type: BankQuestionType, raw: unknown): ResponseValue | null {
   if (raw === null) return null;

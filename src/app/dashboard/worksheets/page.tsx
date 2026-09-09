@@ -4,6 +4,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { StudentAssignmentRow } from "@/components/student/StudentAssignmentRow";
+import { StudentAssessmentRow } from "@/components/student/StudentAssessmentRow";
+import { assessmentService } from "@/lib/assessments/service";
+import { assessmentWorkIsComplete, getAssessmentWorkState } from "@/lib/assessments/presentation";
 import { authOptions } from "@/lib/auth";
 import { withStudentReturnTo } from "@/lib/student-assignment-navigation";
 import {
@@ -63,9 +66,15 @@ export default async function StudentAssignedWorkPage() {
   if (user.role !== "STUDENT") redirect(user.role === "TEACHER" ? "/workspace" : "/admin");
 
   const now = new Date();
-  const assignments = orderStudentWork(await getStudentWorkspaceAssignments(user.id), now);
+  const [workspaceAssignments, onlineTests] = await Promise.all([
+    getStudentWorkspaceAssignments(user.id),
+    assessmentService.listStudentWork(),
+  ]);
+  const assignments = orderStudentWork(workspaceAssignments, now);
   const toDo = assignments.filter((assignment) => getStudentWorkDisplayState(assignment, now) !== "COMPLETED");
   const completed = assignments.filter((assignment) => getStudentWorkDisplayState(assignment, now) === "COMPLETED");
+  const onlineToDo = onlineTests.items.filter((item) => !assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)));
+  const onlineCompleted = onlineTests.items.filter((item) => assessmentWorkIsComplete(getAssessmentWorkState(item, onlineTests.serverNow)));
 
   function renderAssignment(assignment: StudentAssignedWork) {
     const presentation = assignmentPresentation(assignment);
@@ -104,7 +113,7 @@ export default async function StudentAssignedWorkPage() {
         </div>
       </header>
 
-      {assignments.length === 0 ? (
+      {assignments.length === 0 && onlineTests.items.length === 0 ? (
         <section className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-12 text-center">
           <CheckCircle2 className="mx-auto size-9 text-emerald-600 dark:text-emerald-400" />
           <h2 className="mt-3 text-lg font-semibold">You&apos;re all caught up.</h2>
@@ -119,9 +128,10 @@ export default async function StudentAssignedWorkPage() {
               <h2 id="to-do-heading" className="text-lg font-semibold">To do</h2>
               <p className="mt-1 text-sm text-muted-foreground">Overdue and due work appears first. Work without a due date is labelled clearly.</p>
             </div>
-            {toDo.length > 0 ? (
+            {toDo.length > 0 || onlineToDo.length > 0 ? (
               <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
                 {toDo.map(renderAssignment)}
+                {onlineToDo.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-8 text-center text-sm text-muted-foreground">
@@ -130,7 +140,7 @@ export default async function StudentAssignedWorkPage() {
             )}
           </section>
 
-          {completed.length > 0 ? (
+          {completed.length > 0 || onlineCompleted.length > 0 ? (
             <section aria-labelledby="completed-heading">
               <div className="mb-3">
                 <h2 id="completed-heading" className="text-lg font-semibold">Completed</h2>
@@ -138,6 +148,7 @@ export default async function StudentAssignedWorkPage() {
               </div>
               <div className="divide-y divide-border/70 overflow-hidden rounded-2xl border border-border/80 bg-card">
                 {completed.map(renderAssignment)}
+                {onlineCompleted.map((item) => <StudentAssessmentRow key={`assessment:${item.recipientId}`} item={item} serverNow={onlineTests.serverNow} />)}
               </div>
             </section>
           ) : null}

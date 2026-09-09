@@ -130,6 +130,69 @@ export async function getStudentWorkspaceClasses(userId: string, now = new Date(
     recipientsByClass.set(recipient.batch.classId, assignments);
   }
 
+  const assessmentRecipients = classIds.length
+    ? await prisma.assessmentRecipient.findMany({
+        where: {
+          studentId: userId,
+          revokedAt: null,
+          assignment: {
+            classId: { in: classIds },
+            cancelledAt: null,
+            class: {
+              status: "ACTIVE",
+              students: { some: { studentId: userId, status: "ACTIVE" } },
+              workspace: { status: "ACTIVE" },
+            },
+            version: { publishedAt: { not: null }, assessment: { archivedAt: null } },
+          },
+        },
+        select: {
+          assignment: {
+            select: {
+              classId: true,
+              closesAt: true,
+              class: { select: { workspaceId: true, subjectId: true } },
+              version: { select: { assessment: { select: { workspaceId: true, subjectId: true } } } },
+            },
+          },
+          attempts: { orderBy: { attemptNumber: "desc" }, take: 1, select: { status: true } },
+        },
+      })
+    : [];
+  const assessmentScopePairs = Array.from(new Map(assessmentRecipients.map((recipient) => {
+    const assessment = recipient.assignment.version.assessment;
+    return [`${assessment.workspaceId}:${assessment.subjectId}`, { workspaceId: assessment.workspaceId, subjectId: assessment.subjectId }];
+  })).values());
+  const activeAssessmentScopes = assessmentScopePairs.length
+    ? await prisma.workspaceAcademicScope.findMany({
+        where: {
+          status: "ACTIVE",
+          OR: assessmentScopePairs,
+          workspace: { status: "ACTIVE" },
+          subject: { status: "PUBLISHED", qualification: { status: "PUBLISHED", board: { status: "PUBLISHED" } } },
+        },
+        select: { workspaceId: true, subjectId: true },
+      })
+    : [];
+  const activeAssessmentScopeKeys = new Set(activeAssessmentScopes.map((item) => `${item.workspaceId}:${item.subjectId}`));
+  for (const recipient of assessmentRecipients) {
+    const { assignment } = recipient;
+    const assessment = assignment.version.assessment;
+    const expectedWorkspaceId = classWorkspaceIds.get(assignment.classId);
+    if (
+      !expectedWorkspaceId
+      || assignment.class.workspaceId !== expectedWorkspaceId
+      || assignment.class.workspaceId !== assessment.workspaceId
+      || assignment.class.subjectId !== assessment.subjectId
+      || !activeAssessmentScopeKeys.has(`${assessment.workspaceId}:${assessment.subjectId}`)
+    ) continue;
+    const status = recipient.attempts[0]?.status;
+    const completed = status === "SUBMITTED" || status === "GRADED" || status === "RELEASED";
+    const assignments = recipientsByClass.get(assignment.classId) ?? [];
+    assignments.push({ status: completed ? "COMPLETED" : "NOT_STARTED", dueDate: assignment.closesAt });
+    recipientsByClass.set(assignment.classId, assignments);
+  }
+
   return memberships.map((membership) => ({
     ...membership.class,
     enrolledAt: membership.enrolledAt,

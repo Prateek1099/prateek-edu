@@ -1,10 +1,12 @@
-# Online Assessment A0 — image-free foundation
+# Online Assessment Phase A — objective pilot
 
-This is a backend foundation, not a student exam runner. It adds no route, UI,
-Server Action, grading endpoint, release endpoint, or integration into existing
-Practice/Challenge assignments. `service.ts` is the session-authenticated entry
-point for future server callers. Never expose `engine.ts`'s actor injection to a
-client; it exists for isolated service tests.
+Phase A builds the first formal online-test workflow on the deployed A0
+foundation: a teacher assigns an eligible saved paper, a student starts/resumes
+one immutable attempt with revision-safe autosave, the server performs exact
+marks-weighted objective grading, the teacher deliberately releases the result,
+and only then does the student receive marks and answer review. `service.ts` is
+the session-authenticated entry point. Never expose `engine.ts` actor injection
+to a client; it exists only for isolated service tests.
 
 ## Persistence and ownership
 
@@ -55,11 +57,14 @@ Prisma's schema alone does not describe every guard.
 
 ## Snapshot and media boundary
 
-`createFromSavedPaper` accepts only an active saved paper in the authenticated
+`createAndAssignFromSavedPaper` accepts only an active saved paper in the authenticated
 teacher's active workspace and assigned, published academic scope. It checks the
 saved board/qualification/subject relationship. It copies the authoritative saved
 snapshot, not live BankQuestion content or a client-provided paper object.
-All seven existing question types are validated using the shared bank validator.
+Phase A accepts MCQ, TRUE_FALSE and ASSERTION_REASON only. Assertion/Reason uses
+the same deterministic A–D option representation as MCQ. Fill Blank and written
+types block the whole assignment with the unsupported type named; no question is
+silently dropped. Every source question still passes the shared bank validator.
 Section completeness, final numbering, duplicate IDs/normalized text, marks and
 duration are revalidated. Creation, child inserts and publication form one
 transaction. A0 creates version 1; a future version-creation service must make a
@@ -88,7 +93,11 @@ image handling, Question Bank, print and DOCX are untouched.
 delivery. It never serializes raw Prisma objects. Correct/model answers,
 explanations, marking schemes, accepted answers, grading metadata, provenance and
 teacher-only notes are excluded. A second serialization guard rejects inherited
-public Blob or media data URLs. No result/answer-release DTO exists in A0.
+public Blob or media data URLs. `studentResultDto` has distinct whitelisted
+unreleased and released branches. Before RELEASED it contains no paper, score,
+response, key, explanation or marking fields. The released branch exposes only
+the student's response, canonical correct response, correctness and explanation;
+model answers remain server-only.
 
 ## Assignment and authorization
 
@@ -141,6 +150,11 @@ Submit freezes responses, records server submittedAt and one submission event.
 Repeating it returns the existing attempt summary. Submission accepts no
 replacement answer payload.
 
+Phase A's `startOrResume` returns the same IN_PROGRESS attempt on reload and
+creates only the next server-authorized attempt when no attempt remains open and
+the configured limit/window permit it. The browser timer is display-only and is
+derived from persisted `expiresAt` plus the database clock returned with delivery.
+
 Migration `20260908120000_enable_objective_assessment_lifecycle` prepares the
 database guard for Phase A by permitting only `IN_PROGRESS → SUBMITTED`,
 `SUBMITTED → GRADED`, and `GRADED → RELEASED`. It preserves immutable attempt
@@ -165,21 +179,20 @@ no-op UPDATE, and retries bounded serialization/deadlock conflicts. The database
 trigger deliberately rejects same-state UPDATEs rather than weakening lifecycle
 integrity for duplicate requests.
 
-Future Phase A services must write each state transition and its corresponding
+Phase A writes each state transition and its corresponding
 `AssessmentEvent` in the same transaction. Event-insert failure must roll back
 the transition; retries must reread state before creating an event. The lifecycle
 trigger intentionally does not impose event-insertion requirements.
 
-## Marks and future grading
+## Objective grading and release
 
-`marksSummary` is marks-based: 1 awarded mark out of 5 = 20%, not one of two
-questions = 50%. Incomplete marking returns no final awarded total or percentage.
-`requireReleasable` requires GRADED and complete marks. There is still no
-automatic objective scoring, subjective marking, provisional-result delivery or
-result-release action in this migration-only phase. The trigger now recognizes
-the reviewed Phase A transitions, but the future Phase A service must calculate
-and persist objective marks before enabling explicit teacher release. Manual
-release is the only planned policy; no speculative policy enum is added.
+Objective scoring uses each immutable question's marks: 1 awarded mark out of 5
+is 20%, not one of two questions. MCQ and Assertion/Reason compare canonical A–D
+choices; True/False compares a canonical boolean. Submission, grading and their
+events are one transaction. Repeated submission reads the reached state without
+duplicating grades/events. Only the owning teacher in the active workspace and
+academic scope can explicitly transition GRADED to RELEASED, with its event in
+the same transaction. There is no subjective or AI marking.
 
 ## Validation and limits
 
@@ -187,6 +200,7 @@ Run the isolated assessment tests:
 
 ```sh
 node --require ./scripts/assessment-test-loader.cjs --test src/lib/assessments/foundation.test.ts
+node --require ./scripts/assessment-test-loader.cjs --test src/lib/assessments/objective-phase-a.test.ts src/lib/assessments/objective-phase-a-ui-contract.test.ts
 ```
 
 Run all repository `.test.ts` files:
@@ -274,8 +288,6 @@ tests. Do not reuse public archive URLs or broadly redesign existing paper media
 
 ## Later phases (not implemented)
 
-- Phase A: student runner/timer/autosave UI, teacher assignment integration,
-  objective grading and deliberate result release.
 - Phase B: subjective marking and marking evidence/history extensions.
 - Phase C: no implementation or committed design in A0; requires separate scope.
 - A0.5: private media as described above.
