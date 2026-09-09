@@ -145,6 +145,7 @@ test("Online Assessment Phase A objective workflow", async (t) => {
     let assignmentId = "";
     let recipientId = "";
     let student2RecipientId = "";
+    let selectedAssignmentId = "";
     await t.test("whole-class creation is atomic and snapshots exact active recipients", async () => {
       const result = await teacher.createAndAssignFromSavedPaper(assignInput());
       assignmentId = result.assignmentId;
@@ -164,6 +165,7 @@ test("Online Assessment Phase A objective workflow", async (t) => {
     });
     await t.test("selected-student assignment contains exactly the chosen recipient", async () => {
       const selected = await teacher.createAndAssignFromSavedPaper({ ...assignInput(), audience: "SELECTED_STUDENTS", studentIds: ["student"] });
+      selectedAssignmentId = selected.assignmentId;
       assert.equal(selected.recipientCount, 1);
       assert.deepEqual((await db.assessmentRecipient.findMany({ where: { assignmentId: selected.assignmentId } })).map((row) => row.studentId), ["student"]);
     });
@@ -194,6 +196,9 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       assert.equal(await db.assessmentEvent.count({ where: { attemptId, type: "ATTEMPT_STARTED" } }), 1);
       const responses = await db.assessmentResponse.findMany({ where: { attemptId } });
       assert.equal(responses.length, 3); assert.ok(responses.every((response) => response.state === "UNANSWERED" && response.revision === 0));
+    });
+    await t.test("teacher answer review stays locked until objective grading finishes", async () => {
+      await assert.rejects(teacher.teacherAttemptReview(assignmentId, attemptId), { code: "LOCKED" });
     });
     await t.test("refresh resumes same attempt, deadline and safe delivery", async () => {
       const resumed = await student.startOrResume(recipientId);
@@ -275,6 +280,32 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       const teacherView = await teacher.teacherResults(assignmentId);
       assert.equal(teacherView.students.find((row) => row.studentId === "student")?.percentage, 20);
     });
+    await t.test("owning teacher can review a GRADED attempt before release", async () => {
+      const review = await teacher.teacherAttemptReview(assignmentId, attemptId);
+      assert.equal(review.status, "GRADED");
+      assert.equal(review.studentId, "student");
+      assert.equal(review.studentName, "One");
+      assert.equal(review.studentEmail, "one@test.dev");
+      assert.equal(review.awardedMarks, 1);
+      assert.equal(review.totalMarks, 5);
+      assert.equal(review.percentage, 20);
+    });
+    await t.test("teacher answer review preserves objective types, paper order and immutable source", async () => {
+      const review = await teacher.teacherAttemptReview(assignmentId, attemptId);
+      assert.deepEqual(review.questions.map((item) => item.number), [1, 2, 3]);
+      assert.deepEqual(review.questions.map((item) => item.type), ["MCQ", "TRUE_FALSE", "ASSERTION_REASON"]);
+      assert.deepEqual(review.questions.map((item) => item.status), ["CORRECT", "INCORRECT", "INCORRECT"]);
+      assert.deepEqual(review.questions.map((item) => item.marksAwarded), [1, 0, 0]);
+      assert.equal(review.questions[0].text, "objective-paper objective question 1");
+      assert.equal(review.questions[0].explanation, "Explanation 1");
+      assert.equal(JSON.stringify(review).includes("MUTATED SOURCE"), false);
+    });
+    await t.test("wrong teacher, SUPER_ADMIN and forged assignment-attempt pair cannot review answers", async () => {
+      await assert.rejects(otherTeacher.teacherAttemptReview(assignmentId, attemptId), { code: "FORBIDDEN" });
+      await assert.rejects(admin.teacherAttemptReview(assignmentId, attemptId), { code: "FORBIDDEN" });
+      await assert.rejects(student.teacherAttemptReview(assignmentId, attemptId), { code: "FORBIDDEN" });
+      await assert.rejects(teacher.teacherAttemptReview(selectedAssignmentId, attemptId), { code: "FORBIDDEN" });
+    });
     await t.test("double submission/grading is idempotent and responses are frozen", async () => {
       const again = await student.submitObjective(attemptId); assert.equal(again.status, "GRADED");
       assert.equal(await db.assessmentEvent.count({ where: { attemptId, type: "GRADE_CHANGED" } }), 1);
@@ -313,20 +344,44 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       assert.equal(result.paper.sections[0].questions[0].explanation, "Explanation 1");
       assert.equal(JSON.stringify(result).includes("modelAnswer"), false);
     });
+    await t.test("owning teacher can review the same immutable evidence after release", async () => {
+      const review = await teacher.teacherAttemptReview(assignmentId, attemptId);
+      assert.equal(review.status, "RELEASED");
+      assert.ok(review.releasedAt);
+      assert.deepEqual(review.questions.map((item) => item.marksAwarded), [1, 0, 0]);
+    });
+    let student2AttemptId = "";
     await t.test("unanswered submission earns zero and objective type marks are exact", async () => {
       const attempt = await student2.startOrResume(student2RecipientId);
+      student2AttemptId = attempt.id;
       assert.equal((await student2.submitObjective(attempt.id)).status, "GRADED");
       assert.equal(Number((await db.assessmentAttempt.findUniqueOrThrow({ where: { id: attempt.id } })).awardedMarks), 0);
     });
+    await t.test("teacher review identifies the exact recipient and all unanswered responses", async () => {
+      const review = await teacher.teacherAttemptReview(assignmentId, student2AttemptId);
+      assert.equal(review.studentId, "student2");
+      assert.equal(review.studentName, "Two");
+      assert.ok(review.questions.every((item) => item.status === "UNANSWERED" && item.studentAnswer === null && item.marksAwarded === 0));
+    });
+    let objectiveTypesAttemptId = "";
+    let objectiveTypesAssignmentId = "";
     await t.test("TRUE_FALSE and ASSERTION_REASON award their immutable weighted marks", async () => {
       const versionId = (await db.assessmentAssignment.findUniqueOrThrow({ where: { id: assignmentId } })).versionId;
       const selected = await teacher.assign({ versionId, classId: "class", audience: "SELECTED_STUDENTS", studentIds: ["student2"], ...window(), attemptLimit: 1 });
+      objectiveTypesAssignmentId = selected.assignmentId;
       const selectedRecipient = await db.assessmentRecipient.findFirstOrThrow({ where: { assignmentId: selected.assignmentId } });
       const selectedAttempt = await student2.startOrResume(selectedRecipient.id);
+      objectiveTypesAttemptId = selectedAttempt.id;
       await student2.saveResponse(selectedAttempt.id, questions[1].id, 0, { kind: "boolean", value: true });
       await student2.saveResponse(selectedAttempt.id, questions[2].id, 0, { kind: "choice", value: "B" });
       await student2.submitObjective(selectedAttempt.id);
       assert.equal(Number((await db.assessmentAttempt.findUniqueOrThrow({ where: { id: selectedAttempt.id } })).awardedMarks), 4);
+    });
+    await t.test("teacher review shows weighted marks for True/False and Assertion & Reasoning", async () => {
+      const review = await teacher.teacherAttemptReview(objectiveTypesAssignmentId, objectiveTypesAttemptId);
+      assert.deepEqual(review.questions.map((item) => item.status), ["UNANSWERED", "CORRECT", "CORRECT"]);
+      assert.deepEqual(review.questions.map((item) => item.marksAwarded), [0, 2, 2]);
+      assert.equal(review.awardedMarks, 4);
     });
     await t.test("attempt limit permits exact next attempt and blocks one beyond limit", async () => {
       const second = await student.startOrResume(recipientId);

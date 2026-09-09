@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 import { AssessmentError, assertObjectiveAnswerKey, assignmentPolicy, buildAssessmentSnapshot, buildObjectiveAssessmentSnapshot, demand, idInput, objectiveResponseIsCorrect, parseResponse, serverDeadline } from "./rules";
 import { studentAssessmentDto, studentResultDto } from "./student-dto";
+import { buildTeacherQuestionReview } from "./teacher-review";
 
 type Tx = Prisma.TransactionClient;
 type Actor = { id:string };
@@ -470,6 +471,51 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
           closesAt:assignment.closesAt.toISOString(),durationMinutes:assignment.durationMinutes,attemptLimit:assignment.attemptLimit,
           cancelledAt:assignment.cancelledAt?.toISOString()??null,summary:{assigned:students.length,notStarted:count("NOT_STARTED"),
             inProgress:count("IN_PROGRESS"),submitted:count("SUBMITTED"),graded:count("GRADED"),released:count("RELEASED")},students};
+      });
+    },
+    async teacherAttemptReview(assignmentId:string,attemptId:string) {
+      idInput(assignmentId);idInput(attemptId);const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const owner=await teacher(tx,actor);
+        const attempt=await tx.assessmentAttempt.findUnique({where:{id:attemptId},include:{
+          recipient:{include:{student:{select:{id:true,name:true,email:true,role:true}}}},
+          assignment:{include:{
+            class:{select:{id:true,name:true,workspaceId:true,subjectId:true}},
+            version:{include:{assessment:{include:{subject:{select:{id:true,name:true}}}}}},
+          }},
+          version:{include:{sections:{orderBy:{sortOrder:"asc"},include:{questions:{orderBy:{questionNumber:"asc"}}}}}},
+          responses:true,
+        }});
+        demand(attempt&&attempt.assignmentId===assignmentId&&attempt.recipient.assignmentId===assignmentId&&
+          attempt.recipient.student.role==="STUDENT"&&attempt.versionId===attempt.assignment.versionId&&
+          attempt.assignment.assignedById===owner.id&&attempt.assignment.version.assessment.createdById===owner.id&&
+          attempt.assignment.version.assessment.workspaceId===owner.workspaceId&&
+          attempt.assignment.class.workspaceId===owner.workspaceId&&
+          attempt.assignment.class.subjectId===attempt.assignment.version.assessment.subjectId,
+          "FORBIDDEN","This answer review is not in your workspace.");
+        await scope(tx,owner.workspaceId,attempt.assignment.version.assessment.subjectId);
+        demand(
+          (attempt.status==="GRADED"||attempt.status==="RELEASED")&&attempt.awardedMarks!==null&&
+            attempt.submittedAt!==null&&attempt.gradedAt!==null&&
+            (attempt.status!=="RELEASED"||attempt.releasedAt!==null),
+          "LOCKED","This result is not ready for answer review.",
+        );
+        const questions=attempt.version.sections.flatMap(section=>section.questions.map(question=>({
+          id:question.id,sectionLabel:section.label,questionNumber:question.questionNumber,
+          questionType:question.questionType,questionText:question.questionText,options:question.options,
+          marks:question.marks,correctAnswer:question.correctAnswer,explanation:question.explanation,
+        })));
+        const awardedMarks=Number(attempt.awardedMarks);
+        const questionReview=buildTeacherQuestionReview({versionId:attempt.versionId,totalMarks:attempt.version.totalMarks,
+          awardedMarks,questions,responses:attempt.responses});
+        return {assignmentId:attempt.assignmentId,attemptId:attempt.id,title:attempt.version.title,
+          subjectName:attempt.assignment.version.assessment.subject.name,classId:attempt.assignment.class.id,
+          className:attempt.assignment.class.name,studentId:attempt.recipient.student.id,
+          studentName:attempt.recipient.student.name,studentEmail:attempt.recipient.student.email,
+          attemptNumber:attempt.attemptNumber,status:attempt.status,submittedAt:attempt.submittedAt.toISOString(),
+          gradedAt:attempt.gradedAt.toISOString(),releasedAt:attempt.releasedAt?.toISOString()??null,
+          awardedMarks,totalMarks:attempt.version.totalMarks,
+          percentage:Math.round(awardedMarks/attempt.version.totalMarks*10000)/100,questions:questionReview};
       });
     },
     async release(assignmentId:string,attemptId:string) {
