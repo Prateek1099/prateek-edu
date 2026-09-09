@@ -146,6 +146,7 @@ test("Online Assessment Phase A objective workflow", async (t) => {
     let recipientId = "";
     let student2RecipientId = "";
     let selectedAssignmentId = "";
+    let futureAssignmentId = "";
     await t.test("whole-class creation is atomic and snapshots exact active recipients", async () => {
       const result = await teacher.createAndAssignFromSavedPaper(assignInput());
       assignmentId = result.assignmentId;
@@ -179,6 +180,7 @@ test("Online Assessment Phase A objective workflow", async (t) => {
     await t.test("before-open and after-close assignments reject starts", async () => {
       const versionId = (await db.assessmentAssignment.findUniqueOrThrow({ where: { id: assignmentId } })).versionId;
       const future = await teacher.assign({ versionId, classId: "class", audience: "SELECTED_STUDENTS", studentIds: ["student"], ...window(), opensAt: new Date(Date.now() + 60_000).toISOString() });
+      futureAssignmentId = future.assignmentId;
       const futureRecipient = await db.assessmentRecipient.findFirstOrThrow({ where: { assignmentId: future.assignmentId } });
       await assert.rejects(student.startOrResume(futureRecipient.id), { code: "WINDOW_CLOSED" });
       await assert.rejects(teacher.assign({ versionId, classId: "class", audience: "CLASS", ...window(), closesAt: new Date(Date.now() - 1_000).toISOString() }), { code: "WINDOW_CLOSED" });
@@ -389,10 +391,12 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       await student.submitObjective(second.id);
       await assert.rejects(student.startOrResume(recipientId), { code: "ATTEMPT_LIMIT" });
     });
+    let closedAssignmentId = "";
     await t.test("expired attempts freeze late answers but finalize saved evidence", async () => {
       const versionId = (await db.assessmentAssignment.findUniqueOrThrow({ where: { id: assignmentId } })).versionId;
       const closing = new Date(Date.now() + 1_200).toISOString();
       const short = await teacher.assign({ versionId, classId: "class", audience: "SELECTED_STUDENTS", studentIds: ["student"], ...window(), closesAt: closing, durationMinutes: 10, attemptLimit: 1 });
+      closedAssignmentId = short.assignmentId;
       const shortRecipient = await db.assessmentRecipient.findFirstOrThrow({ where: { assignmentId: short.assignmentId } });
       const shortAttempt = await student.startOrResume(shortRecipient.id);
       await student.saveResponse(shortAttempt.id, questions[0].id, 0, { kind: "choice", value: "A" });
@@ -403,15 +407,19 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       assert.equal((await student.finalizeExpiredObjective(shortAttempt.id)).status, "GRADED");
       assert.equal(Number((await db.assessmentAttempt.findUniqueOrThrow({ where: { id: shortAttempt.id } })).awardedMarks), 1);
     });
+    let revokedAssignmentId = "";
+    let cancelledAssignmentId = "";
     await t.test("cancellation and revocation block future runner access without deleting history", async () => {
       const versionId = (await db.assessmentAssignment.findUniqueOrThrow({ where: { id: assignmentId } })).versionId;
       const revokedAssignment = await teacher.assign({ versionId, classId: "class", audience: "SELECTED_STUDENTS", studentIds: ["student"], ...window() });
+      revokedAssignmentId = revokedAssignment.assignmentId;
       const revokedRecipient = await db.assessmentRecipient.findFirstOrThrow({ where: { assignmentId: revokedAssignment.assignmentId } });
       const revokedAttempt = await student.startOrResume(revokedRecipient.id);
       await teacher.revoke(revokedRecipient.id);
       await assert.rejects(student.delivery(revokedAttempt.id), { code: "FORBIDDEN" });
       assert.equal(await db.assessmentAttempt.count({ where: { id: revokedAttempt.id } }), 1);
       const cancelled = await teacher.assign({ versionId, classId: "class", audience: "SELECTED_STUDENTS", studentIds: ["student"], ...window() });
+      cancelledAssignmentId = cancelled.assignmentId;
       const cancelledRecipient = await db.assessmentRecipient.findFirstOrThrow({ where: { assignmentId: cancelled.assignmentId } });
       await teacher.cancel(cancelled.assignmentId);
       await assert.rejects(student.startOrResume(cancelledRecipient.id), { code: "FORBIDDEN" });
@@ -426,6 +434,55 @@ test("Online Assessment Phase A objective workflow", async (t) => {
       await db.classStudent.update({ where: { classId_studentId: { classId: "class", studentId: "student2" } }, data: { status: "REMOVED" } });
       await assert.rejects(student2.studentResult((await db.assessmentAttempt.findFirstOrThrow({ where: { recipientId: student2RecipientId } })).id), { code: "FORBIDDEN" });
       assert.equal((await student2.listStudentWork()).items.some((item) => item.assignmentId === assignmentId), false);
+    });
+    await t.test("Teacher Assessment Center lists existing and historical own-workspace assignments without backfill", async () => {
+      assert.ok(await db.assessmentAttempt.count({ where: { assignmentId, status: "RELEASED" } }));
+      const center = await teacher.teacherAssessmentCenter();
+      for (const id of [assignmentId, selectedAssignmentId, futureAssignmentId, closedAssignmentId, revokedAssignmentId, cancelledAssignmentId]) {
+        assert.ok(center.items.some(item => item.id === id) || center.total > center.items.length, id);
+      }
+      assert.equal(center.query.pageSize, 20);
+      assert.equal(center.classes.some(item => item.id === "class"), true);
+    });
+    await t.test("Teacher Assessment Center classifies scheduled, completed and cancelled assignments", async () => {
+      const scheduled = await teacher.teacherAssessmentCenter({ status: "scheduled", search: "objective-paper" });
+      assert.ok(scheduled.items.some(item => item.id === futureAssignmentId && item.status === "SCHEDULED"));
+      const completed = await teacher.teacherAssessmentCenter({ status: "completed" });
+      assert.ok(completed.items.some(item => item.id === closedAssignmentId && item.completionReason === "WINDOW_CLOSED"));
+      assert.ok(completed.items.some(item => item.id === revokedAssignmentId));
+      assert.equal(completed.items.some(item => item.id === cancelledAssignmentId), false);
+      const all = await teacher.teacherAssessmentCenter({ search: "objective-paper" });
+      assert.ok(all.items.some(item => item.id === cancelledAssignmentId && item.status === "CANCELLED"));
+    });
+    await t.test("Teacher Assessment Center excludes revoked recipients from progress", async () => {
+      const center = await teacher.teacherAssessmentCenter({ status: "completed" });
+      const revoked = center.items.find(item => item.id === revokedAssignmentId);
+      assert.equal(revoked?.progress.assigned, 0);
+      assert.equal(revoked?.progress.notStarted, 0);
+    });
+    await t.test("Teacher Assessment Center composes bounded title, class and page filters", async () => {
+      const center = await teacher.teacherAssessmentCenter({ search: "OBJECTIVE-PAPER", classId: "class", page: "1" });
+      assert.equal(center.query.search, "OBJECTIVE-PAPER");
+      assert.equal(center.query.classId, "class");
+      assert.ok(center.items.length <= 20);
+      assert.ok(center.items.every(item => item.classId === "class" && item.title.toLowerCase().includes("objective-paper")));
+      const forgedClass = await teacher.teacherAssessmentCenter({ classId: "class2" });
+      assert.equal(forgedClass.query.classId, "");
+      assert.ok(forgedClass.items.every(item => item.classId !== "class2"));
+    });
+    await t.test("Teacher Assessment Center rejects students and SUPER_ADMIN", async () => {
+      await assert.rejects(student.teacherAssessmentCenter(), { code: "FORBIDDEN" });
+      await assert.rejects(admin.teacherAssessmentCenter(), { code: "FORBIDDEN" });
+    });
+    await t.test("Teacher Assessment Center never leaks another teacher workspace", async () => {
+      const other = await otherTeacher.createAndAssignFromSavedPaper({
+        sourceSavedPaperId: "other-paper", classId: "class2", audience: "CLASS", ...window(), attemptLimit: 1,
+      });
+      const own = await teacher.teacherAssessmentCenter();
+      assert.equal(own.items.some(item => item.id === other.assignmentId), false);
+      const theirs = await otherTeacher.teacherAssessmentCenter();
+      assert.equal(theirs.items.some(item => item.id === other.assignmentId), true);
+      assert.ok(theirs.items.every(item => item.classId === "class2"));
     });
     await t.test("assessment lifecycle does not write ChallengeAttempt, mistakes or legacy assignments", async () => {
       assert.equal(await db.challengeAttempt.count(), 0);

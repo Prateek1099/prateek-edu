@@ -3,6 +3,11 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { requireWorkspaceSubjectScope } from "@/lib/workspace-academic-scope";
 import { AssessmentError, assertObjectiveAnswerKey, assignmentPolicy, buildAssessmentSnapshot, buildObjectiveAssessmentSnapshot, demand, idInput, objectiveResponseIsCorrect, parseResponse, serverDeadline } from "./rules";
 import { studentAssessmentDto, studentResultDto } from "./student-dto";
+import {
+  normalizeTeacherAssessmentCenterQuery,
+  type TeacherAssessmentCenterInput,
+  type TeacherAssessmentCenterItem,
+} from "./teacher-center";
 import { buildTeacherQuestionReview } from "./teacher-review";
 
 type Tx = Prisma.TransactionClient;
@@ -16,6 +21,14 @@ export type CreateAndAssignAssessmentInput = Omit<AssignAssessmentInput, "versio
 };
 const recipientInclude = { assignment:{include:{class:true, version:{include:{assessment:true}}}} } as const;
 const versionInclude = {sections:{include:{questions:true}}} as const;
+
+function databaseUtcTimestampIso(value: unknown) {
+  const timestamp = String(value);
+  const zonedTimestamp = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(timestamp) ? timestamp : `${timestamp}Z`;
+  const parsed = new Date(zonedTimestamp);
+  demand(Number.isFinite(parsed.getTime()), "LOCKED", "Assessment history contains an invalid date.");
+  return parsed.toISOString();
+}
 
 // This factory is internal/server-only. Production always supplies a session actor,
 // never an actor/workspace from action arguments. Injection enables isolated DB tests.
@@ -439,6 +452,258 @@ export function createAssessmentEngine(db:PrismaClient, authenticatedActor:()=>P
         const version=await tx.assessmentVersion.findUniqueOrThrow({where:{id:attempt.versionId},include:versionInclude});
         const responses=await tx.assessmentResponse.findMany({where:{attemptId:attempt.id}});
         return studentResultDto(version,attempt,responses);
+      });
+    },
+    async teacherAssessmentCenter(input:TeacherAssessmentCenterInput={}) {
+      const query=normalizeTeacherAssessmentCenterQuery(input);const actor=await authenticatedActor();
+      return transaction(async tx=>{
+        const owner=await teacher(tx,actor);
+        const classes=await tx.class.findMany({
+          where:{
+            workspaceId:owner.workspaceId,status:"ACTIVE",subjectId:{not:null},
+            subject:{is:{
+              status:"PUBLISHED",
+              qualification:{status:"PUBLISHED",board:{status:"PUBLISHED"}},
+              workspaceAcademicScopes:{some:{workspaceId:owner.workspaceId,status:"ACTIVE"}},
+            }},
+          },
+          select:{id:true,name:true,academicYear:true,subject:{select:{name:true}}},
+          orderBy:[{name:"asc"},{academicYear:"desc"}],
+        });
+        const classId=classes.some(item=>item.id===query.classId)?query.classId:"";
+        const searchPattern=`%${query.search.replace(/[\\%_]/g,character=>`\\${character}`)}%`;
+        const searchClause=query.search
+          ? Prisma.sql`AND av.title ILIKE ${searchPattern} ESCAPE E'\\\\'`
+          : Prisma.empty;
+        const classClause=classId?Prisma.sql`AND aa.class_id = ${classId}`:Prisma.empty;
+        const stateClause=query.status==="ALL"
+          ? Prisma.sql`TRUE`
+          : Prisma.sql`c.assessment_state = ${query.status}`;
+        const offset=(query.page-1)*query.pageSize;
+
+        type RawCenterPayload={
+          server_now:Date;
+          active_count:number;
+          scheduled_count:number;
+          completed_count:number;
+          filtered_total:number;
+          items:Prisma.JsonValue;
+        };
+        const payload=await tx.$queryRaw<RawCenterPayload[]>(Prisma.sql`
+          WITH assessment_clock AS (
+            SELECT date_trunc('milliseconds', clock_timestamp() AT TIME ZONE 'UTC') AS server_now
+          ),
+          assignment_base AS (
+            SELECT
+              aa.id,
+              aa.version_id,
+              aa.class_id,
+              aa.assigned_at,
+              aa.opens_at,
+              aa.closes_at,
+              aa.duration_minutes,
+              aa.attempt_limit,
+              aa.cancelled_at,
+              av.title,
+              av.total_marks,
+              c.name AS class_name,
+              c.status AS class_status,
+              s.name AS subject_name,
+              COALESCE(qt.question_count, 0)::int AS question_count,
+              clock.server_now
+            FROM assessment_assignments aa
+            JOIN assessment_versions av ON av.id = aa.version_id
+            JOIN assessments a ON a.id = av.assessment_id
+            JOIN classes c ON c.id = aa.class_id
+            JOIN subjects s ON s.id = a.subject_id
+            JOIN qualifications qualification ON qualification.id = s.qualification_id
+            JOIN boards board ON board.id = qualification.board_id
+            JOIN workspace_academic_scopes academic_scope
+              ON academic_scope.workspace_id = a.workspace_id
+             AND academic_scope.subject_id = a.subject_id
+             AND academic_scope.status = 'ACTIVE'
+            LEFT JOIN (
+              SELECT version_id, COUNT(*)::int AS question_count
+              FROM assessment_questions
+              GROUP BY version_id
+            ) qt ON qt.version_id = av.id
+            CROSS JOIN assessment_clock clock
+            WHERE a.workspace_id = ${owner.workspaceId}
+              AND a.created_by_id = ${owner.id}
+              AND aa.assigned_by_id = ${owner.id}
+              AND c.workspace_id = ${owner.workspaceId}
+              AND c.subject_id = a.subject_id
+              AND av.published_at IS NOT NULL
+              AND s.status = 'PUBLISHED'
+              AND qualification.status = 'PUBLISHED'
+              AND board.status = 'PUBLISHED'
+              ${searchClause}
+              ${classClause}
+          ),
+          recipient_latest AS (
+            SELECT
+              base.id AS assignment_id,
+              base.attempt_limit,
+              base.class_status,
+              recipient.id AS recipient_id,
+              recipient.revoked_at,
+              COALESCE(attempts.attempts_used, 0)::int AS attempts_used,
+              attempts.latest_status,
+              CASE
+                WHEN recipient.id IS NOT NULL
+                 AND recipient.revoked_at IS NULL
+                 AND membership.status = 'ACTIVE'
+                 AND student.role = 'STUDENT'
+                 AND base.class_status = 'ACTIVE'
+                THEN TRUE ELSE FALSE
+              END AS is_active_recipient
+            FROM assignment_base base
+            LEFT JOIN assessment_recipients recipient
+              ON recipient.assignment_id = base.id
+             AND recipient.revoked_at IS NULL
+            LEFT JOIN class_students membership
+              ON membership.class_id = base.class_id
+             AND membership.student_id = recipient.student_id
+            LEFT JOIN users student ON student.id = recipient.student_id
+            LEFT JOIN LATERAL (
+              SELECT
+                COUNT(*)::int AS attempts_used,
+                (ARRAY_AGG(attempt.status::text ORDER BY attempt.attempt_number DESC))[1] AS latest_status
+              FROM assessment_attempts attempt
+              WHERE attempt.recipient_id = recipient.id
+                AND attempt.assignment_id = base.id
+                AND attempt.version_id = base.version_id
+            ) attempts ON TRUE
+          ),
+          progress AS (
+            SELECT
+              base.id AS assignment_id,
+              COUNT(latest.recipient_id)::int AS assigned_count,
+              COUNT(latest.recipient_id) FILTER (WHERE latest.latest_status IS NULL)::int AS not_started_count,
+              COUNT(latest.recipient_id) FILTER (WHERE latest.latest_status = 'IN_PROGRESS')::int AS in_progress_count,
+              COUNT(latest.recipient_id) FILTER (
+                WHERE latest.latest_status IN ('SUBMITTED', 'NEEDS_REVIEW', 'GRADED')
+              )::int AS submitted_ready_count,
+              COUNT(latest.recipient_id) FILTER (WHERE latest.latest_status = 'RELEASED')::int AS released_count,
+              COUNT(latest.recipient_id) FILTER (WHERE latest.is_active_recipient)::int AS active_recipient_count,
+              COUNT(latest.recipient_id) FILTER (
+                WHERE latest.is_active_recipient
+                  AND (latest.latest_status = 'IN_PROGRESS' OR latest.attempts_used < latest.attempt_limit)
+              )::int AS actionable_recipient_count,
+              COUNT(latest.recipient_id) FILTER (
+                WHERE latest.is_active_recipient
+                  AND latest.attempts_used >= latest.attempt_limit
+                  AND latest.latest_status IN ('SUBMITTED', 'NEEDS_REVIEW', 'GRADED', 'RELEASED')
+              )::int AS finalized_recipient_count
+            FROM assignment_base base
+            LEFT JOIN recipient_latest latest ON latest.assignment_id = base.id
+            GROUP BY base.id
+          ),
+          classified AS (
+            SELECT
+              base.*,
+              progress.assigned_count,
+              progress.not_started_count,
+              progress.in_progress_count,
+              progress.submitted_ready_count,
+              progress.released_count,
+              CASE
+                WHEN base.cancelled_at IS NOT NULL THEN 'CANCELLED'
+                WHEN base.server_now < base.opens_at
+                  AND base.class_status = 'ACTIVE'
+                  AND progress.active_recipient_count > 0 THEN 'SCHEDULED'
+                WHEN base.server_now >= base.closes_at THEN 'COMPLETED'
+                WHEN base.server_now >= base.opens_at
+                  AND base.class_status = 'ACTIVE'
+                  AND progress.actionable_recipient_count > 0 THEN 'ACTIVE'
+                ELSE 'COMPLETED'
+              END AS assessment_state,
+              CASE
+                WHEN base.cancelled_at IS NOT NULL THEN NULL
+                WHEN base.server_now >= base.closes_at THEN 'WINDOW_CLOSED'
+                WHEN progress.active_recipient_count > 0
+                  AND progress.finalized_recipient_count = progress.active_recipient_count THEN 'ALL_FINALIZED'
+                WHEN NOT (
+                  base.server_now < base.opens_at
+                  AND base.class_status = 'ACTIVE'
+                  AND progress.active_recipient_count > 0
+                ) AND NOT (
+                  base.server_now >= base.opens_at
+                  AND base.class_status = 'ACTIVE'
+                  AND progress.actionable_recipient_count > 0
+                ) THEN 'NO_ACTIVE_RECIPIENTS'
+                ELSE NULL
+              END AS completion_reason
+            FROM assignment_base base
+            JOIN progress ON progress.assignment_id = base.id
+          ),
+          summary AS (
+            SELECT
+              COUNT(*) FILTER (WHERE assessment_state = 'ACTIVE')::int AS active_count,
+              COUNT(*) FILTER (WHERE assessment_state = 'SCHEDULED')::int AS scheduled_count,
+              COUNT(*) FILTER (WHERE assessment_state = 'COMPLETED')::int AS completed_count
+            FROM classified
+          ),
+          filtered AS (
+            SELECT c.* FROM classified c WHERE ${stateClause}
+          ),
+          page AS (
+            SELECT
+              *,
+              ROW_NUMBER() OVER (
+                ORDER BY
+                  CASE assessment_state WHEN 'ACTIVE' THEN 0 WHEN 'SCHEDULED' THEN 1 WHEN 'COMPLETED' THEN 2 ELSE 3 END,
+                  CASE WHEN assessment_state = 'ACTIVE' THEN closes_at END ASC NULLS LAST,
+                  CASE WHEN assessment_state = 'SCHEDULED' THEN opens_at END ASC NULLS LAST,
+                  CASE WHEN assessment_state IN ('COMPLETED', 'CANCELLED')
+                    THEN COALESCE(cancelled_at, closes_at, assigned_at) END DESC NULLS LAST,
+                  assigned_at DESC,
+                  id ASC
+              ) AS page_order
+            FROM filtered
+            ORDER BY
+              CASE assessment_state WHEN 'ACTIVE' THEN 0 WHEN 'SCHEDULED' THEN 1 WHEN 'COMPLETED' THEN 2 ELSE 3 END,
+              CASE WHEN assessment_state = 'ACTIVE' THEN closes_at END ASC NULLS LAST,
+              CASE WHEN assessment_state = 'SCHEDULED' THEN opens_at END ASC NULLS LAST,
+              CASE WHEN assessment_state IN ('COMPLETED', 'CANCELLED')
+                THEN COALESCE(cancelled_at, closes_at, assigned_at) END DESC NULLS LAST,
+              assigned_at DESC,
+              id ASC
+            LIMIT ${query.pageSize}
+            OFFSET ${offset}
+          )
+          SELECT
+            clock.server_now,
+            summary.active_count,
+            summary.scheduled_count,
+            summary.completed_count,
+            (SELECT COUNT(*)::int FROM filtered) AS filtered_total,
+            COALESCE(
+              (SELECT JSONB_AGG(TO_JSONB(page_row) ORDER BY page_row.page_order) FROM page page_row),
+              '[]'::jsonb
+            ) AS items
+          FROM assessment_clock clock
+          CROSS JOIN summary
+        `);
+        const result=payload[0];
+        demand(result,"LOCKED","Assessment history is unavailable.");
+        const rawItems=Array.isArray(result.items)?result.items as Array<Record<string,unknown>>:[];
+        const items:TeacherAssessmentCenterItem[]=rawItems.map(item=>({
+          id:String(item.id),title:String(item.title),classId:String(item.class_id),className:String(item.class_name),
+          subjectName:String(item.subject_name),assignedAt:databaseUtcTimestampIso(item.assigned_at),
+          opensAt:databaseUtcTimestampIso(item.opens_at),closesAt:databaseUtcTimestampIso(item.closes_at),
+          durationMinutes:Number(item.duration_minutes),totalMarks:Number(item.total_marks),
+          questionCount:Number(item.question_count),status:String(item.assessment_state) as TeacherAssessmentCenterItem["status"],
+          completionReason:(item.completion_reason?String(item.completion_reason):null) as TeacherAssessmentCenterItem["completionReason"],
+          progress:{assigned:Number(item.assigned_count),notStarted:Number(item.not_started_count),
+            inProgress:Number(item.in_progress_count),submittedReady:Number(item.submitted_ready_count),
+            released:Number(item.released_count)},
+        }));
+        const total=Number(result.filtered_total);
+        return {serverNow:new Date(result.server_now).toISOString(),query:{...query,classId},
+          classes:classes.map(item=>({id:item.id,name:item.name,academicYear:item.academicYear,subjectName:item.subject?.name??"Subject not set"})),
+          items,counts:{active:Number(result.active_count),scheduled:Number(result.scheduled_count),completed:Number(result.completed_count)},
+          total,totalPages:Math.max(1,Math.ceil(total/query.pageSize))};
       });
     },
     async teacherResults(assignmentId:string) {

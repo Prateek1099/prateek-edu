@@ -13,6 +13,7 @@ import {
   Database,
   FileStack,
   Zap,
+  ClipboardCheck,
   Menu,
   X,
 } from "lucide-react";
@@ -32,6 +33,12 @@ const navSections: NavSection[] = [
     items: [
       { href: "/workspace/classes", label: "Classes", icon: Users, match: "prefix" },
       { href: "/workspace/students", label: "All students", icon: UserCircle, match: "prefix" },
+    ],
+  },
+  {
+    label: "Assess",
+    items: [
+      { href: "/workspace/assessments", label: "Assessments", icon: ClipboardCheck, match: "prefix" },
     ],
   },
   {
