@@ -41,6 +41,7 @@ export function objectiveTypeLabel(type: BankQuestionType) {
     MCQ: "MCQ",
     TRUE_FALSE: "True/False",
     FILL_BLANK: "Fill in the Blank",
+    MATCH_THE_FOLLOWING: "Match the Following",
     ASSERTION_REASON: "Assertion & Reasoning",
     VERY_SHORT_ANSWER: "Very Short Answer",
     SHORT_ANSWER: "Short Answer",

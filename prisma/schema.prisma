@@ -29,6 +29,7 @@ enum BankQuestionType {
   MCQ
   TRUE_FALSE
   FILL_BLANK
+  MATCH_THE_FOLLOWING
   ASSERTION_REASON
   VERY_SHORT_ANSWER
   SHORT_ANSWER
@@ -714,6 +715,8 @@ model SavedGeneratedPaperQuestion {
   optionD                String?          @map("option_d")
   correctAnswer          String?          @map("correct_answer")
   modelAnswer            String?          @map("model_answer") @db.Text
+  structuredContent      Json?            @map("structured_content")
+  gradingData            Json?            @map("grading_data")
   explanation            String?          @db.Text
   imageUrl               String?          @map("image_url") @db.Text
   imageAlt               String?          @map("image_alt")
@@ -1087,6 +1090,8 @@ model BankQuestion {
   optionD       String?          @map("option_d")
   correctAnswer String?          @map("correct_answer")
   modelAnswer   String?          @map("model_answer") @db.Text
+  structuredContent Json?        @map("structured_content")
+  gradingData       Json?        @map("grading_data")
   explanation   String?          @db.Text
   source        String?          @db.Text
   imageUrl      String?          @map("image_url") @db.Text
@@ -1329,6 +1334,8 @@ model AssessmentQuestion {
   difficulty             String
   correctAnswer          String?              @map("correct_answer") @db.Text
   modelAnswer            String?              @map("model_answer") @db.Text
+  structuredContent      Json?                 @map("structured_content")
+  gradingData            Json?                 @map("grading_data")
   explanation            String?              @db.Text
   version                AssessmentVersion    @relation(fields: [versionId], references: [id], onDelete: Restrict)
   section                AssessmentSection    @relation(fields: [sectionId], references: [id], onDelete: Restrict)

@@ -49,9 +49,10 @@ test("Phase A routes remain focused, accessible and separate from Quick Practice
     assert.ok(assign.includes("sm:grid-cols-2"));
     assert.ok(runner.includes("lg:grid-cols-[220px_minmax(0,1fr)]"));
   });
-  await t.test("migration baseline remains the deployed 22-migration foundation", () => {
-    const migrations = fs.readdirSync("prisma/migrations");
-    assert.equal(migrations.length, 22);
-    assert.equal(migrations.at(-1), "20260908120000_enable_objective_assessment_lifecycle");
+  await t.test("the original 22-migration Phase A foundation remains in order", () => {
+    const migrations = fs.readdirSync("prisma/migrations").sort();
+    assert.equal(migrations.length, 23);
+    assert.equal(migrations[21], "20260908120000_enable_objective_assessment_lifecycle");
+    assert.equal(migrations[22], "20260913120000_add_fill_blank_and_match_question_structures");
   });
 });

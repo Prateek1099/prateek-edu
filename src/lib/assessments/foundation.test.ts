@@ -118,7 +118,7 @@ test("assessment A0 isolated migration and service contract", async t => {
       const q=await db.assessmentQuestion.findFirstOrThrow({where:{versionId:created.versionId}});
       await assert.rejects(db.assessmentQuestion.update({where:{id:q.id},data:{questionText:"changed"}}));
       await assert.rejects(db.assessmentQuestion.delete({where:{id:q.id}}));
-      await assert.rejects(db.assessmentQuestion.create({data:{...q,options:q.options as Prisma.InputJsonValue,id:"appended",questionNumber:99}}));
+      await assert.rejects(db.assessmentQuestion.create({data:{...q,options:q.options as Prisma.InputJsonValue,structuredContent:Prisma.DbNull,gradingData:Prisma.DbNull,id:"appended",questionNumber:99}}));
     });
     await t.test("published sections cannot be changed",async()=>{
       const s=await db.assessmentSection.findFirstOrThrow({where:{versionId:created.versionId}});

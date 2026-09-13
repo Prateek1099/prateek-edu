@@ -93,9 +93,10 @@ test("Teacher Assessment Center remains focused and safely connected", async t =
     assert.match(page, /min-w-0/);
   });
 
-  await t.test("does not alter the 22-migration assessment foundation", () => {
-    const migrations = fs.readdirSync("prisma/migrations");
-    assert.equal(migrations.length, 22);
-    assert.equal(migrations.at(-1), "20260908120000_enable_objective_assessment_lifecycle");
+  await t.test("does not alter the original 22-migration assessment foundation", () => {
+    const migrations = fs.readdirSync("prisma/migrations").sort();
+    assert.equal(migrations.length, 23);
+    assert.equal(migrations[21], "20260908120000_enable_objective_assessment_lifecycle");
+    assert.equal(migrations[22], "20260913120000_add_fill_blank_and_match_question_structures");
   });
 });

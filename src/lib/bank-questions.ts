@@ -10,7 +10,10 @@ export const BANK_QUESTION_TYPES = [
   "LONG_ANSWER",
 ] as const;
 
-export type BankQuestionTypeValue = (typeof BANK_QUESTION_TYPES)[number];
+// The database recognizes Match during B1-A, but selectable authoring and paper
+// types stay on BANK_QUESTION_TYPES until the B1-B UI/print pipeline is ready.
+export const ALL_BANK_QUESTION_TYPES = [...BANK_QUESTION_TYPES, "MATCH_THE_FOLLOWING"] as const;
+export type BankQuestionTypeValue = (typeof ALL_BANK_QUESTION_TYPES)[number];
 
 export const BANK_QUESTION_DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export type BankQuestionDifficulty = (typeof BANK_QUESTION_DIFFICULTIES)[number];
@@ -19,6 +22,7 @@ export const BANK_QUESTION_TYPE_LABELS: Record<BankQuestionTypeValue, string> = 
   MCQ: "MCQ",
   TRUE_FALSE: "True / False",
   FILL_BLANK: "Fill in the Blank",
+  MATCH_THE_FOLLOWING: "Match the Following",
   ASSERTION_REASON: "Assertion & Reasoning",
   VERY_SHORT_ANSWER: "Very Short Answer",
   SHORT_ANSWER: "Short Answer",
