@@ -1,8 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { assertSafeApplicationDatabaseAccess } from "@/lib/database-safety";
 
-const connectionString = `${process.env.DATABASE_URL}`;
+assertSafeApplicationDatabaseAccess();
+
+const connectionString = process.env.DATABASE_URL!;
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
@@ -13,9 +16,13 @@ if (globalForPrisma.prisma) {
 } else {
   const pool = new Pool({ connectionString });
   const adapter = new PrismaPg(pool);
+  // The extension API erases the concrete PrismaClient type at this boundary.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma = new PrismaClient({ adapter, log: ["info", "warn", "error"] }) as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma = (prisma as any).$extends({
     query: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       async $allOperations({ operation, model, args, query }: any) {
         const start = performance.now();
         const result = await query(args);
