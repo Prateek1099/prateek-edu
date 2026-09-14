@@ -71,6 +71,7 @@ test("question query enforces global mixed types and current-workspace MCQ only"
     "MCQ",
     "TRUE_FALSE",
     "FILL_BLANK",
+    "MATCH_THE_FOLLOWING",
     "ASSERTION_REASON",
     "VERY_SHORT_ANSWER",
     "SHORT_ANSWER",

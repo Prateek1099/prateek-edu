@@ -88,6 +88,8 @@ type SnapshotQuestion = {
   optionD: string | null;
   correctAnswer: string | null;
   modelAnswer: string | null;
+  structuredContent?: unknown;
+  gradingData?: unknown;
   explanation: string | null;
   imageUrl: string | null;
   imageAlt: string | null;
@@ -175,6 +177,8 @@ export function savedPaperSnapshotToValidatedPaper(snapshot: SnapshotPaper): Val
           optionD: question.optionD,
           correctAnswer: question.correctAnswer,
           modelAnswer: question.modelAnswer,
+          structuredContent: question.structuredContent,
+          gradingData: question.gradingData,
           explanation: question.explanation,
           source: question.source,
           imageUrl: question.imageUrl,

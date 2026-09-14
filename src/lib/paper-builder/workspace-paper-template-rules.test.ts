@@ -60,11 +60,12 @@ test("template validation preserves rules but strips selected/generated question
   assert.equal("preview" in validated, false);
 });
 
-test("all seven teacher global question types are valid template rules", () => {
+test("all eight teacher global question types are valid template rules", () => {
   const questionTypes = [
     "MCQ",
     "TRUE_FALSE",
     "FILL_BLANK",
+    "MATCH_THE_FOLLOWING",
     "ASSERTION_REASON",
     "VERY_SHORT_ANSWER",
     "SHORT_ANSWER",
@@ -77,7 +78,7 @@ test("all seven teacher global question types are valid template rules", () => {
     marksPerQuestion: 1,
     difficulty: "any" as const,
   }));
-  const validated = validateWorkspacePaperTemplateInput(input({ rows, targetMarks: 7 }));
+  const validated = validateWorkspacePaperTemplateInput(input({ rows, targetMarks: 8 }));
   assert.deepEqual(validated.rows.map((row) => row.questionType), questionTypes);
 });
 

@@ -66,6 +66,8 @@ function mapQuestion(question: {
   optionD: string | null;
   correctAnswer: string | null;
   modelAnswer: string | null;
+  structuredContent: unknown;
+  gradingData: unknown;
   explanation: string | null;
   source: string | null;
   imageUrl: string | null;
@@ -89,6 +91,8 @@ function mapQuestion(question: {
     optionD: question.optionD,
     correctAnswer: question.correctAnswer,
     modelAnswer: question.modelAnswer,
+    structuredContent: question.structuredContent,
+    gradingData: question.gradingData,
     explanation: question.explanation,
     source: question.source,
     imageUrl: question.imageUrl,
@@ -170,6 +174,8 @@ async function loadTeacherBlueprintScope(
         optionD: true,
         correctAnswer: true,
         modelAnswer: true,
+        structuredContent: true,
+        gradingData: true,
         explanation: true,
         source: true,
         imageUrl: true,

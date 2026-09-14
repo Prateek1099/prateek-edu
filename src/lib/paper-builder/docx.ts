@@ -6,10 +6,15 @@ import {
   Packer,
   Paragraph,
   SectionType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  WidthType,
 } from "docx";
 
 import { BANK_QUESTION_TYPE_LABELS } from "@/lib/bank-questions";
+import { fillAcceptedAnswers, matchAnswerRows, visibleMatchRows } from "@/lib/paper-builder/structured-output";
 import type {
   PaperBuilderQuestion,
   ValidatedPaper,
@@ -119,7 +124,13 @@ function answerFor(question: PaperBuilderQuestion) {
     const option = optionRows(question).find(([label]) => label === question.correctAnswer)?.[1];
     return option ? `${question.correctAnswer}. ${option}` : question.correctAnswer;
   }
-  if (question.questionType === "TRUE_FALSE" || question.questionType === "FILL_BLANK") {
+  if (question.questionType === "FILL_BLANK") {
+    return `Accepted answer(s): ${fillAcceptedAnswers(question).join("; ")}`;
+  }
+  if (question.questionType === "MATCH_THE_FOLLOWING") {
+    return matchAnswerRows(question).map((row) => `${row.leftLabel} → ${row.rightLabel} (${row.rightText})`).join("; ");
+  }
+  if (question.questionType === "TRUE_FALSE") {
     return question.correctAnswer;
   }
   return question.modelAnswer;
@@ -176,7 +187,7 @@ function questionImageParagraphs(
 }
 
 function questionPaperChildren(paper: ValidatedPaper, images: PreparedQuestionImages) {
-  const children = [...paperHeader(paper, false)];
+  const children: Array<Paragraph | Table> = [...paperHeader(paper, false)];
   children.push(new Paragraph({
     spacing: { after: 80 },
     children: [text("Instructions", { bold: true })],
@@ -220,6 +231,22 @@ function questionPaperChildren(paper: ValidatedPaper, images: PreparedQuestionIm
             children: [text(`${label}. `, { bold: true }), text(option ?? "")],
           }));
         }
+      }
+      if (question.questionType === "MATCH_THE_FOLLOWING") {
+        const rows = visibleMatchRows(question.structuredContent);
+        children.push(new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: [
+              new TableCell({ children: [new Paragraph({ children: [text("Column A", { bold: true })] })] }),
+              new TableCell({ children: [new Paragraph({ children: [text("Column B", { bold: true })] })] }),
+            ] }),
+            ...rows.left.map((left, index) => new TableRow({ children: [
+              new TableCell({ children: [new Paragraph({ children: [text(`${left.label}. ${left.text}`)] })] }),
+              new TableCell({ children: [new Paragraph({ children: [text(`${rows.right[index].label}. ${rows.right[index].text}`)] })] }),
+            ] })),
+          ],
+        }));
       }
       children.push(...answerSpace(question));
     }

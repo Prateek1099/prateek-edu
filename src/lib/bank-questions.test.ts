@@ -8,6 +8,7 @@ import { validateBankQuestionImageFile } from "./question-bank-image";
 test("normalizes supported question type aliases without guessing unknown types", () => {
   assert.equal(normalizeBankQuestionType("TRUE/FALSE"), "TRUE_FALSE");
   assert.equal(normalizeBankQuestionType("VSA"), "VERY_SHORT_ANSWER");
+  assert.equal(normalizeBankQuestionType("Match the Following"), "MATCH_THE_FOLLOWING");
   assert.equal(normalizeBankQuestionType("case based"), null);
 });
 
@@ -41,13 +42,50 @@ test("validates every Phase A question shape without hard-coding marks by type",
   const cases = [
     { ...common, questionType: "MCQ" as const, optionA: "A", optionB: "B", optionC: "C", optionD: "D", correctAnswer: "B" },
     { ...common, questionType: "TRUE_FALSE" as const, correctAnswer: "false" },
-    { ...common, questionType: "FILL_BLANK" as const, correctAnswer: "canonical value" },
+    { ...common, questionType: "FILL_BLANK" as const, questionText: "Question ______", correctAnswer: "canonical value" },
     { ...common, questionType: "ASSERTION_REASON" as const, optionA: "A", optionB: "B", optionC: "C", optionD: "D", correctAnswer: "D" },
     { ...common, questionType: "VERY_SHORT_ANSWER" as const, modelAnswer: "One marking point" },
     { ...common, questionType: "SHORT_ANSWER" as const, modelAnswer: "Several marking points" },
     { ...common, questionType: "LONG_ANSWER" as const, modelAnswer: "Detailed marking rubric" },
   ];
   for (const input of cases) assert.equal(validateBankQuestionInput(input).success, true, input.questionType);
+});
+
+test("validates Fill aliases and keeps the first answer canonical", () => {
+  const result = validateBankQuestionInput({
+    subjectId: "subject-1", topicId: "topic-1", questionType: "FILL_BLANK",
+    questionText: "The brain of a computer is ______.", correctAnswer: "CPU",
+    gradingData: { version: 1, type: "FILL_BLANK", acceptedAnswers: ["CPU", "Central Processing Unit"], normalization: { unicode: "NFKC", trim: true, caseInsensitive: true, collapseWhitespace: true, punctuation: "EXACT" } },
+    difficulty: "easy", marks: 1,
+  });
+  assert.equal(result.success, true);
+  if (result.success) assert.deepEqual((result.data.gradingData as { acceptedAnswers: string[] }).acceptedAnswers, ["CPU", "Central Processing Unit"]);
+});
+
+test("rejects duplicate normalized Fill aliases and malformed blanks", () => {
+  const base = { subjectId: "subject-1", topicId: "topic-1", questionType: "FILL_BLANK" as const, correctAnswer: "CPU", difficulty: "easy", marks: 1 };
+  const duplicate = validateBankQuestionInput({ ...base, questionText: "Answer ______.", gradingData: { version: 1, type: "FILL_BLANK", acceptedAnswers: ["CPU", " cpu "], normalization: { unicode: "NFKC", trim: true, caseInsensitive: true, collapseWhitespace: true, punctuation: "EXACT" } } });
+  const malformed = validateBankQuestionInput({ ...base, questionText: "No blank here." });
+  assert.equal(duplicate.success, false);
+  assert.equal(malformed.success, false);
+});
+
+test("creates a valid Match question and enforces pair-count marks", () => {
+  const structuredContent = { version: 1, type: "MATCH_THE_FOLLOWING", leftItems: [{ id: "Lhtml", text: "HTML" }, { id: "Lcss", text: "CSS" }], rightItems: [{ id: "Rhtml", text: "Structure" }, { id: "Rcss", text: "Styling" }] };
+  const gradingData = { version: 1, type: "MATCH_THE_FOLLOWING", correctPairs: [{ leftId: "Lhtml", rightId: "Rhtml" }, { leftId: "Lcss", rightId: "Rcss" }], scoring: "PER_PAIR_INTEGER" };
+  const common = { subjectId: "subject-1", topicId: "topic-1", questionType: "MATCH_THE_FOLLOWING" as const, questionText: "Match the following.", structuredContent, gradingData, difficulty: "medium" };
+  assert.equal(validateBankQuestionInput({ ...common, marks: 2 }).success, true);
+  assert.equal(validateBankQuestionInput({ ...common, marks: 3 }).success, false);
+});
+
+test("keeps canonical Fill CSV compatible and rejects Match CSV explicitly", () => {
+  const topics = [{ id: "topic-1", subjectId: "subject-1", name: "Chapter" }];
+  const header = "TopicID,QuestionType,Question,Answer,Difficulty,Marks";
+  const fill = parseBankQuestionCsv(`${header}\ntopic-1,FILL_BLANK,The brain is ______,CPU,easy,1`, "subject-1", topics);
+  const match = parseBankQuestionCsv(`${header}\ntopic-1,MATCH_THE_FOLLOWING,Match items,,easy,2`, "subject-1", topics);
+  assert.equal(fill.canImport, true);
+  assert.equal(match.canImport, false);
+  assert.match(match.rows[0].errors.join(" "), /CSV import is deferred/);
 });
 
 test("rejects missing type-specific content and invalid marks", () => {

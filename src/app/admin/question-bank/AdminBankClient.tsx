@@ -34,6 +34,12 @@ import {
 import { parseQuestions, type ParseResult } from "@/lib/parseQuestions";
 import { cn } from "@/lib/utils";
 import { MAX_BANK_QUESTION_IMAGE_BYTES } from "@/lib/question-bank-image";
+import {
+  B1_FILL_NORMALIZATION,
+  parseFillGradingData,
+  parseMatchContent,
+  parseMatchGradingData,
+} from "@/lib/question-structures";
 
 type SubjectOption = {
   id: string;
@@ -68,6 +74,8 @@ type BankQuestion = {
   marks: number;
   topicTag: string | null;
   workspaceId: string | null;
+  structuredContent: unknown;
+  gradingData: unknown;
   subject: { name: string; qualification: { board: { name: string } } };
   topic: { topicName: string } | null;
 };
@@ -98,6 +106,35 @@ const emptyForm: BankQuestionInput = {
   difficulty: "medium",
   marks: 1,
 };
+
+type MatchPairDraft = { leftId: string; rightId: string; leftText: string; rightText: string };
+
+function newMatchPair(): MatchPairDraft {
+  const token = crypto.randomUUID().replaceAll("-", "").slice(0, 20);
+  return { leftId: `L${token}`, rightId: `R${token}`, leftText: "", rightText: "" };
+}
+
+function existingMatchPairs(question: BankQuestion | null): MatchPairDraft[] {
+  if (question?.questionType !== "MATCH_THE_FOLLOWING") return [newMatchPair(), newMatchPair()];
+  try {
+    const content = parseMatchContent(question.structuredContent, "bank");
+    const grading = parseMatchGradingData(question.gradingData, content, question.marks);
+    const rightById = new Map(content.rightItems.map((item) => [item.id, item.text]));
+    const pairByLeft = new Map(grading.correctPairs.map((pair) => [pair.leftId, pair.rightId]));
+    return content.leftItems.map((left) => ({
+      leftId: left.id,
+      leftText: left.text,
+      rightId: pairByLeft.get(left.id)!,
+      rightText: rightById.get(pairByLeft.get(left.id)!)!,
+    }));
+  } catch { return [newMatchPair(), newMatchPair()]; }
+}
+
+function existingFillAliases(question: BankQuestion | null): string[] {
+  if (question?.questionType !== "FILL_BLANK") return [];
+  try { return parseFillGradingData(question.gradingData, question.correctAnswer, true).acceptedAnswers.slice(1); }
+  catch { return []; }
+}
 
 export default function AdminBankClient({
   initialQuestions,
@@ -215,6 +252,9 @@ export default function AdminBankClient({
 
 function QuestionPreview({ question }: { question: BankQuestion }) {
   const optionType = question.questionType === "MCQ" || question.questionType === "ASSERTION_REASON";
+  const fillAnswers = question.questionType === "FILL_BLANK"
+    ? parseFillGradingData(question.gradingData, question.correctAnswer, true).acceptedAnswers : null;
+  const matchPairs = question.questionType === "MATCH_THE_FOLLOWING" ? existingMatchPairs(question) : null;
   return (
     <div className="mt-4 space-y-3 rounded-xl bg-muted/35 p-4 text-sm">
       {question.imageUrl && (
@@ -229,6 +269,8 @@ function QuestionPreview({ question }: { question: BankQuestion }) {
       )}
       {optionType && <div className="grid gap-2 sm:grid-cols-2">{[["A", question.optionA], ["B", question.optionB], ["C", question.optionC], ["D", question.optionD]].map(([letter, value]) => <div key={letter} className={cn("rounded-lg bg-background px-3 py-2", question.correctAnswer === letter && "ring-1 ring-emerald-500 text-emerald-700 dark:text-emerald-300")}><strong>{letter}.</strong> {value}</div>)}</div>}
       {question.correctAnswer && <p><strong>Canonical answer:</strong> {question.correctAnswer}</p>}
+      {fillAnswers && fillAnswers.length > 1 && <p><strong>Also accepted:</strong> {fillAnswers.slice(1).join("; ")}</p>}
+      {matchPairs && <div><p className="font-medium">{matchPairs.length} matching pairs</p><ol className="mt-2 space-y-1">{matchPairs.map((pair, index) => <li key={pair.leftId}>{String.fromCharCode(65 + index)}. {pair.leftText} → {pair.rightText}</li>)}</ol></div>}
       {question.modelAnswer && <p className="whitespace-pre-wrap leading-6"><strong>Model answer:</strong> {question.modelAnswer}</p>}
       {question.explanation && <p className="whitespace-pre-wrap leading-6 text-muted-foreground"><strong className="text-foreground">Explanation:</strong> {question.explanation}</p>}
     </div>
@@ -246,6 +288,8 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
     source: question.source, imageUrl: question.imageUrl, imageAlt: question.imageAlt, imageCaption: question.imageCaption,
     topicTag: question.topicTag, difficulty: question.difficulty, marks: question.marks,
   } : emptyForm);
+  const [fillAliases, setFillAliases] = useState<string[]>(() => existingFillAliases(question));
+  const [matchPairs, setMatchPairs] = useState<MatchPairDraft[]>(() => existingMatchPairs(question));
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -286,7 +330,30 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
   const handleSave = async () => {
     setSaving(true);
     try {
-      const result = question ? await updateAdminBankQuestion(question.id, form) : await createAdminBankQuestion(form);
+      const payload: BankQuestionInput = { ...form };
+      if (form.questionType === "FILL_BLANK") {
+        payload.gradingData = {
+          version: 1,
+          type: "FILL_BLANK",
+          acceptedAnswers: [form.correctAnswer ?? "", ...fillAliases],
+          normalization: B1_FILL_NORMALIZATION,
+        };
+      }
+      if (form.questionType === "MATCH_THE_FOLLOWING") {
+        payload.structuredContent = {
+          version: 1,
+          type: "MATCH_THE_FOLLOWING",
+          leftItems: matchPairs.map((pair) => ({ id: pair.leftId, text: pair.leftText })),
+          rightItems: matchPairs.map((pair) => ({ id: pair.rightId, text: pair.rightText })),
+        };
+        payload.gradingData = {
+          version: 1,
+          type: "MATCH_THE_FOLLOWING",
+          correctPairs: matchPairs.map((pair) => ({ leftId: pair.leftId, rightId: pair.rightId })),
+          scoring: "PER_PAIR_INTEGER",
+        };
+      }
+      const result = question ? await updateAdminBankQuestion(question.id, payload) : await createAdminBankQuestion(payload);
       if (!result.success) return toast.error(result.error);
       toast.success(question ? "Question updated." : "Question added.");
       onClose();
@@ -298,18 +365,18 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent className="max-h-[94vh] overflow-y-auto sm:max-w-4xl">
-        <DialogHeader><DialogTitle>{question ? "Edit question" : "Add question"}</DialogTitle><DialogDescription>Marks are flexible and are not hard-coded by question type. Choose the value appropriate for your assessment.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>{question ? "Edit question" : "Add question"}</DialogTitle><DialogDescription>Choose marks appropriate to the question. Matching marks must be divisible by the number of pairs.</DialogDescription></DialogHeader>
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Board"><Filter value={boardId} label="Board" options={boards} onChange={(value) => { setBoardId(value); setQualificationId(""); set("subjectId", ""); set("topicId", null); }} /></Field>
           <Field label="Qualification / class"><Filter value={qualificationId} label="Qualification" disabled={!boardId} options={qualifications} onChange={(value) => { setQualificationId(value); set("subjectId", ""); set("topicId", null); }} /></Field>
           <Field label="Subject"><Filter value={form.subjectId} label="Subject" disabled={!qualificationId} options={availableSubjects.map((subject) => ({ value: subject.id, label: subject.name }))} onChange={(value) => { set("subjectId", value); set("topicId", null); }} /></Field>
           <Field label="Topic"><Filter value={form.topicId ?? ""} label="Topic" disabled={!form.subjectId} options={availableTopics.map((topic) => ({ value: topic.id, label: topic.label }))} onChange={(value) => set("topicId", value || null)} /></Field>
-          <Field label="Question type"><Filter value={form.questionType} label="Question type" options={BANK_QUESTION_TYPES.map((type) => ({ value: type, label: BANK_QUESTION_TYPE_LABELS[type] }))} onChange={(value) => set("questionType", value as BankQuestionTypeValue)} /></Field>
+          <Field label="Question type"><Filter value={form.questionType} label="Question type" options={BANK_QUESTION_TYPES.map((type) => ({ value: type, label: BANK_QUESTION_TYPE_LABELS[type] }))} onChange={(value) => { set("questionType", value as BankQuestionTypeValue); if (value === "MATCH_THE_FOLLOWING" && form.marks === 1) set("marks", matchPairs.length); }} /></Field>
           <Field label="Difficulty"><Filter value={form.difficulty} label="Difficulty" options={BANK_QUESTION_DIFFICULTIES.map((value) => ({ value, label: value }))} onChange={(value) => set("difficulty", value)} /></Field>
           <Field label="Marks"><Input type="number" min={1} max={1000} value={form.marks} onChange={(event) => set("marks", Number(event.target.value))} /></Field>
           <Field label="Source"><Input value={form.source ?? ""} maxLength={2000} onChange={(event) => set("source", event.target.value)} placeholder="Textbook, exam, ERP, teacher…" /></Field>
           <Field label="Topic tag"><Input value={form.topicTag ?? ""} maxLength={500} onChange={(event) => set("topicTag", event.target.value)} placeholder="Optional granular tag" /></Field>
-          <Field label="Question" className="sm:col-span-2"><Textarea rows={5} value={form.questionText} onChange={(event) => set("questionText", event.target.value)} placeholder={form.questionType === "ASSERTION_REASON" ? "Enter the assertion and reason statements…" : "Enter the question…"} /></Field>
+          <Field label="Question" className="sm:col-span-2"><Textarea rows={5} value={form.questionText} onChange={(event) => set("questionText", event.target.value)} placeholder={form.questionType === "ASSERTION_REASON" ? "Enter the assertion and reason statements…" : form.questionType === "FILL_BLANK" ? "Use exactly one blank, such as ______." : form.questionType === "MATCH_THE_FOLLOWING" ? "Match the following." : "Enter the question…"} /></Field>
           <div className="space-y-4 rounded-2xl border bg-muted/20 p-4 sm:col-span-2">
             <div>
               <p className="font-medium">Supporting image <span className="font-normal text-muted-foreground">(optional)</span></p>
@@ -349,7 +416,8 @@ function QuestionFormDialog({ open, question, subjects, topics, onClose }: { ope
           {optionType && (["optionA", "optionB", "optionC", "optionD"] as const).map((key) => <Field key={key} label={`Option ${key.slice(-1)}`}><Textarea rows={2} value={form[key] ?? ""} onChange={(event) => set(key, event.target.value)} /></Field>)}
           {optionType && <Field label="Correct option"><Filter value={form.correctAnswer ?? "A"} label="Correct option" options={["A", "B", "C", "D"].map((value) => ({ value, label: value }))} onChange={(value) => set("correctAnswer", value)} /></Field>}
           {form.questionType === "TRUE_FALSE" && <Field label="Answer"><Filter value={form.correctAnswer ?? "TRUE"} label="Answer" options={[{ value: "TRUE", label: "True" }, { value: "FALSE", label: "False" }]} onChange={(value) => set("correctAnswer", value)} /></Field>}
-          {form.questionType === "FILL_BLANK" && <Field label="Canonical answer"><Input value={form.correctAnswer ?? ""} onChange={(event) => set("correctAnswer", event.target.value)} /></Field>}
+          {form.questionType === "FILL_BLANK" && <div className="space-y-4 sm:col-span-2"><Field label="Canonical answer (first accepted answer)"><Input aria-label="Canonical answer" value={form.correctAnswer ?? ""} onChange={(event) => set("correctAnswer", event.target.value)} /></Field><div className="space-y-2"><Label>Additional accepted answers</Label>{fillAliases.map((alias, index) => <div key={index} className="flex gap-2"><Input aria-label={`Additional accepted answer ${index + 1}`} value={alias} onChange={(event) => setFillAliases((current) => current.map((value, itemIndex) => itemIndex === index ? event.target.value : value))} /><Button type="button" variant="outline" aria-label={`Remove accepted answer ${index + 1}`} onClick={() => setFillAliases((current) => current.filter((_, itemIndex) => itemIndex !== index))}><X className="size-4" /></Button></div>)}<Button type="button" variant="outline" disabled={fillAliases.length >= 19} onClick={() => setFillAliases((current) => [...current, ""])}>+ Add accepted answer</Button><p className="text-xs text-muted-foreground">The canonical answer is stored as the first accepted answer. Up to 20 distinct answers are supported.</p></div></div>}
+          {form.questionType === "MATCH_THE_FOLLOWING" && <div className="space-y-4 sm:col-span-2"><div><Label>Correct matching pairs</Label><p className="mt-1 text-xs text-muted-foreground">Enter each left item beside its correct match. Students see the right side in a separate display order.</p></div>{matchPairs.map((pair, index) => <div key={pair.leftId} className="grid gap-3 rounded-xl border p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end"><Field label={`Left item ${index + 1}`}><Input aria-label={`Left item ${index + 1}`} value={pair.leftText} maxLength={1000} onChange={(event) => setMatchPairs((current) => current.map((item) => item.leftId === pair.leftId ? { ...item, leftText: event.target.value } : item))} /></Field><Field label={`Correct match ${index + 1}`}><Input aria-label={`Correct match ${index + 1}`} value={pair.rightText} maxLength={1000} onChange={(event) => setMatchPairs((current) => current.map((item) => item.leftId === pair.leftId ? { ...item, rightText: event.target.value } : item))} /></Field><Button type="button" variant="outline" aria-label={`Remove pair ${index + 1}`} disabled={matchPairs.length <= 2} onClick={() => setMatchPairs((current) => current.filter((item) => item.leftId !== pair.leftId))}><Trash2 className="size-4" /><span className="sm:sr-only">Remove pair</span></Button></div>)}<Button type="button" variant="outline" disabled={matchPairs.length >= 12} onClick={() => { setMatchPairs((current) => [...current, newMatchPair()]); if (form.marks === matchPairs.length) set("marks", matchPairs.length + 1); }}>+ Add pair</Button><p className="text-xs text-muted-foreground">{matchPairs.length} pairs · marks must be divisible by {matchPairs.length}. Each pair earns an integer number of marks.</p></div>}
           {writtenType && <Field label="Model answer / marking guidance" className="sm:col-span-2"><Textarea rows={7} value={form.modelAnswer ?? ""} onChange={(event) => set("modelAnswer", event.target.value)} placeholder={form.questionType === "LONG_ANSWER" ? "Enter a model answer or marking rubric…" : "Enter the expected answer or marking points…"} /></Field>}
           <Field label="Explanation" className="sm:col-span-2"><Textarea rows={4} value={form.explanation ?? ""} onChange={(event) => set("explanation", event.target.value)} placeholder="Optional teaching explanation or reasoning" /></Field>
         </div>

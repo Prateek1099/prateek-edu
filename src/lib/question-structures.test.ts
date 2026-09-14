@@ -26,11 +26,11 @@ const grading = {
 const valid = (candidate: unknown, marks = 4) =>
   parseMatchGradingData(candidate, parseMatchContent(content, "bank"), marks);
 
-test("B1-A does not expose Match in authoring, paper, or objective assessment selectors", () => {
-  assert.equal(BANK_QUESTION_TYPES.includes("MATCH_THE_FOLLOWING" as never), false);
-  assert.equal(PAPER_QUESTION_TYPES.includes("MATCH_THE_FOLLOWING" as never), false);
+test("B1-B exposes Match for authoring and paper output but not objective assessments", () => {
+  assert.equal(BANK_QUESTION_TYPES.includes("MATCH_THE_FOLLOWING"), true);
+  assert.equal(PAPER_QUESTION_TYPES.includes("MATCH_THE_FOLLOWING"), true);
   assert.equal(OBJECTIVE_ASSESSMENT_TYPES.includes("MATCH_THE_FOLLOWING" as never), false);
-  assert.equal(normalizeBankQuestionType("MATCH_THE_FOLLOWING"), null);
+  assert.equal(normalizeBankQuestionType("MATCH_THE_FOLLOWING"), "MATCH_THE_FOLLOWING");
 });
 
 test("Fill normalization has fixed NFKC/trim/collapse/case order and exact punctuation", () => {

@@ -2,7 +2,7 @@ import "server-only";
 
 import crypto from "node:crypto";
 
-import type { SavedGeneratedPaperOrderMode } from "@prisma/client";
+import { Prisma, type SavedGeneratedPaperOrderMode } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { findDuplicateSelection } from "@/lib/paper-builder/rules";
@@ -11,7 +11,8 @@ import {
   deleteArchivedQuestionImages,
 } from "@/lib/paper-builder/saved-paper-images";
 import { SAVED_PAPER_SNAPSHOT_VERSION } from "@/lib/paper-builder/saved-paper-rules";
-import type { ValidatedPaper } from "@/lib/paper-builder/types";
+import { freezeQuestionStructureForSavedPaper } from "@/lib/paper-builder/structured-output";
+import type { PaperBuilderQuestion, ValidatedPaper } from "@/lib/paper-builder/types";
 
 export type PersistSavedGeneratedPaperInput = {
   name: string;
@@ -32,6 +33,14 @@ function archivedImageUrl(sourceUrl: string | null | undefined, copies: Map<stri
   const archived = copies.get(sourceUrl);
   if (!archived) throw new Error("A question image was not copied into Paper Archive.");
   return archived;
+}
+
+function snapshotStructure(question: PaperBuilderQuestion) {
+  const frozen = freezeQuestionStructureForSavedPaper(question, crypto.randomInt);
+  return {
+    structuredContent: frozen.structuredContent === null ? Prisma.JsonNull : frozen.structuredContent as unknown as Prisma.InputJsonValue,
+    gradingData: frozen.gradingData === null ? Prisma.JsonNull : frozen.gradingData as unknown as Prisma.InputJsonValue,
+  };
 }
 
 export async function persistSavedGeneratedPaper(input: PersistSavedGeneratedPaperInput) {
@@ -109,6 +118,7 @@ export async function persistSavedGeneratedPaper(input: PersistSavedGeneratedPap
                   optionD: question.optionD,
                   correctAnswer: question.correctAnswer,
                   modelAnswer: question.modelAnswer,
+                  ...snapshotStructure(question),
                   explanation: question.explanation,
                   imageUrl: archivedImageUrl(question.imageUrl, copiedImages!.bySourceUrl),
                   imageAlt: question.imageAlt ?? null,

@@ -1,18 +1,28 @@
 import { normalizeTrustedQuestionImageUrl } from "./question-bank-image";
+import type { Prisma } from "@prisma/client";
+import {
+  B1_FILL_NORMALIZATION,
+  assertOneFillBlank,
+  parseFillGradingData,
+  parseMatchContent,
+  parseMatchGradingData,
+  type FillGradingData,
+  type MatchContent,
+  type MatchGradingData,
+} from "./question-structures";
 
 export const BANK_QUESTION_TYPES = [
   "MCQ",
   "TRUE_FALSE",
   "FILL_BLANK",
+  "MATCH_THE_FOLLOWING",
   "ASSERTION_REASON",
   "VERY_SHORT_ANSWER",
   "SHORT_ANSWER",
   "LONG_ANSWER",
 ] as const;
 
-// The database recognizes Match during B1-A, but selectable authoring and paper
-// types stay on BANK_QUESTION_TYPES until the B1-B UI/print pipeline is ready.
-export const ALL_BANK_QUESTION_TYPES = [...BANK_QUESTION_TYPES, "MATCH_THE_FOLLOWING"] as const;
+export const ALL_BANK_QUESTION_TYPES = BANK_QUESTION_TYPES;
 export type BankQuestionTypeValue = (typeof ALL_BANK_QUESTION_TYPES)[number];
 
 export const BANK_QUESTION_DIFFICULTIES = ["easy", "medium", "hard"] as const;
@@ -21,9 +31,9 @@ export type BankQuestionDifficulty = (typeof BANK_QUESTION_DIFFICULTIES)[number]
 export const BANK_QUESTION_TYPE_LABELS: Record<BankQuestionTypeValue, string> = {
   MCQ: "MCQ",
   TRUE_FALSE: "True / False",
-  FILL_BLANK: "Fill in the Blank",
+  FILL_BLANK: "Fill in the Blanks",
   MATCH_THE_FOLLOWING: "Match the Following",
-  ASSERTION_REASON: "Assertion & Reasoning",
+  ASSERTION_REASON: "Assertion–Reason",
   VERY_SHORT_ANSWER: "Very Short Answer",
   SHORT_ANSWER: "Short Answer",
   LONG_ANSWER: "Long Answer",
@@ -48,6 +58,8 @@ export type BankQuestionInput = {
   topicTag?: string | null;
   difficulty: string;
   marks: number;
+  structuredContent?: unknown;
+  gradingData?: unknown;
 };
 
 export type ValidatedBankQuestion = {
@@ -69,6 +81,8 @@ export type ValidatedBankQuestion = {
   topicTag: string | null;
   difficulty: BankQuestionDifficulty;
   marks: number;
+  structuredContent?: Prisma.InputJsonValue;
+  gradingData?: Prisma.InputJsonValue;
 };
 
 export type BankQuestionValidationResult =
@@ -83,6 +97,8 @@ const TYPE_ALIASES = new Map<string, BankQuestionTypeValue>([
   ["FILL_BLANK", "FILL_BLANK"],
   ["FILL IN THE BLANK", "FILL_BLANK"],
   ["FILL IN THE BLANKS", "FILL_BLANK"],
+  ["MATCH_THE_FOLLOWING", "MATCH_THE_FOLLOWING"],
+  ["MATCH THE FOLLOWING", "MATCH_THE_FOLLOWING"],
   ["ASSERTION_REASON", "ASSERTION_REASON"],
   ["ASSERTION & REASONING", "ASSERTION_REASON"],
   ["ASSERTION AND REASONING", "ASSERTION_REASON"],
@@ -112,7 +128,10 @@ export function normalizeBankQuestionType(value: unknown): BankQuestionTypeValue
   return TYPE_ALIASES.get(normalized) ?? null;
 }
 
-export function validateBankQuestionInput(input: BankQuestionInput): BankQuestionValidationResult {
+export function validateBankQuestionInput(
+  input: BankQuestionInput,
+  options: { allowLegacyFillBlank?: boolean } = {},
+): BankQuestionValidationResult {
   const errors: string[] = [];
   const subjectId = typeof input?.subjectId === "string" ? input.subjectId.trim() : "";
   const topicId = typeof input?.topicId === "string" && input.topicId.trim() ? input.topicId.trim() : null;
@@ -138,6 +157,8 @@ export function validateBankQuestionInput(input: BankQuestionInput): BankQuestio
   let optionD = optionalText(input?.optionD, 10_000);
   let correctAnswer = optionalText(input?.correctAnswer, 10_000);
   let modelAnswer = optionalText(input?.modelAnswer, 50_000);
+  let structuredContent: MatchContent | undefined;
+  let gradingData: FillGradingData | MatchGradingData | undefined;
   const suppliedImageUrl = optionalText(input?.imageUrl, 5_000);
   const imageUrl = normalizeTrustedQuestionImageUrl(suppliedImageUrl);
 
@@ -166,10 +187,37 @@ export function validateBankQuestionInput(input: BankQuestionInput): BankQuestio
     modelAnswer = null;
   } else if (questionType === "FILL_BLANK") {
     if (!correctAnswer) errors.push("A canonical answer is required for a fill-in-the-blank question.");
+    try {
+      if (!options.allowLegacyFillBlank) assertOneFillBlank(questionText);
+      gradingData = parseFillGradingData(
+        input.gradingData ?? {
+          version: 1,
+          type: "FILL_BLANK",
+          acceptedAnswers: [correctAnswer],
+          normalization: B1_FILL_NORMALIZATION,
+        },
+        correctAnswer,
+      );
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Invalid Fill Blank answer configuration.");
+    }
     optionA = null;
     optionB = null;
     optionC = null;
     optionD = null;
+    modelAnswer = null;
+  } else if (questionType === "MATCH_THE_FOLLOWING") {
+    try {
+      structuredContent = parseMatchContent(input.structuredContent, "bank");
+      gradingData = parseMatchGradingData(input.gradingData, structuredContent, marks);
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : "Invalid matching pairs.");
+    }
+    optionA = null;
+    optionB = null;
+    optionC = null;
+    optionD = null;
+    correctAnswer = null;
     modelAnswer = null;
   } else if (
     questionType === "VERY_SHORT_ANSWER" ||
@@ -207,6 +255,8 @@ export function validateBankQuestionInput(input: BankQuestionInput): BankQuestio
       topicTag: optionalText(input?.topicTag, 500),
       difficulty: difficulty as BankQuestionDifficulty,
       marks,
+      ...(structuredContent ? { structuredContent: structuredContent as unknown as Prisma.InputJsonValue } : {}),
+      ...(gradingData ? { gradingData: gradingData as unknown as Prisma.InputJsonValue } : {}),
     },
   };
 }

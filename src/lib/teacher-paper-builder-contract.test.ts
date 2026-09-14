@@ -84,6 +84,7 @@ test("teacher policy allows every supported global type but only workspace MCQs"
     "MCQ",
     "TRUE_FALSE",
     "FILL_BLANK",
+    "MATCH_THE_FOLLOWING",
     "ASSERTION_REASON",
     "VERY_SHORT_ANSWER",
     "SHORT_ANSWER",

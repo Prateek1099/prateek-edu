@@ -80,11 +80,12 @@ function question(patch: Partial<PaperBuilderQuestion> = {}): PaperBuilderQuesti
   };
 }
 
-test("valid teacher blueprint accepts all seven global question types", () => {
+test("valid teacher blueprint accepts all eight global question types", () => {
   const types = [
     "MCQ",
     "TRUE_FALSE",
     "FILL_BLANK",
+    "MATCH_THE_FOLLOWING",
     "ASSERTION_REASON",
     "VERY_SHORT_ANSWER",
     "SHORT_ANSWER",

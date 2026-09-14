@@ -31,11 +31,13 @@ export function isCompletePaperQuestion(question: PaperBuilderQuestion) {
     optionD: question.optionD,
     correctAnswer: question.correctAnswer,
     modelAnswer: question.modelAnswer,
+    structuredContent: question.structuredContent,
+    gradingData: question.gradingData,
     explanation: question.explanation,
     topicTag: question.topicTag,
     difficulty: question.difficulty,
     marks: question.marks,
-  }).success;
+  }, { allowLegacyFillBlank: true }).success;
 }
 
 export function questionMatchesPattern(

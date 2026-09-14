@@ -1,6 +1,7 @@
 "use server";
 
 import { del } from "@vercel/blob";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { parseBankQuestionCsv } from "@/lib/bank-question-csv";
@@ -60,7 +61,11 @@ export async function updateAdminBankQuestion(
 
   await prisma.bankQuestion.update({
     where: { id: questionId },
-    data: validation.data,
+    data: {
+      ...validation.data,
+      structuredContent: validation.data.structuredContent ?? Prisma.JsonNull,
+      gradingData: validation.data.gradingData ?? Prisma.JsonNull,
+    },
   });
   if (existing.imageUrl && existing.imageUrl !== validation.data.imageUrl) {
     const oldImageUrl = normalizeTrustedQuestionImageUrl(existing.imageUrl);

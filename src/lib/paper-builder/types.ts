@@ -21,6 +21,8 @@ export type PaperBuilderQuestion = {
   optionD: string | null;
   correctAnswer: string | null;
   modelAnswer: string | null;
+  structuredContent?: unknown;
+  gradingData?: unknown;
   explanation: string | null;
   source?: string | null;
   imageUrl?: string | null;

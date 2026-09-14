@@ -93,7 +93,10 @@ export function buildAssessmentSnapshot(source: SavedSource) {
     const normalized = q.questionText.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
     demand(!texts.has(normalized), "INVALID_SOURCE", "Duplicate question text.");
     texts.add(normalized); ids.add(q.id);
-    const validation = validateBankQuestionInput({ ...q, subjectId: source.subjectId, topicId: q.topicId });
+    const validation = validateBankQuestionInput(
+      { ...q, subjectId: source.subjectId, topicId: q.topicId },
+      { allowLegacyFillBlank: true },
+    );
     demand(validation.success, "INVALID_SOURCE", "Saved question is incomplete or invalid.");
     total += q.marks;
   }

@@ -213,6 +213,9 @@ export function parseBankQuestionCsv(
 
     const questionType = normalizeBankQuestionType(raw.questionType);
     if (!questionType) errors.push(`Unsupported question type “${raw.questionType || "blank"}”.`);
+    if (questionType === "MATCH_THE_FOLLOWING") {
+      errors.push("Match the Following CSV import is deferred. Add matching pairs in the Admin Question Bank editor.");
+    }
 
     const parsedMarks = Number(raw.marks);
     const input: BankQuestionInput = {

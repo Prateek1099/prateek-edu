@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { BANK_QUESTION_TYPE_LABELS } from "@/lib/bank-questions";
+import { fillAcceptedAnswers, matchAnswerRows, visibleMatchRows } from "@/lib/paper-builder/structured-output";
 import type {
   PaperBuilderQuestion,
   ValidatedPaper,
@@ -108,7 +109,13 @@ function answerFor(question: PaperBuilderQuestion) {
     const option = optionRows(question).find(([label]) => label === question.correctAnswer)?.[1];
     return option ? `${question.correctAnswer}. ${option}` : question.correctAnswer;
   }
-  if (question.questionType === "TRUE_FALSE" || question.questionType === "FILL_BLANK") {
+  if (question.questionType === "FILL_BLANK") {
+    return `Accepted answer(s): ${fillAcceptedAnswers(question).join("; ")}`;
+  }
+  if (question.questionType === "MATCH_THE_FOLLOWING") {
+    return matchAnswerRows(question).map((row) => `${row.leftLabel} → ${row.rightLabel} (${row.rightText})`).join("; ");
+  }
+  if (question.questionType === "TRUE_FALSE") {
     return question.correctAnswer;
   }
   return question.modelAnswer;
@@ -166,6 +173,10 @@ export function PaperQuestionDocument({ paper }: { paper: ValidatedPaper }) {
                             ))}
                           </div>
                         )}
+                        {question.questionType === "MATCH_THE_FOLLOWING" && (() => {
+                          const rows = visibleMatchRows(question.structuredContent);
+                          return <table className="mt-4 w-full max-w-2xl table-fixed border-collapse text-left text-sm"><thead><tr><th className="w-1/2 border-b border-gray-300 pb-2 font-semibold">Column A</th><th className="w-1/2 border-b border-gray-300 pb-2 font-semibold">Column B</th></tr></thead><tbody>{rows.left.map((left, index) => <tr key={left.id}><td className="break-words py-2 pr-4 align-top">{left.label}. {left.text}</td><td className="break-words py-2 align-top">{rows.right[index].label}. {rows.right[index].text}</td></tr>)}</tbody></table>;
+                        })()}
                         <WrittenAnswerSpace question={question} />
                       </div>
                     </div>

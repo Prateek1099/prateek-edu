@@ -99,11 +99,12 @@ test("validation stores only reusable Blueprint structure", () => {
   assert.equal("preview" in validated, false);
 });
 
-test("all seven teacher global question types can be saved in Blueprint rows", () => {
+test("all eight teacher global question types can be saved in Blueprint rows", () => {
   const types = [
     "MCQ",
     "TRUE_FALSE",
     "FILL_BLANK",
+    "MATCH_THE_FOLLOWING",
     "ASSERTION_REASON",
     "VERY_SHORT_ANSWER",
     "SHORT_ANSWER",
@@ -120,7 +121,7 @@ test("all seven teacher global question types can be saved in Blueprint rows", (
     difficulty: "any" as const,
   }));
   const validated = validateWorkspaceBlueprintTemplateInput(input({
-    draft: { ...draft, targetMarks: 7, chapters: [{ ...draft.chapters[0], rows }] },
+    draft: { ...draft, targetMarks: 8, chapters: [{ ...draft.chapters[0], rows }] },
   }));
   assert.deepEqual(validated.chapters[0].rows.map((row) => row.questionType), types);
 });
